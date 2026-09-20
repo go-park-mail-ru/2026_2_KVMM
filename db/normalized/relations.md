@@ -41,13 +41,6 @@
 { nickname } -> { id, email, phone_number, profile_name, surname, patronymic,
 gender, birthday, created_at, deleted_at, updated_at,
 password_hash, password_salt, bio }
-
-{ email } -> { id, nickname, phone_number, profile_name, surname, patronymic,
-gender, birthday, created_at, deleted_at, updated_at,
-password_hash, password_salt, bio }
-
-{ phone_number } -> { id, nickname, email, profile_name, surname, patronymic,
-gender, birthday, created_at, deleted_at, updated_at, password_hash, password_salt, bio }
 ```
 ### community
 ```
@@ -234,12 +227,12 @@ message_id -> author_id -> author_name
 Пример: отношение profile
 Функциональные зависимости:
 ```
-{ id } -> { nickname, email, profile_name, surname }
+{ id } -> { nickname, email, profile_name, surname... }
 ```
 id является первичным ключом, поэтому он является потенциальным ключом.
 Также:
 ```
-{ nickname } -> { id, email, profile_name, surname }
+{ nickname } -> { id, email, profile_name, surname.. }
 ```
 nickname имеет ограничение UNIQUE, поэтому он также является потенциальным ключом.
 Обе функциональные зависимости являются нетривиальными и неприводимыми слева, а их детерминанты (id и nickname) являются потенциальными ключами. Следовательно, отношение profile соответствует НФБК
