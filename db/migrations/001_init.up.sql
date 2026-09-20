@@ -149,7 +149,7 @@ CREATE TABLE post_media (
         ON UPDATE NO ACTION
         ON DELETE NO ACTION,
     FOREIGN KEY (media_id)
-        REFERENCES media (media_id)
+        REFERENCES media (id)
         ON UPDATE NO ACTION
         ON DELETE NO ACTION
 );
@@ -283,7 +283,7 @@ CREATE TABLE message_media (
         ON UPDATE NO ACTION
         ON DELETE NO ACTION,
     FOREIGN KEY (media_id)
-        REFERENCES media (media_id)
+        REFERENCES media (id)
         ON UPDATE NO ACTION
         ON DELETE NO ACTION
 );
@@ -467,7 +467,7 @@ CREATE TABLE comment_media (
         ON UPDATE NO ACTION
         ON DELETE NO ACTION,
     FOREIGN KEY (media_id)
-        REFERENCES media (media_id)
+        REFERENCES media (id)
         ON UPDATE NO ACTION
         ON DELETE NO ACTION
 );
@@ -539,7 +539,7 @@ CREATE TABLE profile_avatar (
         ON DELETE NO ACTION,
 
     FOREIGN KEY (media_id)
-        REFERENCES media (media_id)
+        REFERENCES media (id)
         ON UPDATE NO ACTION
         ON DELETE NO ACTION
 );
