@@ -142,6 +142,9 @@ CREATE TABLE post_media (
     post_id BIGINT NOT NULL,
     media_id BIGINT NOT NULL,
 
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMPTZ NULL,
+
     PRIMARY KEY (post_id, media_id),
 
     FOREIGN KEY (post_id)

@@ -48,6 +48,8 @@ erDiagram
     post_media {
         BIGINT post_id PK, FK
         BIGINT media_id PK, FK
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ deleted_at
     }
 
     profile_repost {

@@ -32,6 +32,52 @@
 **sticker** - Стикеры\
 **emoji_reaction** - Эмодзи реакций
 
+
+# Отсутствия полей created_at, updated_at, deleted_at у сущностей
+
+### post_media — нет updated_at 
+
+* **updated_at** — не нужен: медиа файлы не изменяемы
+
+### profile_like — нет updated_at
+
+* **created_at** — фиксирует момент постановки лайка.
+* **updated_at** — не нужен: лайк либо есть, либо снят.
+* **deleted_at** — сохраняет историю снятия лайка.
+
+### chat — нет updated_at, deleted_at
+
+* **updated_at** — не нужен: изменения происходят в message и chat_profile, сам чат после создания не изменяется.
+* **deleted_at** — не нужен: выход пользователя реализуется через chat_profile.deleted_at.
+
+### chat_profile — нет created_at, updated_at
+
+* **created_at** — не нужен: момент вступления chat.created_at.
+* **updated_at** — не нужен: запись неизменяема, роль участника не хранится тк это личный чат (участники равны).
+
+### message_media — нет created_at, updated_at, deleted_at
+
+* **created_at** — не нужен: дублирует message.created_at.
+* **updated_at** — не нужен: состав медиа не изменяется; редактируется только message.
+* **deleted_at** — не нужен: media удаляется только вместе с самим постом.
+
+### comment_media — нет created_at, updated_at, deleted_at
+
+Аналогично message_media
+
+### message_sticker — нет created_at, updated_at, deleted_at
+
+Аналогично message_media
+
+### comment_sticker — нет created_at, updated_at, deleted_at
+
+Аналогично message_media
+
+### profile_avatar — нет updated_at
+
+* **updated_at** — не нужен: пользователь имеет несколько ававатор, главный - последний добавленный.
+
+
 # Функциональные зависимости
 
 ### profile
@@ -57,7 +103,7 @@ password_hash, password_salt, bio }
 ```
 ### post_media
 ```
-{ post_id, media_id } -> { }
+{ post_id, media_id } -> { created_at, deleted_at }
 ```
 ### profile_repost
 ```
