@@ -5,7 +5,7 @@ erDiagram
         TEXT nickname UK
         TEXT email UK
         TEXT phone_number UK
-        TEXT name
+        TEXT profile_name
         TEXT surname
         TEXT patronymic
         gender_enum gender
@@ -20,7 +20,7 @@ erDiagram
 
     community {
         BIGINT id PK
-        TEXT name UK
+        TEXT community_name UK
         TEXT bio
         TIMESTAMPTZ created_at
         TIMESTAMPTZ updated_at
@@ -30,7 +30,7 @@ erDiagram
     post {
         BIGINT id PK
         TEXT post_text
-        BIGINT author_user_id FK
+        BIGINT author_profile_id FK
         BIGINT author_community_id FK
         TIMESTAMPTZ created_at
         TIMESTAMPTZ updated_at
@@ -50,8 +50,8 @@ erDiagram
         BIGINT media_id PK, FK
     }
 
-    user_repost {
-        BIGINT user_id PK, FK
+    profile_repost {
+        BIGINT profile_id PK, FK
         BIGINT post_id PK, FK
         TEXT repost_comment
         TIMESTAMPTZ created_at
@@ -59,8 +59,8 @@ erDiagram
         TIMESTAMPTZ deleted_at
     }
 
-    user_like {
-        BIGINT user_id PK, FK
+    profile_like {
+        BIGINT profile_id PK, FK
         BIGINT post_id PK, FK
         TIMESTAMPTZ created_at
         TIMESTAMPTZ deleted_at
@@ -71,8 +71,8 @@ erDiagram
         TIMESTAMPTZ created_at
     }
 
-    chat_user {
-        BIGINT user_id PK, FK
+    chat_profile {
+        BIGINT profile_id PK, FK
         BIGINT chat_id PK, FK
         TIMESTAMPTZ deleted_at
     }
@@ -92,14 +92,11 @@ erDiagram
     message_media {
         BIGINT message_id PK, FK
         BIGINT media_id PK, FK
-        TIMESTAMPTZ created_at
-        TIMESTAMPTZ updated_at
-        TIMESTAMPTZ deleted_at
     }
 
-    user_relationship {
-        BIGINT user_id_master PK, FK
-        BIGINT user_id_slave PK, FK
+    profile_relationship {
+        BIGINT profile_id_master PK, FK
+        BIGINT profile_id_slave PK, FK
         relationships_enum status
         TIMESTAMPTZ created_at
         TIMESTAMPTZ updated_at
@@ -107,7 +104,7 @@ erDiagram
     }
 
     community_member {
-        BIGINT user_id PK, FK
+        BIGINT profile_id PK, FK
         BIGINT community_id PK, FK
         TIMESTAMPTZ created_at
         TIMESTAMPTZ updated_at
@@ -118,6 +115,9 @@ erDiagram
     emoji_reaction {
         BIGINT id PK
         TEXT emoji_path "S3_PATH"
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+        TIMESTAMPTZ deleted_at
     }
 
     message_like {
@@ -173,25 +173,25 @@ erDiagram
         BIGINT sticker_id PK, FK
     }
 
-    user_avatar {
-        BIGINT user_id PK, FK
+    profile_avatar {
+        BIGINT profile_id PK, FK
         BIGINT media_id PK, FK
         TIMESTAMPTZ created_at
         TIMESTAMPTZ deleted_at
     }
 
     profile ||--o{ post : "authors"
-    profile ||--o{ user_repost : "reposts"
-    profile ||--o{ user_like : "likes"
+    profile ||--o{ profile_repost : "reposts"
+    profile ||--o{ profile_like : "likes"
 
-    profile ||--o{ chat_user : "participates"
-    chat ||--o{ chat_user : "contains"
+    profile ||--o{ chat_profile : "participates"
+    chat ||--o{ chat_profile : "contains"
 
     profile ||--o{ message : "writes"
     profile ||--o{ comment : "writes"
 
-    profile ||--o{ user_relationship : "master"
-    profile ||--o{ user_relationship : "slave"
+    profile ||--o{ profile_relationship : "master"
+    profile ||--o{ profile_relationship : "slave"
 
     profile ||--o{ community_member : "joins"
     community ||--o{ community_member : "members"
@@ -199,15 +199,15 @@ erDiagram
     profile ||--o{ message_like : "likes messages"
     profile ||--o{ comment_like : "likes comments"
 
-    profile ||--o{ user_avatar : "avatars"
+    profile ||--o{ profile_avatar : "avatars"
 
     community ||--o{ post : "authors"
 
     post ||--o{ post_media : "media"
     media ||--o{ post_media : "attached to posts"
 
-    post ||--o{ user_repost : "reposted"
-    post ||--o{ user_like : "liked"
+    post ||--o{ profile_repost : "reposted"
+    post ||--o{ profile_like : "liked"
 
     post ||--o{ comment : "comments"
 
@@ -237,7 +237,7 @@ erDiagram
     comment ||--o{ comment : "repost"
     comment ||--o{ comment : "reply"
 
-    media ||--o{ user_avatar : "used as avatar"
+    media ||--o{ profile_avatar : "used as avatar"
 
     role_enum {
         ENUM admin

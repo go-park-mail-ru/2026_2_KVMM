@@ -2,10 +2,10 @@
 
 ## Пользователи
 **profile** - Пользователи\
-**app_user_avatar** - Аватары пользователей\
-**app_user_repost** - Репосты публикаций\
-**app_user_like** - Лайки публикаций\
-**app_user_relationship** - Связи между пользователями
+**profile_avatar** - Аватары пользователей\
+**profile_repost** - Репосты публикаций\
+**profile_like** - Лайки публикаций\
+**profile_relationship** - Связи между пользователями
 
 ## Сообщества
 **community** - Сообщества пользователей\
@@ -21,7 +21,7 @@
 
 ## Чаты
 **chat** - Чаты\
-**chat_app_user** - Участники чатов\
+**chat_profile** - Участники чатов\
 **message** - Сообщения в чатах\
 **message_media** - Медиафайлы сообщений\
 **message_like** - Реакции на сообщения\
@@ -36,88 +36,85 @@
 
 ### profile
 ```
-{ id } -> { nickname, email, phone_number, name, surname, patronymic,gender, birthday, created_at, deleted_at,
+{ id } -> { nickname, email, phone_number, profile_name, surname, patronymic,gender, birthday, created_at, deleted_at, updated_at, password_hash, password_salt, bio }
+
+{ nickname } -> { id, email, phone_number, profile_name, surname, patronymic,
+gender, birthday, created_at, deleted_at, updated_at,
 password_hash, password_salt, bio }
 
-{ nickname } -> { id, email, phone_number, name, surname, patronymic,
-gender, birthday, created_at, deleted_at,
+{ email } -> { id, nickname, phone_number, profile_name, surname, patronymic,
+gender, birthday, created_at, deleted_at, updated_at,
 password_hash, password_salt, bio }
 
-{ email } -> { id, nickname, phone_number, name, surname, patronymic,
-gender, birthday, created_at, deleted_at,
-password_hash, password_salt, bio }
-
-{ phone_number } -> { id, nickname, email, name, surname, patronymic,
-gender, birthday, created_at, deleted_at,
-password_hash, password_salt, bio }
+{ phone_number } -> { id, nickname, email, profile_name, surname, patronymic,
+gender, birthday, created_at, deleted_at, updated_at, password_hash, password_salt, bio }
 ```
 ### community
 ```
-{ id } -> { name, bio, created_at, deleted_at }
-{ name } -> { id, bio, created_at, deleted_at }
+{ id } -> { community_name, bio, created_at, deleted_at, updated_at }
+{ community_name } -> { id, bio, created_at, deleted_at, updated_at }
 ```
 ### post
 ```
-{ id } -> { post_text, author_user_id, author_community_id,
-created_at, edit_at, deleted_at }
+{ id } -> { post_text, author_profile_id, author_community_id, created_at, updated_at, deleted_at }
 ```
 ### media
 ```
-{ media_id } -> { media_path }
+{ media_id } -> { media_path, created_at, updated_at, deleted_at }
 ```
 ### post_media
 ```
 { post_id, media_id } -> { }
 ```
-### app_user_repost
+### profile_repost
 ```
-{ user_id, post_id } -> { repost_comment }
+{ profile_id, post_id } -> { repost_comment, created_at, updated_at, deleted_at }
 ```
-### app_user_like
+### profile_like
 ```
-{ user_id, post_id } -> { }
+{ profile_id, post_id } -> { created_at, deleted_at }
 ```
 ### chat
 ```
 { id } -> { created_at }
 ```
-### chat_app_user
+### chat_profile
 ```
-{ user_id, chat_id } -> { deleted_at }
+{ profile_id, chat_id } -> { deleted_at }
 ```
 ### message
 ```
 { id } -> { chat_id, message_text, author_id, created_at, deleted_at,
-edit_at, repost_from, reply_from }
+updated_at, repost_from, reply_from }
 ```
 ### message_media
 ```
 { message_id, media_id } -> { }
 ```
-### app_user_relationship
+### profile_relationship
 ```
-{ user_id_master, user_id_slave } -> { status, created_at }
+{ profile_id_master, profile_id_slave } -> { status, created_at, updated_at, deleted_at }
 ```
 ### community_member
 ```
-{ user_id, community_id } -> { role }
+{ profile_id, community_id } -> { role, created_at, updated_at, deleted_at }
 ```
 ### emoji_reaction
 ```
-{ id } -> { emoji_path }
+{ id } -> { emoji_path, created_at, updated_at, deleted_at }
 ```
 ### message_like
 ```
-{ message_id, like_by } -> { emoji_id }
+{ message_id, like_by } -> { emoji_id, created_at, updated_at, deleted_at }
 ```
 ### comment
 ```
 { id } -> { post_id, comment_text, author_id, created_at,
-deleted_at, edit_at, repost_from, reply_from }
+deleted_at, updated_at, repost_from, reply_from }
 ```
 ### comment_like
 ```
-{ comment_id, like_by } -> { emoji_id }
+{ comment_id, like_by } -> { emoji_id, created_at, updated_at, deleted_at }
 ```
 ### comment_media
 ```
@@ -125,7 +122,7 @@ deleted_at, edit_at, repost_from, reply_from }
 ```
 ### sticker
 ```
-{ id } -> { sticker_path }
+{ id } -> { sticker_path, created_at, updated_at, deleted_at }
 ```
 ### message_sticker
 ```
@@ -135,9 +132,9 @@ deleted_at, edit_at, repost_from, reply_from }
 ```
 { comment_id, sticker_id } -> { }
 ```
-### app_user_avatar
+### profile_avatar
 ```
-{ user_id, media_id } -> { created_at, deleted_at }
+{ profile_id, media_id } -> { created_at, deleted_at }
 ```
 # Соответствие первой нормальной форме (1НФ)
 
@@ -150,7 +147,7 @@ profile.email
 profile.birthday
 post.post_text
 message.message_text
-community.name
+community.community_name
 ...
 ```
 
@@ -167,7 +164,7 @@ community.name
 ```
 profile:
 
-{ id } -> { nickname, email, name, surname, ... }
+{ id } -> { nickname, email, profile_name, surname, ... }
 ```
 id состоит из одного атрибута.
 
@@ -175,21 +172,21 @@ id состоит из одного атрибута.
 ```
 post:
 
-{ id } -> { post_text, author_user_id, ... }
+{ id } -> { post_text, author_profile_id, ... }
 ```
 
 Для отношений с составными ключами зависимости также являются зависимостями от всего ключа.
 
 Например:
 ```
-app_user_repost:
+profile_repost:
 
-{ user_id, post_id } -> { repost_comment }
+{ profile_id, post_id } -> { repost_comment }
 ```
 
 repost_comment зависит от комбинации пользователя и поста, а не только от:
 ```
-user_id
+profile_id
 ```
 
 или только:
@@ -220,7 +217,7 @@ chat:
 Информация о пользователе отдельно находится в:
 ```
 profile:
-{ id } -> { nickname, name, surname, ... }
+{ id } -> { nickname, profile_name, surname, ... }
 ```
 
 Таким образом, например, имя автора сообщения не хранится в message.Это предотвращает зависимость вида:
@@ -237,12 +234,12 @@ message_id -> author_id -> author_name
 Пример: отношение profile
 Функциональные зависимости:
 ```
-{ id } -> { nickname, email, name, surname }
+{ id } -> { nickname, email, profile_name, surname }
 ```
 id является первичным ключом, поэтому он является потенциальным ключом.
 Также:
 ```
-{ nickname } -> { id, email, name, surname }
+{ nickname } -> { id, email, profile_name, surname }
 ```
 nickname имеет ограничение UNIQUE, поэтому он также является потенциальным ключом.
 Обе функциональные зависимости являются нетривиальными и неприводимыми слева, а их детерминанты (id и nickname) являются потенциальными ключами. Следовательно, отношение profile соответствует НФБК

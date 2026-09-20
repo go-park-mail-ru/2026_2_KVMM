@@ -18,6 +18,7 @@ CREATE TYPE gender_enum AS ENUM (
 );
 
 
+-- Пользователи
 CREATE TABLE profile (
     id BIGINT GENERATED ALWAYS AS IDENTITY,
     nickname TEXT NOT NULL
@@ -26,8 +27,8 @@ CREATE TABLE profile (
     email TEXT NULL,
     phone_number TEXT NULL,
 
-    name TEXT NOT NULL
-        CHECK (LENGTH(name) BETWEEN 2 AND 32),
+    profile_name TEXT NOT NULL
+        CHECK (LENGTH(profile_name) BETWEEN 2 AND 32),
     surname TEXT NOT NULL
         CHECK (LENGTH(surname) BETWEEN 2 AND 32),
     patronymic TEXT NULL
@@ -51,22 +52,24 @@ CREATE TABLE profile (
     CHECK 
         (email IS NOT NULL OR phone_number IS NOT NULL),
 
-    CONSTRAINT user_nickname_unique
+    CONSTRAINT profile_nickname_unique
         UNIQUE (nickname),
-    CONSTRAINT user_email_unique
+    CONSTRAINT profile_email_unique
         UNIQUE (email),
-    CONSTRAINT user_phone_unique
+    CONSTRAINT profile_phone_unique
         UNIQUE (phone_number)
 
 );
-CREATE INDEX user_name ON profile(name);
-CREATE INDEX user_surname ON profile(surname);
-CREATE INDEX user_patronymic ON profile(patronymic);
+CREATE INDEX profile_name ON profile(profile_name);
+CREATE INDEX profile_surname ON profile(surname);
+CREATE INDEX profile_patronymic ON profile(patronymic);
 
+
+-- Сообщества пользователей
 CREATE TABLE community (
     id BIGINT GENERATED ALWAYS AS IDENTITY,
-    name TEXT NOT NULL
-        CHECK (LENGTH(name) <= 128),
+    community_name TEXT NOT NULL
+        CHECK (LENGTH(community_name) <= 128),
     bio TEXT NOT NULL
         CHECK (LENGTH(bio) <= 256),
 
@@ -77,17 +80,19 @@ CREATE TABLE community (
     PRIMARY KEY (id),
 
     CONSTRAINT community_name_unique
-        UNIQUE (name)
+        UNIQUE (community_name)
 );
 
 
+
+-- Публикации пользователей и сообществ
 CREATE TABLE post (
     id BIGINT GENERATED ALWAYS AS IDENTITY,
 
     post_text TEXT NULL
         CHECK (LENGTH(post_text) <= 256),
 
-    author_user_id BIGINT NULL,
+    author_profile_id BIGINT NULL,
     author_community_id BIGINT NULL,
 
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -98,15 +103,15 @@ CREATE TABLE post (
 
     CONSTRAINT post_author_check
         CHECK (
-            (author_user_id IS NOT NULL
+            (author_profile_id IS NOT NULL
              AND author_community_id IS NULL)
             OR
-            (author_user_id IS NULL
+            (author_profile_id IS NULL
              AND author_community_id IS NOT NULL)
         ),
 
-    CONSTRAINT post_author_user_fk
-        FOREIGN KEY (author_user_id)
+    CONSTRAINT post_author_profile_fk
+        FOREIGN KEY (author_profile_id)
         REFERENCES profile (id)
         ON UPDATE NO ACTION
         ON DELETE NO ACTION,
@@ -119,6 +124,7 @@ CREATE TABLE post (
 );
 
 
+-- Медиафайлы
 CREATE TABLE media (
     media_id BIGINT NOT NULL,
     media_path TEXT NOT NULL, -- S3 path
@@ -131,6 +137,7 @@ CREATE TABLE media (
 );
 
 
+-- Медиафайлы публикаций
 CREATE TABLE post_media (
     post_id BIGINT NOT NULL,
     media_id BIGINT NOT NULL,
@@ -148,8 +155,9 @@ CREATE TABLE post_media (
 );
 
 
-CREATE TABLE user_repost (
-    user_id BIGINT NOT NULL,
+-- Репосты публикаций
+CREATE TABLE profile_repost (
+    profile_id BIGINT NOT NULL,
     post_id BIGINT NOT NULL,
 
     repost_comment TEXT NULL,
@@ -158,9 +166,9 @@ CREATE TABLE user_repost (
     updated_at TIMESTAMPTZ NULL,
     deleted_at TIMESTAMPTZ NULL,
 
-    PRIMARY KEY (user_id, post_id),
+    PRIMARY KEY (profile_id, post_id),
 
-    FOREIGN KEY (user_id)
+    FOREIGN KEY (profile_id)
         REFERENCES profile (id)
         ON UPDATE NO ACTION
         ON DELETE NO ACTION,
@@ -171,16 +179,17 @@ CREATE TABLE user_repost (
 );
 
 
-CREATE TABLE user_like (
-    user_id BIGINT NOT NULL,
+-- Лайки публикаций
+CREATE TABLE profile_like (
+    profile_id BIGINT NOT NULL,
     post_id BIGINT NOT NULL,
 
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMPTZ NULL,
 
-    PRIMARY KEY (user_id, post_id),
+    PRIMARY KEY (profile_id, post_id),
 
-    FOREIGN KEY (user_id)
+    FOREIGN KEY (profile_id)
         REFERENCES profile (id)
         ON UPDATE NO ACTION
         ON DELETE NO ACTION,
@@ -192,6 +201,7 @@ CREATE TABLE user_like (
 );
 
 
+-- Чаты
 CREATE TABLE chat (
     id BIGINT GENERATED ALWAYS AS IDENTITY,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -200,15 +210,16 @@ CREATE TABLE chat (
 );
 
 
-CREATE TABLE chat_user (
-    user_id BIGINT NOT NULL,
+-- Участники чатов
+CREATE TABLE chat_profile (
+    profile_id BIGINT NOT NULL,
     chat_id BIGINT NOT NULL,
 
     deleted_at TIMESTAMPTZ NULL,
 
-    PRIMARY KEY (user_id, chat_id),
+    PRIMARY KEY (profile_id, chat_id),
 
-    FOREIGN KEY (user_id)
+    FOREIGN KEY (profile_id)
         REFERENCES profile (id)
         ON UPDATE NO ACTION
         ON DELETE NO ACTION,
@@ -220,6 +231,7 @@ CREATE TABLE chat_user (
 );
 
 
+-- Сообщения в чатах
 CREATE TABLE message (
     id BIGINT GENERATED ALWAYS AS IDENTITY,
     chat_id BIGINT NOT NULL,
@@ -259,13 +271,10 @@ CREATE TABLE message (
 );
 
 
+-- Медиафайлы сообщений
 CREATE TABLE message_media (
     message_id BIGINT NOT NULL,
     media_id BIGINT NOT NULL,
-
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ NULL,
-    deleted_at TIMESTAMPTZ NULL,
 
     PRIMARY KEY (message_id, media_id),
 
@@ -280,9 +289,10 @@ CREATE TABLE message_media (
 );
 
 
-CREATE TABLE user_relationship (
-    user_id_master BIGINT NOT NULL,
-    user_id_slave BIGINT NOT NULL,
+-- Связи между пользователями (дружба, бан и тд)
+CREATE TABLE profile_relationship (
+    profile_id_master BIGINT NOT NULL,
+    profile_id_slave BIGINT NOT NULL,
 
     status relationships_enum NOT NULL,
 
@@ -290,23 +300,24 @@ CREATE TABLE user_relationship (
     updated_at TIMESTAMPTZ NULL,
     deleted_at TIMESTAMPTZ NULL,
 
-    PRIMARY KEY (user_id_master, user_id_slave),
+    PRIMARY KEY (profile_id_master, profile_id_slave),
 
-    FOREIGN KEY (user_id_master)
+    FOREIGN KEY (profile_id_master)
         REFERENCES profile (id)
         ON UPDATE NO ACTION
         ON DELETE NO ACTION,
-    FOREIGN KEY (user_id_slave)
+    FOREIGN KEY (profile_id_slave)
         REFERENCES profile (id)
         ON UPDATE NO ACTION
         ON DELETE NO ACTION,
 
-    CHECK (user_id_master <> user_id_slave)
+    CHECK (profile_id_master <> profile_id_slave)
 );
 
 
+-- Участники сообществ
 CREATE TABLE community_member (
-    user_id BIGINT NOT NULL,
+    profile_id BIGINT NOT NULL,
 
     community_id BIGINT NOT NULL,
 
@@ -316,9 +327,9 @@ CREATE TABLE community_member (
 
     role role_enum NOT NULL,
 
-    PRIMARY KEY (user_id, community_id),
+    PRIMARY KEY (profile_id, community_id),
 
-    FOREIGN KEY (user_id)
+    FOREIGN KEY (profile_id)
         REFERENCES profile (id)
         ON UPDATE NO ACTION
         ON DELETE NO ACTION,
@@ -329,20 +340,27 @@ CREATE TABLE community_member (
         ON DELETE NO ACTION
 );
 
+
+-- Эмодзи реакций
 CREATE TABLE emoji_reaction (
     id BIGINT GENERATED ALWAYS AS IDENTITY,
     emoji_path TEXT NOT NULL, -- S3 path
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NULL,
+    deleted_at TIMESTAMPTZ NULL,
 
     PRIMARY KEY (id)
 );
 
 
+-- Реакции на сообщения
 CREATE TABLE message_like (
     message_id BIGINT NOT NULL,
 
     like_by BIGINT NOT NULL,
 
-    emoji_id BIGINT NOT NULL DEFAULT 0, -- 0 -> 👍
+    emoji_id BIGINT NOT NULL DEFAULT 1, -- 1 -> 👍
 
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NULL,
@@ -365,6 +383,7 @@ CREATE TABLE message_like (
 );
 
 
+-- Комментарии к публикациям
 CREATE TABLE comment (
     id BIGINT GENERATED ALWAYS AS IDENTITY,
 
@@ -406,12 +425,13 @@ CREATE TABLE comment (
 );
 
 
+-- Реакции на комментарии
 CREATE TABLE comment_like (
     comment_id BIGINT NOT NULL,
 
     like_by BIGINT NOT NULL,
 
-    emoji_id BIGINT NOT NULL DEFAULT 0, -- 0 -> 👍
+    emoji_id BIGINT NOT NULL DEFAULT 1, -- 1 -> 👍
 
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NULL,
@@ -434,6 +454,7 @@ CREATE TABLE comment_like (
 );
 
 
+-- Медиафайлы комментариев
 CREATE TABLE comment_media (
     comment_id BIGINT NOT NULL,
 
@@ -452,6 +473,7 @@ CREATE TABLE comment_media (
 );
 
 
+-- Стикеры
 CREATE TABLE sticker (
     id BIGINT GENERATED ALWAYS AS IDENTITY,
     sticker_path TEXT NOT NULL, -- S3 path
@@ -464,6 +486,7 @@ CREATE TABLE sticker (
 );
 
 
+-- Стикеры сообщений
 CREATE TABLE message_sticker (
     message_id BIGINT NOT NULL,
     sticker_id BIGINT NOT NULL,
@@ -481,6 +504,7 @@ CREATE TABLE message_sticker (
 );
 
 
+-- Стикеры комментариев
 CREATE TABLE comment_sticker (
     comment_id BIGINT NOT NULL,
     sticker_id BIGINT NOT NULL,
@@ -498,17 +522,18 @@ CREATE TABLE comment_sticker (
 );
 
 
-CREATE TABLE user_avatar (
-    user_id BIGINT NOT NULL,
+-- Аватары пользователей
+CREATE TABLE profile_avatar (
+    profile_id BIGINT NOT NULL,
 
     media_id BIGINT NOT NULL,
 
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMPTZ NULL,
 
-    PRIMARY KEY (user_id, media_id),
+    PRIMARY KEY (profile_id, media_id),
 
-    FOREIGN KEY (user_id)
+    FOREIGN KEY (profile_id)
         REFERENCES profile (id)
         ON UPDATE NO ACTION
         ON DELETE NO ACTION,
