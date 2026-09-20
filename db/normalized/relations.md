@@ -53,7 +53,7 @@ password_hash, password_salt, bio }
 ```
 ### media
 ```
-{ media_id } -> { media_path, created_at, updated_at, deleted_at }
+{ id } -> { media_path, created_at, updated_at, deleted_at }
 ```
 ### post_media
 ```

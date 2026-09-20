@@ -126,14 +126,14 @@ CREATE TABLE post (
 
 -- Медиафайлы
 CREATE TABLE media (
-    media_id BIGINT NOT NULL,
+    id BIGINT GENERATED ALWAYS AS IDENTITY,
     media_path TEXT NOT NULL, -- S3 path
 
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NULL,
     deleted_at TIMESTAMPTZ NULL,
 
-    PRIMARY KEY (media_id)
+    PRIMARY KEY (id)
 );
 
 
