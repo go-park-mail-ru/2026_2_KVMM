@@ -1,0 +1,259 @@
+erDiagram
+
+    profile {
+        BIGINT id PK
+        TEXT nickname UK
+        TEXT email UK
+        TEXT phone_number UK
+        TEXT name
+        TEXT surname
+        TEXT patronymic
+        gender_enum gender
+        DATE birthday
+        TEXT bio
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+        TIMESTAMPTZ deleted_at
+        TEXT password_hash
+        TEXT password_salt
+    }
+
+    community {
+        BIGINT id PK
+        TEXT name UK
+        TEXT bio
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+        TIMESTAMPTZ deleted_at
+    }
+
+    post {
+        BIGINT id PK
+        TEXT post_text
+        BIGINT author_user_id FK
+        BIGINT author_community_id FK
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+        TIMESTAMPTZ deleted_at
+    }
+
+    media {
+        BIGINT media_id PK
+        TEXT media_path "S3_PATH"
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+        TIMESTAMPTZ deleted_at
+    }
+
+    post_media {
+        BIGINT post_id PK, FK
+        BIGINT media_id PK, FK
+    }
+
+    user_repost {
+        BIGINT user_id PK, FK
+        BIGINT post_id PK, FK
+        TEXT repost_comment
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+        TIMESTAMPTZ deleted_at
+    }
+
+    user_like {
+        BIGINT user_id PK, FK
+        BIGINT post_id PK, FK
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ deleted_at
+    }
+
+    chat {
+        BIGINT id PK
+        TIMESTAMPTZ created_at
+    }
+
+    chat_user {
+        BIGINT user_id PK, FK
+        BIGINT chat_id PK, FK
+        TIMESTAMPTZ deleted_at
+    }
+
+    message {
+        BIGINT id PK
+        BIGINT chat_id FK
+        TEXT message_text
+        BIGINT author_id FK
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ deleted_at
+        TIMESTAMPTZ updated_at
+        BIGINT repost_from FK
+        BIGINT reply_from FK
+    }
+
+    message_media {
+        BIGINT message_id PK, FK
+        BIGINT media_id PK, FK
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+        TIMESTAMPTZ deleted_at
+    }
+
+    user_relationship {
+        BIGINT user_id_master PK, FK
+        BIGINT user_id_slave PK, FK
+        relationships_enum status
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+        TIMESTAMPTZ deleted_at
+    }
+
+    community_member {
+        BIGINT user_id PK, FK
+        BIGINT community_id PK, FK
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+        TIMESTAMPTZ deleted_at
+        role_enum role
+    }
+
+    emoji_reaction {
+        BIGINT id PK
+        TEXT emoji_path "S3_PATH"
+    }
+
+    message_like {
+        BIGINT message_id PK, FK
+        BIGINT like_by PK, FK
+        BIGINT emoji_id FK
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+        TIMESTAMPTZ deleted_at
+    }
+
+    comment {
+        BIGINT id PK
+        BIGINT post_id FK
+        TEXT comment_text
+        BIGINT author_id FK
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ deleted_at
+        TIMESTAMPTZ updated_at
+        BIGINT repost_from FK
+        BIGINT reply_from FK
+    }
+
+    comment_like {
+        BIGINT comment_id PK, FK
+        BIGINT like_by PK, FK
+        BIGINT emoji_id FK
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+        TIMESTAMPTZ deleted_at
+    }
+
+    comment_media {
+        BIGINT comment_id PK, FK
+        BIGINT media_id PK, FK
+    }
+
+    sticker {
+        BIGINT id PK
+        TEXT sticker_path "S3_PATH"
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+        TIMESTAMPTZ deleted_at
+    }
+
+    message_sticker {
+        BIGINT message_id PK, FK
+        BIGINT sticker_id PK, FK
+    }
+
+    comment_sticker {
+        BIGINT comment_id PK, FK
+        BIGINT sticker_id PK, FK
+    }
+
+    user_avatar {
+        BIGINT user_id PK, FK
+        BIGINT media_id PK, FK
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ deleted_at
+    }
+
+    profile ||--o{ post : "authors"
+    profile ||--o{ user_repost : "reposts"
+    profile ||--o{ user_like : "likes"
+
+    profile ||--o{ chat_user : "participates"
+    chat ||--o{ chat_user : "contains"
+
+    profile ||--o{ message : "writes"
+    profile ||--o{ comment : "writes"
+
+    profile ||--o{ user_relationship : "master"
+    profile ||--o{ user_relationship : "slave"
+
+    profile ||--o{ community_member : "joins"
+    community ||--o{ community_member : "members"
+
+    profile ||--o{ message_like : "likes messages"
+    profile ||--o{ comment_like : "likes comments"
+
+    profile ||--o{ user_avatar : "avatars"
+
+    community ||--o{ post : "authors"
+
+    post ||--o{ post_media : "media"
+    media ||--o{ post_media : "attached to posts"
+
+    post ||--o{ user_repost : "reposted"
+    post ||--o{ user_like : "liked"
+
+    post ||--o{ comment : "comments"
+
+    chat ||--o{ message : "contains"
+
+    message ||--o{ message_media : "media"
+    media ||--o{ message_media : "attached to messages"
+
+    message ||--o{ message_like : "likes"
+    emoji_reaction ||--o{ message_like : "used in"
+
+    message ||--o{ message_sticker : "stickers"
+    sticker ||--o{ message_sticker : "used in messages"
+
+    message ||--o{ message : "repost"
+    message ||--o{ message : "reply"
+
+    comment ||--o{ comment_like : "likes"
+    emoji_reaction ||--o{ comment_like : "used in"
+
+    comment ||--o{ comment_media : "media"
+    media ||--o{ comment_media : "attached to comments"
+
+    comment ||--o{ comment_sticker : "stickers"
+    sticker ||--o{ comment_sticker : "used in comments"
+
+    comment ||--o{ comment : "repost"
+    comment ||--o{ comment : "reply"
+
+    media ||--o{ user_avatar : "used as avatar"
+
+    role_enum {
+        ENUM admin
+        ENUM moderator
+        ENUM owner
+        ENUM member
+    }
+
+    relationships_enum {
+        ENUM friendship
+        ENUM blocked
+        ENUM friend_request
+    }
+
+    gender_enum {
+        ENUM male
+        ENUM female
+        ENUM other
+    }
