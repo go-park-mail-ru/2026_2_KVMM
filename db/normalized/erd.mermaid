@@ -187,7 +187,7 @@ erDiagram
         TIMESTAMPTZ deleted_at
     }
 
-    profile ||--o{ post : "authors"
+    profile |o--o{ post : "authors (or community)"
     profile ||--o{ profile_repost : "reposts"
     profile ||--o{ profile_like : "likes"
 
@@ -208,7 +208,7 @@ erDiagram
 
     profile ||--o{ profile_avatar : "avatars"
 
-    community ||--o{ post : "authors"
+    community |o--o{ post : "authors (or profile)"
 
     post ||--o{ post_media : "media"
     media ||--o{ post_media : "attached to posts"
@@ -229,8 +229,8 @@ erDiagram
     message ||--o{ message_sticker : "stickers"
     sticker ||--o{ message_sticker : "used in messages"
 
-    message ||--o{ message : "repost"
-    message ||--o{ message : "reply"
+    message |o--o{ message : "repost"
+    message |o--o{ message : "reply"
 
     comment ||--o{ comment_like : "likes"
     emoji_reaction ||--o{ comment_like : "used in"
@@ -241,8 +241,8 @@ erDiagram
     comment ||--o{ comment_sticker : "stickers"
     sticker ||--o{ comment_sticker : "used in comments"
 
-    comment ||--o{ comment : "repost"
-    comment ||--o{ comment : "reply"
+    comment |o--o{ comment : "repost"
+    comment |o--o{ comment : "reply"
 
     media ||--o{ profile_avatar : "used as avatar"
 
