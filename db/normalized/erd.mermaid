@@ -40,6 +40,7 @@ erDiagram
     media {
         BIGINT id PK
         TEXT media_path "S3_PATH"
+        TEXT description
         TIMESTAMPTZ created_at
         TIMESTAMPTZ updated_at
         TIMESTAMPTZ deleted_at
@@ -118,6 +119,7 @@ erDiagram
     emoji_reaction {
         BIGINT id PK
         TEXT emoji_path "S3_PATH"
+        TEXT description
         TIMESTAMPTZ created_at
         TIMESTAMPTZ updated_at
         TIMESTAMPTZ deleted_at
@@ -161,6 +163,8 @@ erDiagram
     sticker {
         BIGINT id PK
         TEXT sticker_path "S3_PATH"
+        BIGINT sticker_pack
+        TEXT description
         TIMESTAMPTZ created_at
         TIMESTAMPTZ updated_at
         TIMESTAMPTZ deleted_at

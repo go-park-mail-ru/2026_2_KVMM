@@ -99,7 +99,7 @@ password_hash, password_salt, bio }
 ```
 ### media
 ```
-{ id } -> { media_path, created_at, updated_at, deleted_at }
+{ id } -> { media_path, description, created_at, updated_at, deleted_at }
 ```
 ### post_media
 ```
@@ -140,7 +140,7 @@ updated_at, repost_from, reply_from }
 ```
 ### emoji_reaction
 ```
-{ id } -> { emoji_path, created_at, updated_at, deleted_at }
+{ id } -> { emoji_path, description, created_at, updated_at, deleted_at }
 ```
 ### message_like
 ```
@@ -161,7 +161,7 @@ deleted_at, updated_at, repost_from, reply_from }
 ```
 ### sticker
 ```
-{ id } -> { sticker_path, created_at, updated_at, deleted_at }
+{ id } -> { sticker_path, sticker_pack, description, created_at, updated_at, deleted_at }
 ```
 ### message_sticker
 ```

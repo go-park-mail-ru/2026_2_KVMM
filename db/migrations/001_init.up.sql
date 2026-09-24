@@ -128,6 +128,7 @@ CREATE TABLE post (
 CREATE TABLE media (
     id BIGINT GENERATED ALWAYS AS IDENTITY,
     media_path TEXT NOT NULL, -- S3 path
+    description TEXT NULL,
 
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NULL,
@@ -352,6 +353,7 @@ CREATE TABLE community_member (
 CREATE TABLE emoji_reaction (
     id BIGINT GENERATED ALWAYS AS IDENTITY,
     emoji_path TEXT NOT NULL, -- S3 path
+    description TEXT NULL,
 
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NULL,
@@ -491,6 +493,8 @@ CREATE TABLE comment_media (
 CREATE TABLE sticker (
     id BIGINT GENERATED ALWAYS AS IDENTITY,
     sticker_path TEXT NOT NULL, -- S3 path
+    sticker_pack BIGINT NOT NULL,
+    description TEXT NULL,
 
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NULL,
