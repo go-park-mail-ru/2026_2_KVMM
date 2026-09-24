@@ -111,7 +111,7 @@ password_hash, password_salt, bio }
 ```
 ### profile_like
 ```
-{ profile_id, post_id } -> { created_at, deleted_at }
+{ id } -> { profile_id, post_id, created_at, deleted_at }
 ```
 ### chat
 ```
@@ -144,7 +144,7 @@ updated_at, repost_from, reply_from }
 ```
 ### message_like
 ```
-{ message_id, like_by } -> { emoji_id, created_at, updated_at, deleted_at }
+{ id } -> { message_id, like_by, emoji_id, created_at, deleted_at }
 ```
 ### comment
 ```
@@ -153,7 +153,7 @@ deleted_at, updated_at, repost_from, reply_from }
 ```
 ### comment_like
 ```
-{ comment_id, like_by } -> { emoji_id, created_at, updated_at, deleted_at }
+{ id } -> { comment_id, like_by, emoji_id, created_at, deleted_at }
 ```
 ### comment_media
 ```

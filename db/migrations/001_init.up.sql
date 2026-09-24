@@ -184,13 +184,15 @@ CREATE TABLE profile_repost (
 
 -- Лайки публикаций
 CREATE TABLE profile_like (
+    id BIGINT GENERATED ALWAYS AS IDENTITY,
+
     profile_id BIGINT NOT NULL,
     post_id BIGINT NOT NULL,
 
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMPTZ NULL,
 
-    PRIMARY KEY (profile_id, post_id),
+    PRIMARY KEY (id),
 
     FOREIGN KEY (profile_id)
         REFERENCES profile (id)
@@ -359,17 +361,18 @@ CREATE TABLE emoji_reaction (
 
 -- Реакции на сообщения
 CREATE TABLE message_like (
+    id BIGINT GENERATED ALWAYS AS IDENTITY,
+
     message_id BIGINT NOT NULL,
 
     like_by BIGINT NOT NULL,
 
-    emoji_id BIGINT NOT NULL DEFAULT 1, -- 1 -> 👍
+    emoji_id BIGINT NOT NULL,
 
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ NULL,
     deleted_at TIMESTAMPTZ NULL,
 
-    PRIMARY KEY (message_id, like_by),
+    PRIMARY KEY (id),
 
     FOREIGN KEY (message_id)
         REFERENCES message (id)
@@ -430,17 +433,18 @@ CREATE TABLE comment (
 
 -- Реакции на комментарии
 CREATE TABLE comment_like (
+    id BIGINT GENERATED ALWAYS AS IDENTITY,
+
     comment_id BIGINT NOT NULL,
 
     like_by BIGINT NOT NULL,
 
-    emoji_id BIGINT NOT NULL DEFAULT 1, -- 1 -> 👍
+    emoji_id BIGINT NOT NULL,
 
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ NULL,
     deleted_at TIMESTAMPTZ NULL,
 
-    PRIMARY KEY (comment_id, like_by),
+    PRIMARY KEY (id),
 
     FOREIGN KEY (comment_id)
         REFERENCES comment (id)

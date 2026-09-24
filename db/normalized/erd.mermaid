@@ -62,8 +62,9 @@ erDiagram
     }
 
     profile_like {
-        BIGINT profile_id PK, FK
-        BIGINT post_id PK, FK
+        BIGINT id PK
+        BIGINT profile_id FK
+        BIGINT post_id FK
         TIMESTAMPTZ created_at
         TIMESTAMPTZ deleted_at
     }
@@ -123,11 +124,11 @@ erDiagram
     }
 
     message_like {
-        BIGINT message_id PK, FK
-        BIGINT like_by PK, FK
+        BIGINT id PK
+        BIGINT message_id FK
+        BIGINT like_by FK
         BIGINT emoji_id FK
         TIMESTAMPTZ created_at
-        TIMESTAMPTZ updated_at
         TIMESTAMPTZ deleted_at
     }
 
@@ -144,11 +145,11 @@ erDiagram
     }
 
     comment_like {
-        BIGINT comment_id PK, FK
-        BIGINT like_by PK, FK
+        BIGINT id PK
+        BIGINT comment_id FK
+        BIGINT like_by FK
         BIGINT emoji_id FK
         TIMESTAMPTZ created_at
-        TIMESTAMPTZ updated_at
         TIMESTAMPTZ deleted_at
     }
 
