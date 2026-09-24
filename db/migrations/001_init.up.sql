@@ -204,7 +204,9 @@ CREATE TABLE profile_like (
         ON UPDATE NO ACTION
         ON DELETE NO ACTION
 );
-
+CREATE UNIQUE INDEX profile_like_active_unique 
+	ON profile_like (profile_id, post_id) 
+	WHERE deleted_at ISNULL;
 
 -- Чаты
 CREATE TABLE chat (
@@ -387,7 +389,9 @@ CREATE TABLE message_like (
         ON UPDATE NO ACTION
         ON DELETE NO ACTION
 );
-
+CREATE UNIQUE INDEX message_like_active_unique
+    ON message_like (message_id, like_by)
+    WHERE deleted_at IS NULL;
 
 -- Комментарии к публикациям
 CREATE TABLE comment (
@@ -459,6 +463,9 @@ CREATE TABLE comment_like (
         ON UPDATE NO ACTION
         ON DELETE NO ACTION
 );
+CREATE UNIQUE INDEX comment_like_active_unique
+    ON comment_like (comment_id, like_by)
+    WHERE deleted_at IS NULL;
 
 
 -- Медиафайлы комментариев
