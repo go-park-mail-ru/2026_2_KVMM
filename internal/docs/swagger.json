@@ -1,0 +1,514 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "MVP API для регистрации, авторизации и последовательной ленты постов.",
+        "title": "Kvmm API",
+        "contact": {},
+        "version": "1.0"
+    },
+    "host": "localhost:8080",
+    "basePath": "/",
+    "paths": {
+        "/api/auth/login": {
+            "post": {
+                "description": "Авторизует пользователя и создаёт сессию.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Авторизация пользователя",
+                "parameters": [
+                    {
+                        "description": "Данные авторизации",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/kvmm_internal_domain.LoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/kvmm_internal_domain.AuthResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/kvmm_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/kvmm_internal_domain.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/auth/logout": {
+            "post": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Завершает текущую сессию пользователя.",
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Выход из аккаунта",
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/kvmm_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/kvmm_internal_domain.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/auth/me": {
+            "get": {
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "description": "Возвращает пользователя по авторизованной сессии.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Текущий пользователь",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/kvmm_internal_domain.MeResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/kvmm_internal_domain.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/auth/register": {
+            "post": {
+                "description": "Регистрирует пользователя и создаёт авторизованную сессию.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Регистрация пользователя",
+                "parameters": [
+                    {
+                        "description": "Данные регистрации",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/kvmm_internal_domain.RegisterRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/kvmm_internal_domain.AuthResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/kvmm_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/kvmm_internal_domain.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/posts": {
+            "get": {
+                "description": "Возвращает посты в обратном хронологическом порядке.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "posts"
+                ],
+                "summary": "Лента публикаций",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Количество пропускаемых постов",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "maximum": 10,
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Размер страницы (максимум 10)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/kvmm_internal_domain.FeedResponse"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "kvmm_internal_domain.AuthResponse": {
+            "type": "object",
+            "properties": {
+                "csrf_token": {
+                    "type": "string",
+                    "example": "a1b2c3d4e5f6"
+                },
+                "profile": {
+                    "$ref": "#/definitions/kvmm_internal_domain.Profile"
+                }
+            }
+        },
+        "kvmm_internal_domain.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "invalid_credentials"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "Invalid credentials"
+                }
+            }
+        },
+        "kvmm_internal_domain.FeedResponse": {
+            "type": "object",
+            "properties": {
+                "has_more": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "limit": {
+                    "type": "integer",
+                    "example": 10
+                },
+                "next_offset": {
+                    "type": "integer",
+                    "example": 20
+                },
+                "offset": {
+                    "type": "integer",
+                    "example": 10
+                },
+                "posts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/kvmm_internal_domain.Post"
+                    }
+                }
+            }
+        },
+        "kvmm_internal_domain.Gender": {
+            "type": "string",
+            "enum": [
+                "male",
+                "female",
+                "other"
+            ],
+            "x-enum-varnames": [
+                "GenderMale",
+                "GenderFemale",
+                "GenderOther"
+            ]
+        },
+        "kvmm_internal_domain.LoginRequest": {
+            "type": "object",
+            "required": [
+                "login",
+                "password"
+            ],
+            "properties": {
+                "login": {
+                    "type": "string",
+                    "example": "ivan_petrov"
+                },
+                "password": {
+                    "type": "string",
+                    "example": "strongpassword123"
+                }
+            }
+        },
+        "kvmm_internal_domain.MeResponse": {
+            "type": "object",
+            "properties": {
+                "csrf_token": {
+                    "type": "string",
+                    "example": "a1b2c3d4e5f6"
+                },
+                "profile": {
+                    "$ref": "#/definitions/kvmm_internal_domain.Profile"
+                }
+            }
+        },
+        "kvmm_internal_domain.Post": {
+            "type": "object",
+            "properties": {
+                "author": {
+                    "$ref": "#/definitions/kvmm_internal_domain.Profile"
+                },
+                "author_community_id": {
+                    "type": "integer"
+                },
+                "author_profile_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "comments_count": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "created_at": {
+                    "type": "string",
+                    "example": "2026-01-01T12:00:00Z"
+                },
+                "deleted_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "likes_count": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "media_count": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "media_urls": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "post_text": {
+                    "type": "string",
+                    "example": "Привет, мир!"
+                },
+                "reposts_count": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "kvmm_internal_domain.Profile": {
+            "type": "object",
+            "properties": {
+                "avatar_urls": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "bio": {
+                    "type": "string",
+                    "example": "hi!"
+                },
+                "birthday": {
+                    "type": "string",
+                    "example": "2000-05-14T00:00:00Z"
+                },
+                "created_at": {
+                    "type": "string",
+                    "example": "2026-01-01T12:00:00Z"
+                },
+                "deleted_at": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string",
+                    "example": "ivan@example.com"
+                },
+                "gender": {
+                    "enum": [
+                        "male",
+                        "female",
+                        "other"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/kvmm_internal_domain.Gender"
+                        }
+                    ],
+                    "example": "male"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "image_url": {
+                    "type": "string",
+                    "example": "/api/media/avatar1.png"
+                },
+                "nickname": {
+                    "type": "string",
+                    "example": "ivan_petrov"
+                },
+                "patronymic": {
+                    "type": "string",
+                    "example": "Иванович"
+                },
+                "phone_number": {
+                    "type": "string",
+                    "example": "+79999999999"
+                },
+                "profile_name": {
+                    "type": "string",
+                    "example": "Иван"
+                },
+                "surname": {
+                    "type": "string",
+                    "example": "Иванов"
+                },
+                "updated_at": {
+                    "type": "string",
+                    "example": "2026-01-02T12:00:00Z"
+                }
+            }
+        },
+        "kvmm_internal_domain.RegisterRequest": {
+            "type": "object",
+            "required": [
+                "confirm_password",
+                "gender",
+                "nickname",
+                "password",
+                "profile_name",
+                "surname"
+            ],
+            "properties": {
+                "bio": {
+                    "type": "string",
+                    "maxLength": 256,
+                    "example": "hi!"
+                },
+                "birthday": {
+                    "type": "string",
+                    "example": "2000-05-14"
+                },
+                "confirm_password": {
+                    "type": "string",
+                    "example": "sjkdfhgs4536njbjjkh"
+                },
+                "email": {
+                    "type": "string",
+                    "example": "ivan@example.com"
+                },
+                "gender": {
+                    "enum": [
+                        "male",
+                        "female",
+                        "other"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/kvmm_internal_domain.Gender"
+                        }
+                    ],
+                    "example": "male"
+                },
+                "nickname": {
+                    "type": "string",
+                    "maxLength": 32,
+                    "minLength": 4,
+                    "example": "ivan67"
+                },
+                "password": {
+                    "type": "string",
+                    "maxLength": 72,
+                    "minLength": 8,
+                    "example": "sjkdfhgs4536njbjjkh"
+                },
+                "patronymic": {
+                    "type": "string",
+                    "maxLength": 32,
+                    "minLength": 2,
+                    "example": "Иванович"
+                },
+                "phone_number": {
+                    "type": "string",
+                    "example": "+79999999999"
+                },
+                "profile_name": {
+                    "type": "string",
+                    "maxLength": 32,
+                    "minLength": 2,
+                    "example": "Иван"
+                },
+                "surname": {
+                    "type": "string",
+                    "maxLength": 32,
+                    "minLength": 2,
+                    "example": "Иванов"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "SessionCookie": {
+            "type": "apiKey",
+            "name": "session_id",
+            "in": "cookie"
+        }
+    }
+}

@@ -1,0 +1,68 @@
+package handler
+
+import (
+	"fmt"
+	"net/http"
+	"strconv"
+
+	"kvmm/internal/domain"
+	"kvmm/internal/service"
+)
+
+type FeedHandler struct {
+	feed *service.FeedService
+}
+
+// NewFeedHandler создаёт обработчик запросов ленты.
+func NewFeedHandler(feed *service.FeedService) *FeedHandler {
+	return &FeedHandler{feed: feed}
+}
+
+// List возвращает последовательность публикаций ленты.
+// List godoc
+// @Summary Лента публикаций
+// @Description Возвращает посты в обратном хронологическом порядке.
+// @Tags posts
+// @Param offset query int false "Количество пропускаемых постов" default(0)
+// @Param limit query int false "Размер страницы (максимум 10)" default(10) maximum(10)
+// @Produce json
+// @Success 200 {object} domain.FeedResponse
+// @Router /api/posts [get]
+func (h *FeedHandler) List(w http.ResponseWriter, r *http.Request) {
+	if !methodAllowed(w, r, http.MethodGet) {
+		return
+	}
+	offset, limit, err := feedPagination(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_pagination", err.Error())
+		return
+	}
+	posts, hasMore := h.feed.List(offset, limit)
+	response := domain.FeedResponse{Posts: posts, Offset: offset, Limit: limit, HasMore: hasMore}
+	if hasMore {
+		response.NextOffset = offset + len(posts)
+	}
+	writeJSON(w, http.StatusOK, response)
+}
+
+// feedPagination читает offset и размер страницы из query-параметров.
+func feedPagination(r *http.Request) (int, int, error) {
+	offset := 0
+	limit := 10
+	query := r.URL.Query()
+	if value := query.Get("offset"); value != "" {
+		parsed, err := strconv.Atoi(value)
+		if err != nil || parsed < 0 {
+			return 0, 0, fmt.Errorf("offset must be a non-negative integer")
+		}
+		offset = parsed
+	}
+	if value := query.Get("limit"); value != "" {
+		parsed, err := strconv.Atoi(value)
+		if err != nil || parsed < 1 || parsed > 10 {
+			return 0, 0, fmt.Errorf("limit must be between 1 and 10")
+		}
+		limit = parsed
+	}
+	return offset, limit, nil
+}

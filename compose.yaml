@@ -1,0 +1,10 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: kvmm-backend-local
+    env_file:
+      - ./deploy/.env
+    ports:
+      - "8080:8080"
