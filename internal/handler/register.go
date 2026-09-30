@@ -29,8 +29,8 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "validation_error", err.Error())
 		return
 	}
-	if isEmptyContact(req.Email) && isEmptyContact(req.PhoneNumber) {
-		writeError(w, http.StatusBadRequest, "contact_required", "email or phone_number is required")
+	if err := validateRegisterRequest(req); err != nil {
+		writeError(w, http.StatusBadRequest, "validation_error", err.Error())
 		return
 	}
 	profile, session, csrfToken, err := h.auth.Register(req)
