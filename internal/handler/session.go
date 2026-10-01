@@ -4,12 +4,13 @@ import (
 	"net/http"
 
 	"kvmm/internal/domain"
+	"kvmm/internal/store"
 )
 
-// Me возвращает профиль текущего пользователя и CSRF-токен его сессии.
+// Me возвращает профиль текущего пользователя и CSRF-токен его сессии
 // Me godoc
 // @Summary Текущий пользователь
-// @Description Возвращает пользователя по авторизованной сессии.
+// @Description Возвращает пользователя по авторизованной сессии
 // @Tags auth
 // @Produce json
 // @Security SessionCookie
@@ -21,12 +22,12 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	session := sessionCookie(r)
-	profile, err := h.auth.ProfileBySession(session)
+	profile, err := store.ProfileBySession(session)
 	if err != nil {
 		writeError(w, http.StatusUnauthorized, "unauthorized", "authentication required")
 		return
 	}
-	csrfToken, err := h.auth.CSRFTokenBySession(session)
+	csrfToken, err := store.CSRFTokenBySession(session)
 	if err != nil {
 		writeError(w, http.StatusUnauthorized, "unauthorized", "authentication required")
 		return
@@ -49,15 +50,15 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	session := sessionCookie(r)
-	if _, err := h.auth.ProfileBySession(session); err != nil {
+	if _, err := store.ProfileBySession(session); err != nil {
 		writeError(w, http.StatusUnauthorized, "unauthorized", "authentication required")
 		return
 	}
-	if err := h.auth.ValidateCSRF(session, r.Header.Get("X-CSRF-Token")); err != nil {
+	if err := store.ValidateCSRF(session, r.Header.Get("X-CSRF-Token")); err != nil {
 		writeError(w, http.StatusForbidden, "csrf_failed", "valid X-CSRF-Token header is required")
 		return
 	}
-	h.auth.Logout(session)
+	store.Logout(session)
 	deleteSessionCookie(w)
 	w.WriteHeader(http.StatusNoContent)
 }

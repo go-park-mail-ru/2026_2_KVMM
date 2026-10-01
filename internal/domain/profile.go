@@ -29,7 +29,7 @@ type Profile struct {
 	DeletedAt   *time.Time `json:"deleted_at,omitempty"`
 }
 
-// RegisterRequest
+// RegisterRequest - запрос на регистрацию
 type RegisterRequest struct {
 	Nickname    string  `json:"nickname" examples:"ivan67" validate:"required,min=4,max=32"`
 	Email       *string `json:"email,omitempty" examples:"ivan@example.com" validate:"omitempty"`
@@ -47,7 +47,7 @@ type RegisterRequest struct {
 	Bio      *string `json:"bio,omitempty" examples:"hi!" validate:"omitempty,max=256"`
 }
 
-// LoginRequest — Login может быть nickname, email или phone_number.
+// LoginRequest — Login может быть nickname, email или phone_number
 type LoginRequest struct {
 	Login    string `json:"login" examples:"ivan_petrov" validate:"required"`
 	Password string `json:"password" examples:"strongpassword123" validate:"required"`

@@ -10,18 +10,14 @@ import (
 	"time"
 
 	"kvmm/internal/handler"
-	"kvmm/internal/service"
 	"kvmm/internal/store"
 )
 
-// NewRouter создаёт маршрутизатор API на основе стандартного http.ServeMux.
+// NewRouter создаёт маршрутизатор API на основе стандартного http.ServeMux
 func NewRouter() http.Handler {
 	mux := http.NewServeMux()
-	memory := store.NewMemory()
-	auth := service.NewAuthService(memory)
-	feed := service.NewFeedService(memory)
-	authHandler := handler.NewAuthHandler(auth)
-	feedHandler := handler.NewFeedHandler(feed)
+	authHandler := handler.NewAuthHandler()
+	feedHandler := handler.NewFeedHandler()
 	mux.HandleFunc("/api/auth/register", authHandler.Register)
 	mux.HandleFunc("/api/auth/login", authHandler.Login)
 	mux.HandleFunc("/api/auth/me", authHandler.Me)
@@ -43,7 +39,7 @@ func NewRouter() http.Handler {
 	return cors(mux)
 }
 
-// serveMedia отдаёт встроенный файл тестовой публикации с подходящим Content-Type.
+// serveMedia отдаёт встроенный файл публикации с Сontent-Type
 func serveMedia(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.Header().Set("Allow", http.MethodGet)
@@ -64,7 +60,7 @@ func serveMedia(w http.ResponseWriter, r *http.Request) {
 	http.ServeContent(w, r, name, time.Time{}, bytes.NewReader(data))
 }
 
-// cors добавляет CORS-заголовки и обрабатывает preflight-запросы.
+// cors добавляет CORS-заголовки и обрабатывает preflight-запросы
 func cors(next http.Handler) http.Handler {
 	allowedOrigin := os.Getenv("FRONTEND_ORIGIN")
 	if allowedOrigin == "" {

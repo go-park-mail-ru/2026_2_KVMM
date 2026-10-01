@@ -4,12 +4,13 @@ import (
 	"net/http"
 
 	"kvmm/internal/domain"
+	"kvmm/internal/store"
 )
 
-// Login авторизует пользователя по логину и паролю.
+// Login авторизует пользователя по логину и паролю
 // Login godoc
 // @Summary Авторизация пользователя
-// @Description Авторизует пользователя и создаёт сессию.
+// @Description Авторизует пользователя и создаёт сессию
 // @Tags auth
 // @Accept json
 // @Produce json
@@ -27,7 +28,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "validation_error", err.Error())
 		return
 	}
-	profile, session, csrfToken, err := h.auth.Login(req)
+	profile, session, csrfToken, err := store.Login(req)
 	if err != nil {
 		writeError(w, http.StatusUnauthorized, "invalid_credentials", "invalid login or password")
 		return

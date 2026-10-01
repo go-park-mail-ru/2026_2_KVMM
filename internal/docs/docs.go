@@ -273,7 +273,7 @@ const docTemplate = `{
     "paths": {
         "/api/auth/login": {
             "post": {
-                "description": "Авторизует пользователя и создаёт сессию.",
+                "description": "Авторизует пользователя и создаёт сессию",
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -366,7 +366,7 @@ const docTemplate = `{
         },
         "/api/auth/me": {
             "get": {
-                "description": "Возвращает пользователя по авторизованной сессии.",
+                "description": "Возвращает пользователя по авторизованной сессии",
                 "responses": {
                     "200": {
                         "content": {
@@ -402,7 +402,7 @@ const docTemplate = `{
         },
         "/api/auth/register": {
             "post": {
-                "description": "Регистрирует пользователя и создаёт авторизованную сессию.",
+                "description": "Регистрирует пользователя и создаёт авторизованную сессию",
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -456,7 +456,7 @@ const docTemplate = `{
         },
         "/api/posts": {
             "get": {
-                "description": "Возвращает посты в обратном хронологическом порядке.",
+                "description": "Возвращает посты в обратном хронологическом порядке",
                 "parameters": [
                     {
                         "description": "Количество пропускаемых постов",
@@ -500,7 +500,7 @@ const docTemplate = `{
     "openapi": "3.1.0",
     "servers": [
         {
-            "description": "Локальный back",
+            "description": "Локальный backend",
             "url": "http://localhost:8080"
         }
     ]
@@ -510,7 +510,7 @@ const docTemplate = `{
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
 	Title:            "Kvmm API",
-	Description:      "MVP API для регистрации, авторизации и последовательной ленты постов.",
+	Description:      "API для регистрации, авторизации и последовательной ленты постов",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

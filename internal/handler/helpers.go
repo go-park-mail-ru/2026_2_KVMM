@@ -16,22 +16,24 @@ import (
 
 var validate = validator.New()
 
-var phonePattern = regexp.MustCompile(`^\+[1-9][0-9]*$`)
-var namePattern = regexp.MustCompile(`^[\p{L}]+(?:-[\p{L}]+)*$`)
+var (
+	phonePattern = regexp.MustCompile(`^\+[1-9][0-9]*$`)
+	namePattern  = regexp.MustCompile(`^[\p{L}]+(?:-[\p{L}]+)*$`)
+)
 
-// writeJSON сериализует значение и отправляет JSON-ответ с указанным статусом.
+// writeJSON сериализует значение и отправляет JSON-ответ с указанным статусом
 func writeJSON(w http.ResponseWriter, status int, value any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(value)
 }
 
-// writeError отправляет клиенту ошибку в едином формате API.
+// writeError отправляет клиенту ошибку в едином формате
 func writeError(w http.ResponseWriter, status int, code, message string) {
 	writeJSON(w, status, domain.ErrorResponse{Code: code, Message: message})
 }
 
-// decodeJSON читает JSON из тела запроса и проверяет его структуру.
+// decodeJSON читает JSON из тела запроса и проверяет его структуру
 func decodeJSON(r *http.Request, target any) error {
 	defer r.Body.Close()
 	decoder := json.NewDecoder(r.Body)
@@ -42,7 +44,7 @@ func decodeJSON(r *http.Request, target any) error {
 	return validate.Struct(target)
 }
 
-// validateRegisterRequest проверяет правила регистрации, которые нельзя описать только тегами.
+// validateRegisterRequest проверяет правила регистрации, которые нельзя описать только тегами
 func validateRegisterRequest(req domain.RegisterRequest) error {
 	if isEmptyContact(req.Email) && isEmptyContact(req.PhoneNumber) {
 		return fmt.Errorf("email or phone_number is required")
@@ -74,7 +76,7 @@ func validateRegisterRequest(req domain.RegisterRequest) error {
 	return nil
 }
 
-// methodAllowed проверяет HTTP-метод и возвращает ошибку для неподдерживаемого метода.
+// methodAllowed проверяет HTTP-метод и возвращает ошибку для неподдерживаемого метода
 func methodAllowed(w http.ResponseWriter, r *http.Request, method string) bool {
 	if r.Method == method {
 		return true
@@ -82,4 +84,9 @@ func methodAllowed(w http.ResponseWriter, r *http.Request, method string) bool {
 	w.Header().Set("Allow", method)
 	writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "method is not allowed")
 	return false
+}
+
+// isEmptyContact проверяет, что optional-контакт отсутствует или пустой
+func isEmptyContact(value *string) bool {
+	return value == nil || strings.TrimSpace(*value) == ""
 }

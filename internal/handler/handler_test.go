@@ -11,18 +11,16 @@ import (
 
 	"kvmm/internal/domain"
 	"kvmm/internal/handler"
-	"kvmm/internal/service"
 	"kvmm/internal/store"
 )
 
 const sessionCookieName = "session_id"
 
-// TestRegister проверяет регистрацию пользователя, JSON-ответ и cookie сессии.
+// TestRegister проверяет регистрацию пользователя, JSON-ответ и cookie сессии
 func TestRegister(t *testing.T) {
-	t.Parallel()
+	store.Reset()
 
-	auth := service.NewAuthService(store.NewMemory())
-	h := handler.NewAuthHandler(auth)
+	h := handler.NewAuthHandler()
 	body := bytes.NewBufferString(`{
 		"nickname":"vasily",
 		"email":"vasily@example.com",
@@ -57,12 +55,11 @@ func TestRegister(t *testing.T) {
 	}
 }
 
-// TestLogin проверяет авторизацию ранее зарегистрированного пользователя.
+// TestLogin проверяет авторизацию ранее зарегистрированного пользователя
 func TestLogin(t *testing.T) {
-	t.Parallel()
+	store.Reset()
 
-	auth := service.NewAuthService(store.NewMemory())
-	if _, _, _, err := auth.Register(domain.RegisterRequest{
+	if _, _, _, err := store.Register(domain.RegisterRequest{
 		Nickname:        "vasily",
 		Email:           stringPointer("vasily@example.com"),
 		Password:        "qwerty123",
@@ -73,7 +70,7 @@ func TestLogin(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("seed user: %v", err)
 	}
-	h := handler.NewAuthHandler(auth)
+	h := handler.NewAuthHandler()
 	body := bytes.NewBufferString(`{"login":"vasily","password":"qwerty123"}`)
 
 	r := httptest.NewRequest(http.MethodPost, "/api/auth/login", body)
@@ -93,12 +90,11 @@ func TestLogin(t *testing.T) {
 	}
 }
 
-// TestMe проверяет получение текущего пользователя по cookie сессии.
+// TestMe проверяет получение текущего пользователя по cookie сессии
 func TestMe(t *testing.T) {
-	t.Parallel()
+	store.Reset()
 
-	auth := service.NewAuthService(store.NewMemory())
-	profile, session, csrfToken, err := auth.Register(domain.RegisterRequest{
+	profile, session, csrfToken, err := store.Register(domain.RegisterRequest{
 		Nickname:        "vasily",
 		Email:           stringPointer("vasily@example.com"),
 		Password:        "qwerty123",
@@ -110,7 +106,7 @@ func TestMe(t *testing.T) {
 	if err != nil {
 		t.Fatalf("seed user: %v", err)
 	}
-	h := handler.NewAuthHandler(auth)
+	h := handler.NewAuthHandler()
 
 	r := httptest.NewRequest(http.MethodGet, "/api/auth/me", nil)
 	r.AddCookie(&http.Cookie{Name: sessionCookieName, Value: session})
@@ -131,12 +127,11 @@ func TestMe(t *testing.T) {
 	}
 }
 
-// TestLogoutChecksCSRF проверяет обязательную проверку CSRF-токена при выходе.
+// TestLogoutChecksCSRF проверяет обязательную проверку CSRF-токена при выходе
 func TestLogoutChecksCSRF(t *testing.T) {
-	t.Parallel()
+	store.Reset()
 
-	auth := service.NewAuthService(store.NewMemory())
-	_, session, csrfToken, err := auth.Register(domain.RegisterRequest{
+	_, session, csrfToken, err := store.Register(domain.RegisterRequest{
 		Nickname:        "vasily",
 		Email:           stringPointer("vasily@example.com"),
 		Password:        "qwerty123",
@@ -148,7 +143,7 @@ func TestLogoutChecksCSRF(t *testing.T) {
 	if err != nil {
 		t.Fatalf("seed user: %v", err)
 	}
-	h := handler.NewAuthHandler(auth)
+	h := handler.NewAuthHandler()
 
 	withoutCSRF := httptest.NewRequest(http.MethodPost, "/api/auth/logout", nil)
 	withoutCSRF.AddCookie(&http.Cookie{Name: sessionCookieName, Value: session})
@@ -168,11 +163,11 @@ func TestLogoutChecksCSRF(t *testing.T) {
 	}
 }
 
-// TestFeedList проверяет выдачу страницы ленты с offset и limit.
+// TestFeedList проверяет выдачу страницы ленты с offset и limit
 func TestFeedList(t *testing.T) {
-	t.Parallel()
+	store.Reset()
 
-	feed := handler.NewFeedHandler(service.NewFeedService(store.NewMemory()))
+	feed := handler.NewFeedHandler()
 	r := httptest.NewRequest(http.MethodGet, "/api/posts?offset=10&limit=5", nil)
 	w := httptest.NewRecorder()
 
@@ -190,12 +185,11 @@ func TestFeedList(t *testing.T) {
 	}
 }
 
-// TestMethodNotAllowed проверяет ответ для неподдерживаемого HTTP-метода.
+// TestMethodNotAllowed проверяет ответ для неподдерживаемого HTTP-метода
 func TestMethodNotAllowed(t *testing.T) {
-	t.Parallel()
+	store.Reset()
 
-	auth := service.NewAuthService(store.NewMemory())
-	h := handler.NewAuthHandler(auth)
+	h := handler.NewAuthHandler()
 	r := httptest.NewRequest(http.MethodGet, "/api/auth/login", nil)
 	w := httptest.NewRecorder()
 
@@ -209,9 +203,9 @@ func TestMethodNotAllowed(t *testing.T) {
 	}
 }
 
-// TestRegisterValidation проверяет валидацию всех основных полей регистрации.
+// TestRegisterValidation проверяет валидацию всех основных полей регистрации
 func TestRegisterValidation(t *testing.T) {
-	t.Parallel()
+	store.Reset()
 
 	tests := []struct {
 		name  string
@@ -235,7 +229,7 @@ func TestRegisterValidation(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
+			store.Reset()
 
 			req := validRegisterRequest()
 			test.setup(&req)
@@ -244,7 +238,7 @@ func TestRegisterValidation(t *testing.T) {
 				t.Fatalf("marshal request: %v", err)
 			}
 
-			h := handler.NewAuthHandler(service.NewAuthService(store.NewMemory()))
+			h := handler.NewAuthHandler()
 			r := httptest.NewRequest(http.MethodPost, "/api/auth/register", bytes.NewReader(body))
 			w := httptest.NewRecorder()
 
@@ -257,10 +251,10 @@ func TestRegisterValidation(t *testing.T) {
 	}
 }
 
-// stringPointer возвращает указатель на строковое значение для тестовых данных.
+// stringPointer возвращает указатель на строковое значение для тестовых данных
 func stringPointer(value string) *string { return &value }
 
-// validRegisterRequest возвращает корректные данные регистрации для тестов.
+// validRegisterRequest возвращает корректные данные регистрации для тестов
 func validRegisterRequest() domain.RegisterRequest {
 	return domain.RegisterRequest{
 		Nickname:        "vasily",

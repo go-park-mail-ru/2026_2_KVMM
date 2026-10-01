@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// setSessionCookie устанавливает долгоживущую HTTP cookie сессии.
+// setSessionCookie устанавливает cookie
 func setSessionCookie(w http.ResponseWriter, session string) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     sessionCookieName,
@@ -19,7 +19,7 @@ func setSessionCookie(w http.ResponseWriter, session string) {
 	})
 }
 
-// deleteSessionCookie удаляет cookie сессии пользователя.
+// deleteSessionCookie удаляет cookie сессии пользователя
 func deleteSessionCookie(w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     sessionCookieName,
@@ -32,7 +32,7 @@ func deleteSessionCookie(w http.ResponseWriter) {
 	})
 }
 
-// cookieSameSite возвращает режим SameSite из переменной окружения.
+// cookieSameSite возвращает режим SameSite из переменной окружения
 func cookieSameSite() http.SameSite {
 	if os.Getenv("COOKIE_SAMESITE") == "none" {
 		return http.SameSiteNoneMode

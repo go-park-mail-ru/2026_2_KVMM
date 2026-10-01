@@ -1,10 +1,8 @@
 package handler
 
-import "kvmm/internal/service"
-
 const sessionCookieName = "session_id"
 
-type AuthHandler struct{ auth *service.AuthService }
+type AuthHandler struct{}
 
-// NewAuthHandler создаёт обработчик авторизации.
-func NewAuthHandler(auth *service.AuthService) *AuthHandler { return &AuthHandler{auth: auth} }
+// NewAuthHandler создаёт обработчик авторизации
+func NewAuthHandler() *AuthHandler { return &AuthHandler{} }

@@ -255,7 +255,7 @@
         }
     },
     "info": {
-        "description": "MVP API для регистрации, авторизации и последовательной ленты постов.",
+        "description": "API для регистрации, авторизации и последовательной ленты постов",
         "title": "Kvmm API",
         "version": "1.0"
     },
@@ -266,7 +266,7 @@
     "paths": {
         "/api/auth/login": {
             "post": {
-                "description": "Авторизует пользователя и создаёт сессию.",
+                "description": "Авторизует пользователя и создаёт сессию",
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -359,7 +359,7 @@
         },
         "/api/auth/me": {
             "get": {
-                "description": "Возвращает пользователя по авторизованной сессии.",
+                "description": "Возвращает пользователя по авторизованной сессии",
                 "responses": {
                     "200": {
                         "content": {
@@ -395,7 +395,7 @@
         },
         "/api/auth/register": {
             "post": {
-                "description": "Регистрирует пользователя и создаёт авторизованную сессию.",
+                "description": "Регистрирует пользователя и создаёт авторизованную сессию",
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -449,7 +449,7 @@
         },
         "/api/posts": {
             "get": {
-                "description": "Возвращает посты в обратном хронологическом порядке.",
+                "description": "Возвращает посты в обратном хронологическом порядке",
                 "parameters": [
                     {
                         "description": "Количество пропускаемых постов",
@@ -493,7 +493,7 @@
     "openapi": "3.1.0",
     "servers": [
         {
-            "description": "Локальный back",
+            "description": "Локальный backend",
             "url": "http://localhost:8080"
         }
     ]

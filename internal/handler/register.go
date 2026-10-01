@@ -2,16 +2,15 @@ package handler
 
 import (
 	"net/http"
-	"strings"
 
 	"kvmm/internal/domain"
 	"kvmm/internal/store"
 )
 
-// Register регистрирует пользователя и создаёт сессию.
+// Register регистрирует пользователя и создаёт сессию
 // Register godoc
 // @Summary Регистрация пользователя
-// @Description Регистрирует пользователя и создаёт авторизованную сессию.
+// @Description Регистрирует пользователя и создаёт авторизованную сессию
 // @Tags auth
 // @Accept json
 // @Produce json
@@ -33,7 +32,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "validation_error", err.Error())
 		return
 	}
-	profile, session, csrfToken, err := h.auth.Register(req)
+	profile, session, csrfToken, err := store.Register(req)
 	if err != nil {
 		if err == store.ErrConflict {
 			writeError(w, http.StatusConflict, "already_exists", "nickname, email or phone_number is already used")
@@ -44,9 +43,4 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 	setSessionCookie(w, session)
 	writeJSON(w, http.StatusCreated, domain.AuthResponse{Profile: profile, CSRFToken: csrfToken})
-}
-
-// isEmptyContact проверяет, что optional-контакт отсутствует или пустой.
-func isEmptyContact(value *string) bool {
-	return value == nil || strings.TrimSpace(*value) == ""
 }

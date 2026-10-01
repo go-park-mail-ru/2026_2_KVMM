@@ -6,22 +6,18 @@ import (
 	"strconv"
 
 	"kvmm/internal/domain"
-	"kvmm/internal/service"
+	"kvmm/internal/store"
 )
 
-type FeedHandler struct {
-	feed *service.FeedService
-}
+type FeedHandler struct{}
 
-// NewFeedHandler создаёт обработчик запросов ленты.
-func NewFeedHandler(feed *service.FeedService) *FeedHandler {
-	return &FeedHandler{feed: feed}
-}
+// NewFeedHandler создаёт обработчик запросов ленты
+func NewFeedHandler() *FeedHandler { return &FeedHandler{} }
 
-// List возвращает последовательность публикаций ленты.
+// List возвращает последовательность публикаций ленты
 // List godoc
 // @Summary Лента публикаций
-// @Description Возвращает посты в обратном хронологическом порядке.
+// @Description Возвращает посты в обратном хронологическом порядке
 // @Tags posts
 // @Param offset query int false "Количество пропускаемых постов" default(0)
 // @Param limit query int false "Размер страницы (максимум 10)" default(10) maximum(10)
@@ -37,7 +33,7 @@ func (h *FeedHandler) List(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid_pagination", err.Error())
 		return
 	}
-	posts, hasMore := h.feed.List(offset, limit)
+	posts, hasMore := store.ListPosts(offset, limit)
 	response := domain.FeedResponse{Posts: posts, Offset: offset, Limit: limit, HasMore: hasMore}
 	if hasMore {
 		response.NextOffset = offset + len(posts)
@@ -45,7 +41,7 @@ func (h *FeedHandler) List(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, response)
 }
 
-// feedPagination читает offset и размер страницы из query-параметров.
+// feedPagination читает offset и размер страницы из query-параметров
 func feedPagination(r *http.Request) (int, int, error) {
 	offset := 0
 	limit := 10
