@@ -1,4 +1,4 @@
-FROM golang:1.27-bookworm AS build
+FROM golang:1.27-alpine AS build
 
 WORKDIR /src
 
@@ -11,11 +11,9 @@ ARG TARGETARCH
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
     go build -trimpath -ldflags="-s -w" -o /out/kvmm-backend ./cmd/server
 
-FROM golang:1.27-bookworm
+FROM alpine:3.20
 
-WORKDIR /app
-
-RUN useradd --system --no-create-home --shell /usr/sbin/nologin appuser
+RUN adduser -D -H -s /sbin/nologin appuser
 
 COPY --from=build /out/kvmm-backend /kvmm-backend
 
