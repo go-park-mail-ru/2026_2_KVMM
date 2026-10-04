@@ -38,7 +38,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusConflict, "already_exists", "nickname, email or phone_number is already used")
 			return
 		}
-		writeError(w, http.StatusBadRequest, "invalid_request", err.Error())
+		writeError(w, http.StatusBadRequest, "invalid_request", "")
 		return
 	}
 	setSessionCookie(w, session)
