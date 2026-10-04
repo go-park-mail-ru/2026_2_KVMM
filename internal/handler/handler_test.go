@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"kvmm/internal/domain"
 	"kvmm/internal/handler"
@@ -28,7 +29,8 @@ func TestRegister(t *testing.T) {
 		"confirm_password":"qwerty123",
 		"profile_name":"Vasily",
 		"surname":"Demo",
-		"gender":"male"
+		"gender":"male",
+		"birthday":"2000-05-14"
 	}`)
 
 	r := httptest.NewRequest(http.MethodPost, "/api/auth/register", body)
@@ -224,6 +226,18 @@ func TestRegisterValidation(t *testing.T) {
 		{name: "birthday has invalid format", setup: func(req *domain.RegisterRequest) { value := "14.05.2000"; req.Birthday = &value }},
 		{name: "bio is too long", setup: func(req *domain.RegisterRequest) { value := strings.Repeat("a", 257); req.Bio = &value }},
 		{name: "contact is required", setup: func(req *domain.RegisterRequest) { req.Email = nil; req.PhoneNumber = nil }},
+		{name: "nickname has special characters", setup: func(req *domain.RegisterRequest) { req.Nickname = "vasi<ly>" }},
+		{name: "email has special characters", setup: func(req *domain.RegisterRequest) { req.Email = stringPointer("va!sily@example.com") }},
+		{name: "phone is too short", setup: func(req *domain.RegisterRequest) { req.PhoneNumber = stringPointer("+7999") }},
+		{name: "profile name has double space", setup: func(req *domain.RegisterRequest) { req.ProfileName = "Mary  Ann" }},
+		{name: "gender other is not allowed", setup: func(req *domain.RegisterRequest) { req.Gender = domain.GenderOther }},
+		{name: "password is 72 cyrillic letters", setup: withPassword(strings.Repeat("я", 72))},
+		{name: "password has cyrillic letters", setup: withPassword("пароль123")},
+		{name: "password has space", setup: withPassword("qwerty 123")},
+		{name: "password has no digits", setup: withPassword("qwertyuiop")},
+		{name: "birthday is required", setup: func(req *domain.RegisterRequest) { req.Birthday = nil }},
+		{name: "age is under 14", setup: func(req *domain.RegisterRequest) { req.Birthday = birthdayForAge(14, 1) }},
+		{name: "age is over 120", setup: func(req *domain.RegisterRequest) { req.Birthday = birthdayForAge(121, 0) }},
 	}
 
 	for _, test := range tests {
@@ -251,8 +265,101 @@ func TestRegisterValidation(t *testing.T) {
 	}
 }
 
+// TestRegisterAcceptsValidValues проверяет, что допустимые имена, контакты и граничный возраст проходят валидацию
+func TestRegisterAcceptsValidValues(t *testing.T) {
+	tests := []struct {
+		name  string
+		setup func(*domain.RegisterRequest)
+	}{
+		{name: "profile name with space", setup: func(req *domain.RegisterRequest) { req.ProfileName = "Mary Ann" }},
+		{name: "surname with hyphen", setup: func(req *domain.RegisterRequest) { req.Surname = "Римский-Корсаков" }},
+		{name: "surname with apostrophe", setup: func(req *domain.RegisterRequest) { req.Surname = "O'Neil" }},
+		{name: "phone without email", setup: func(req *domain.RegisterRequest) { req.Email = nil }},
+		{name: "age is 14", setup: func(req *domain.RegisterRequest) { req.Birthday = birthdayForAge(14, 0) }},
+		{name: "age is 120", setup: func(req *domain.RegisterRequest) { req.Birthday = birthdayForAge(121, 1) }},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			store.Reset()
+
+			req := validRegisterRequest()
+			test.setup(&req)
+			body, err := json.Marshal(req)
+			if err != nil {
+				t.Fatalf("marshal request: %v", err)
+			}
+
+			r := httptest.NewRequest(http.MethodPost, "/api/auth/register", bytes.NewReader(body))
+			w := httptest.NewRecorder()
+			handler.NewAuthHandler().Register(w, r)
+
+			if w.Code != http.StatusCreated {
+				t.Fatalf("expected status %d, got %d, response: %s", http.StatusCreated, w.Code, w.Body.String())
+			}
+		})
+	}
+}
+
+// TestLoginValidation проверяет, что логин и пароль вне правил отклоняются до сравнения с хешем
+func TestLoginValidation(t *testing.T) {
+	tests := []struct {
+		name     string
+		login    string
+		password string
+	}{
+		{name: "login is too long", login: strings.Repeat("a", 255), password: "qwerty123"},
+		{name: "password is too long", login: "vasily", password: strings.Repeat("a", 64) + "1"},
+		{name: "password has cyrillic letters", login: "vasily", password: "пароль123"},
+		{name: "password has zero bytes", login: "vasily", password: "qwerty123\x00qwerty123"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			store.Reset()
+
+			body, err := json.Marshal(domain.LoginRequest{Login: test.login, Password: test.password})
+			if err != nil {
+				t.Fatalf("marshal request: %v", err)
+			}
+
+			r := httptest.NewRequest(http.MethodPost, "/api/auth/login", bytes.NewReader(body))
+			w := httptest.NewRecorder()
+			handler.NewAuthHandler().Login(w, r)
+
+			if w.Code != http.StatusBadRequest {
+				t.Fatalf("expected status %d, got %d, response: %s", http.StatusBadRequest, w.Code, w.Body.String())
+			}
+		})
+	}
+}
+
+// TestRequestBodyLimit проверяет, что слишком большое тело запроса отклоняется
+func TestRequestBodyLimit(t *testing.T) {
+	store.Reset()
+
+	body := `{"nickname":"` + strings.Repeat("a", 1<<20) + `"}`
+	r := httptest.NewRequest(http.MethodPost, "/api/auth/register", strings.NewReader(body))
+	w := httptest.NewRecorder()
+	handler.NewAuthHandler().Register(w, r)
+
+	if w.Code != http.StatusBadRequest || !strings.Contains(w.Body.String(), "too large") {
+		t.Fatalf("expected body limit error, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
 // stringPointer возвращает указатель на строковое значение для тестовых данных
 func stringPointer(value string) *string { return &value }
+
+// withPassword возвращает настройку запроса с одинаковыми паролем и подтверждением
+func withPassword(password string) func(*domain.RegisterRequest) {
+	return func(req *domain.RegisterRequest) { req.Password = password; req.ConfirmPassword = password }
+}
+
+// birthdayForAge возвращает дату рождения, при которой years лет исполнится через days дней
+func birthdayForAge(years, days int) *string {
+	return stringPointer(time.Now().UTC().AddDate(-years, 0, days).Format(time.DateOnly))
+}
 
 // validRegisterRequest возвращает корректные данные регистрации для тестов
 func validRegisterRequest() domain.RegisterRequest {

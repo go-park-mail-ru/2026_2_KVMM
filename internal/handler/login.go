@@ -24,8 +24,12 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req domain.LoginRequest
-	if err := decodeJSON(r, &req); err != nil {
+	if err := decodeJSON(w, r, &req); err != nil {
 		writeError(w, http.StatusBadRequest, "validation_error", err.Error())
+		return
+	}
+	if !passwordPattern.MatchString(req.Password) {
+		writeError(w, http.StatusBadRequest, "validation_error", "password has invalid format")
 		return
 	}
 	profile, session, csrfToken, err := store.Login(req)

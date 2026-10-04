@@ -32,23 +32,23 @@ type Profile struct {
 // RegisterRequest - запрос на регистрацию
 type RegisterRequest struct {
 	Nickname    string  `json:"nickname" examples:"ivan67" validate:"required,min=4,max=32"`
-	Email       *string `json:"email,omitempty" examples:"ivan@example.com" validate:"omitempty"`
+	Email       *string `json:"email,omitempty" examples:"ivan@example.com" validate:"omitempty,max=254"`
 	PhoneNumber *string `json:"phone_number,omitempty" examples:"+79999999999" validate:"omitempty"`
 
-	Password        string `json:"password" examples:"sjkdfhgs4536njbjjkh" validate:"required,min=8,max=72"`
+	Password        string `json:"password" examples:"sjkdfhgs4536njbjjkh" validate:"required,min=8,max=64"`
 	ConfirmPassword string `json:"confirm_password" examples:"sjkdfhgs4536njbjjkh" validate:"required,eqfield=Password"`
 
 	ProfileName string  `json:"profile_name" examples:"Иван" validate:"required,min=2,max=32"`
 	Surname     string  `json:"surname" examples:"Иванов" validate:"required,min=2,max=32"`
 	Patronymic  *string `json:"patronymic,omitempty" examples:"Иванович" validate:"omitempty,min=2,max=32"`
 
-	Gender   Gender  `json:"gender" examples:"male" validate:"required,oneof=male female other"`
-	Birthday *string `json:"birthday,omitempty" examples:"2000-05-14"`
+	Gender   Gender  `json:"gender" examples:"male" validate:"required,oneof=male female"`
+	Birthday *string `json:"birthday,omitempty" examples:"2000-05-14" validate:"required"`
 	Bio      *string `json:"bio,omitempty" examples:"hi!" validate:"omitempty,max=256"`
 }
 
 // LoginRequest — Login может быть nickname, email или phone_number
 type LoginRequest struct {
-	Login    string `json:"login" examples:"ivan_petrov" validate:"required"`
-	Password string `json:"password" examples:"strongpassword123" validate:"required"`
+	Login    string `json:"login" examples:"ivan_petrov" validate:"required,max=254"`
+	Password string `json:"password" examples:"strongpassword123" validate:"required,min=8,max=64"`
 }
