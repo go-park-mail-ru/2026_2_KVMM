@@ -8,45 +8,52 @@ const docTemplate = `{
     "schemes": {{ marshal .Schemes }},
     "components": {
         "schemas": {
-            "kvmm_internal_domain.AuthResponse": {
+            "domain.AuthResponse": {
                 "properties": {
                     "csrf_token": {
+                        "example": "a1b2c3d4e5f6",
                         "type": "string"
                     },
                     "profile": {
-                        "$ref": "#/components/schemas/kvmm_internal_domain.Profile"
+                        "$ref": "#/components/schemas/domain.Profile"
                     }
                 },
                 "type": "object"
             },
-            "kvmm_internal_domain.ErrorResponse": {
+            "domain.ErrorResponse": {
                 "properties": {
                     "code": {
+                        "example": "invalid_credentials",
                         "type": "string"
                     },
                     "message": {
+                        "example": "Invalid credentials",
                         "type": "string"
                     }
                 },
                 "type": "object"
             },
-            "kvmm_internal_domain.FeedResponse": {
+            "domain.FeedResponse": {
                 "properties": {
                     "has_more": {
+                        "example": true,
                         "type": "boolean"
                     },
                     "limit": {
+                        "example": 10,
                         "type": "integer"
                     },
                     "next_offset": {
+                        "example": 20,
                         "type": "integer"
                     },
                     "offset": {
+                        "example": 10,
                         "type": "integer"
                     },
                     "posts": {
                         "items": {
-                            "$ref": "#/components/schemas/kvmm_internal_domain.Post"
+                            "$ref": "#/components/schemas/domain.Post"
                         },
                         "type": "array",
                         "uniqueItems": false
@@ -54,7 +61,7 @@ const docTemplate = `{
                 },
                 "type": "object"
             },
-            "kvmm_internal_domain.Gender": {
+            "domain.Gender": {
                 "enum": [
                     "male",
                     "female",
@@ -67,12 +74,17 @@ const docTemplate = `{
                     "GenderOther"
                 ]
             },
-            "kvmm_internal_domain.LoginRequest": {
+            "domain.LoginRequest": {
                 "properties": {
                     "login": {
+                        "example": "ivan_petrov",
+                        "maxLength": 254,
                         "type": "string"
                     },
                     "password": {
+                        "example": "strongpassword123",
+                        "maxLength": 64,
+                        "minLength": 8,
                         "type": "string"
                     }
                 },
@@ -82,44 +94,51 @@ const docTemplate = `{
                 ],
                 "type": "object"
             },
-            "kvmm_internal_domain.MeResponse": {
+            "domain.MeResponse": {
                 "properties": {
                     "csrf_token": {
+                        "example": "a1b2c3d4e5f6",
                         "type": "string"
                     },
                     "profile": {
-                        "$ref": "#/components/schemas/kvmm_internal_domain.Profile"
+                        "$ref": "#/components/schemas/domain.Profile"
                     }
                 },
                 "type": "object"
             },
-            "kvmm_internal_domain.Post": {
+            "domain.Post": {
                 "properties": {
                     "author": {
-                        "$ref": "#/components/schemas/kvmm_internal_domain.Profile"
+                        "$ref": "#/components/schemas/domain.Profile"
                     },
                     "author_community_id": {
                         "type": "integer"
                     },
                     "author_profile_id": {
+                        "example": 1,
                         "type": "integer"
                     },
                     "comments_count": {
+                        "example": 0,
                         "type": "integer"
                     },
                     "created_at": {
+                        "example": "2026-01-01T12:00:00Z",
                         "type": "string"
                     },
                     "deleted_at": {
                         "type": "string"
                     },
                     "id": {
+                        "example": 1,
                         "type": "integer"
                     },
                     "likes_count": {
+                        "example": 0,
                         "type": "integer"
                     },
                     "media_count": {
+                        "example": 1,
                         "type": "integer"
                     },
                     "media_urls": {
@@ -130,9 +149,11 @@ const docTemplate = `{
                         "uniqueItems": false
                     },
                     "post_text": {
+                        "example": "Привет, мир!",
                         "type": "string"
                     },
                     "reposts_count": {
+                        "example": 0,
                         "type": "integer"
                     },
                     "updated_at": {
@@ -141,7 +162,7 @@ const docTemplate = `{
                 },
                 "type": "object"
             },
-            "kvmm_internal_domain.Profile": {
+            "domain.Profile": {
                 "properties": {
                     "avatar_urls": {
                         "items": {
@@ -151,98 +172,128 @@ const docTemplate = `{
                         "uniqueItems": false
                     },
                     "bio": {
+                        "example": "hi!",
                         "type": "string"
                     },
                     "birthday": {
+                        "example": "2000-05-14T00:00:00Z",
                         "type": "string"
                     },
                     "created_at": {
+                        "example": "2026-01-01T12:00:00Z",
                         "type": "string"
                     },
                     "deleted_at": {
                         "type": "string"
                     },
                     "email": {
+                        "example": "ivan@example.com",
                         "type": "string"
                     },
                     "gender": {
-                        "$ref": "#/components/schemas/kvmm_internal_domain.Gender"
+                        "$ref": "#/components/schemas/domain.Gender",
+                        "example": "male"
                     },
                     "id": {
+                        "example": 1,
                         "type": "integer"
                     },
                     "image_url": {
+                        "example": "/api/media/avatar1.png",
                         "type": "string"
                     },
                     "nickname": {
+                        "example": "ivan_petrov",
                         "type": "string"
                     },
                     "patronymic": {
+                        "example": "Иванович",
                         "type": "string"
                     },
                     "phone_number": {
+                        "example": "+79999999999",
                         "type": "string"
                     },
                     "profile_name": {
+                        "example": "Иван",
                         "type": "string"
                     },
                     "surname": {
+                        "example": "Иванов",
                         "type": "string"
                     },
                     "updated_at": {
+                        "example": "2026-01-02T12:00:00Z",
                         "type": "string"
                     }
                 },
                 "type": "object"
             },
-            "kvmm_internal_domain.RegisterRequest": {
+            "domain.RegisterRequest": {
                 "properties": {
                     "bio": {
+                        "example": "hi!",
                         "maxLength": 256,
                         "type": "string"
                     },
                     "birthday": {
+                        "example": "2000-05-14",
                         "type": "string"
                     },
                     "confirm_password": {
+                        "example": "sjkdfhgs4536njbjjkh",
                         "type": "string"
                     },
                     "email": {
+                        "example": "ivan@example.com",
+                        "maxLength": 254,
                         "type": "string"
                     },
                     "gender": {
-                        "$ref": "#/components/schemas/kvmm_internal_domain.Gender"
+                        "$ref": "#/components/schemas/domain.Gender",
+                        "enum": [
+                            "male",
+                            "female"
+                        ],
+                        "example": "male"
                     },
                     "nickname": {
+                        "example": "ivan67",
                         "maxLength": 32,
                         "minLength": 4,
                         "type": "string"
                     },
                     "password": {
-                        "maxLength": 72,
+                        "example": "sjkdfhgs4536njbjjkh",
+                        "maxLength": 64,
                         "minLength": 8,
                         "type": "string"
                     },
                     "patronymic": {
+                        "example": "Иванович",
                         "maxLength": 32,
                         "minLength": 2,
                         "type": "string"
                     },
                     "phone_number": {
+                        "example": "+79999999999",
                         "type": "string"
                     },
                     "profile_name": {
+                        "example": "Иван",
                         "maxLength": 32,
                         "minLength": 2,
                         "type": "string"
                     },
                     "surname": {
+                        "example": "Иванов",
                         "maxLength": 32,
                         "minLength": 2,
                         "type": "string"
                     }
                 },
                 "required": [
+                    "birthday",
                     "confirm_password",
                     "gender",
                     "nickname",
@@ -278,7 +329,7 @@ const docTemplate = `{
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/kvmm_internal_domain.LoginRequest",
+                                "$ref": "#/components/schemas/domain.LoginRequest",
                                 "summary": "request",
                                 "description": "Данные авторизации"
                             }
@@ -292,7 +343,7 @@ const docTemplate = `{
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/kvmm_internal_domain.AuthResponse"
+                                    "$ref": "#/components/schemas/domain.AuthResponse"
                                 }
                             }
                         },
@@ -302,7 +353,7 @@ const docTemplate = `{
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/kvmm_internal_domain.ErrorResponse"
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
                                 }
                             }
                         },
@@ -312,7 +363,7 @@ const docTemplate = `{
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/kvmm_internal_domain.ErrorResponse"
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
                                 }
                             }
                         },
@@ -336,7 +387,7 @@ const docTemplate = `{
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/kvmm_internal_domain.ErrorResponse"
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
                                 }
                             }
                         },
@@ -346,7 +397,7 @@ const docTemplate = `{
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/kvmm_internal_domain.ErrorResponse"
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
                                 }
                             }
                         },
@@ -372,7 +423,7 @@ const docTemplate = `{
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/kvmm_internal_domain.MeResponse"
+                                    "$ref": "#/components/schemas/domain.MeResponse"
                                 }
                             }
                         },
@@ -382,7 +433,7 @@ const docTemplate = `{
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/kvmm_internal_domain.ErrorResponse"
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
                                 }
                             }
                         },
@@ -407,7 +458,7 @@ const docTemplate = `{
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/kvmm_internal_domain.RegisterRequest",
+                                "$ref": "#/components/schemas/domain.RegisterRequest",
                                 "summary": "request",
                                 "description": "Данные регистрации"
                             }
@@ -421,7 +472,7 @@ const docTemplate = `{
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/kvmm_internal_domain.AuthResponse"
+                                    "$ref": "#/components/schemas/domain.AuthResponse"
                                 }
                             }
                         },
@@ -431,7 +482,7 @@ const docTemplate = `{
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/kvmm_internal_domain.ErrorResponse"
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
                                 }
                             }
                         },
@@ -441,7 +492,7 @@ const docTemplate = `{
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/kvmm_internal_domain.ErrorResponse"
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
                                 }
                             }
                         },
@@ -483,7 +534,7 @@ const docTemplate = `{
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/kvmm_internal_domain.FeedResponse"
+                                    "$ref": "#/components/schemas/domain.FeedResponse"
                                 }
                             }
                         },
