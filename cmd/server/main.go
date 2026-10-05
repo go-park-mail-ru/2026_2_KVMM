@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"kvmm/internal/httpapi"
+	"kvmm/internal/store"
 )
 
 // main запускает HTTP-сервер backend API.
@@ -20,6 +21,7 @@ func main() {
 		addr = ":8080"
 	}
 	log.Printf("server listening on %s", addr)
+	store.StartPostGenerator() // GOTO: удалить! генерирует фейк посты
 
 	server := http.Server{
 		Addr:         addr,

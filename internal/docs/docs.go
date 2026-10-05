@@ -35,6 +35,10 @@ const docTemplate = `{
             },
             "domain.FeedResponse": {
                 "properties": {
+                    "cursor": {
+                        "example": 10,
+                        "type": "integer"
+                    },
                     "has_more": {
                         "example": true,
                         "type": "boolean"
@@ -43,12 +47,8 @@ const docTemplate = `{
                         "example": 10,
                         "type": "integer"
                     },
-                    "next_offset": {
+                    "next_cursor": {
                         "example": 20,
-                        "type": "integer"
-                    },
-                    "offset": {
-                        "example": 10,
                         "type": "integer"
                     },
                     "posts": {
@@ -512,7 +512,7 @@ const docTemplate = `{
                     {
                         "description": "Количество пропускаемых постов",
                         "in": "query",
-                        "name": "offset",
+                        "name": "cursor",
                         "schema": {
                             "default": 0,
                             "type": "integer"

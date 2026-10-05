@@ -47,7 +47,7 @@ func serveMedia(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	name := strings.TrimPrefix(r.URL.Path, "/api/media/")
-	data, err := store.ReadMediaFile(name)
+	data, err := readMediaFile(name)
 	if err != nil {
 		http.NotFound(w, r)
 		return
@@ -84,4 +84,12 @@ func cors(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// readMediaFile возвращает встроенный файл публикации по безопасному имени
+func readMediaFile(name string) ([]byte, error) {
+	if name == "" || strings.Contains(name, "..") || strings.ContainsAny(name, `/\\`) {
+		return nil, store.ErrNotFound
+	}
+	return store.EmbeddedMediaFiles.ReadFile("media/" + name)
 }

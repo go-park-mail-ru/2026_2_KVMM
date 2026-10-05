@@ -165,12 +165,12 @@ func TestLogoutChecksCSRF(t *testing.T) {
 	}
 }
 
-// TestFeedList проверяет выдачу страницы ленты с offset и limit
+// TestFeedList проверяет выдачу страницы ленты с cursor и limit
 func TestFeedList(t *testing.T) {
 	store.Reset()
 
 	feed := handler.NewFeedHandler()
-	r := httptest.NewRequest(http.MethodGet, "/api/posts?offset=10&limit=5", nil)
+	r := httptest.NewRequest(http.MethodGet, "/api/posts?cursor=10&limit=5", nil)
 	w := httptest.NewRecorder()
 
 	feed.List(w, r)
@@ -182,7 +182,7 @@ func TestFeedList(t *testing.T) {
 	if err := json.NewDecoder(w.Body).Decode(&response); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	if len(response.Posts) != 5 || response.Offset != 10 || response.Limit != 5 {
+	if len(response.Posts) != 5 || response.Cursor != 10 || response.Limit != 5 {
 		t.Errorf("unexpected feed response: %+v", response)
 	}
 }

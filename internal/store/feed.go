@@ -1,36 +1,42 @@
 package store
 
 import (
-	"sort"
-	"strings"
-
 	"kvmm/internal/domain"
 )
 
-// ListPosts возвращает посты, пагинация - (offset, offset+limit]
-func ListPosts(offset, limit int) ([]domain.Post, bool) {
-	if offset < 0 || limit < 1 {
-		return []domain.Post{}, false
+// ListPosts возвращает посты
+// limit - количесво постов
+// cursor — ID последнего отданного поста
+// cursor = 0 — первая страница cursor станет самым новым постом
+func ListPosts(cursor int, limit int) ([]domain.Post, bool, int) {
+	nextCursor := 0
+	if cursor < 0 || limit < 1 {
+		return []domain.Post{}, false, -1
 	}
-	result := make([]domain.Post, 0, len(posts))
-	for _, post := range posts {
-		result = append(result, post)
-	}
-	sort.Slice(result, func(i, j int) bool { return result[i].CreatedAt.After(result[j].CreatedAt) })
-	if offset >= len(result) {
-		return []domain.Post{}, false
-	}
-	end := offset + limit
-	if end > len(result) {
-		end = len(result)
-	}
-	return result[offset:end], end < len(result)
-}
 
-// ReadMediaFile возвращает встроенный файл публикации по безопасному имени
-func ReadMediaFile(name string) ([]byte, error) {
-	if name == "" || strings.Contains(name, "..") || strings.ContainsAny(name, `/\\`) {
-		return nil, ErrNotFound
+	result := make([]domain.Post, 0, len(posts))
+
+	startID := int64(cursor) - 1
+	if cursor == 0 {
+		startID = int64(len(posts))
 	}
-	return embeddedMediaFiles.ReadFile("media/" + name)
+
+	postsCounter := 0
+	hasMore := true
+
+	for postsCounter < limit {
+		if startID < 1 {
+			hasMore = false
+			break
+		}
+		post := posts[int64(startID)]
+		if post.DeletedAt == nil {
+			result = append(result, post)
+			postsCounter++
+		}
+		startID--
+	}
+	nextCursor = int(startID)
+
+	return result, hasMore, nextCursor
 }

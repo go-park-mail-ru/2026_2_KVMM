@@ -4,13 +4,14 @@ import (
 	"embed"
 	"errors"
 	"sync"
+	"time"
 
 	"kvmm/internal/domain"
 	"kvmm/internal/store/fake_data"
 )
 
 //go:embed media/*
-var embeddedMediaFiles embed.FS
+var EmbeddedMediaFiles embed.FS
 
 var ErrNotFound = errors.New("not found")
 var ErrConflict = errors.New("conflict")
@@ -43,4 +44,24 @@ type User struct {
 type Session struct {
 	UserID    int64
 	CSRFToken string
+}
+
+// startPostGenerator добавляет новый пост каждую минуту
+func StartPostGenerator() {
+	go func() {
+		ticker := time.NewTicker(time.Minute)
+		defer ticker.Stop()
+
+		nextPostID := int64(101)
+
+		for range ticker.C {
+			post := fake_data.MakePost(int(nextPostID))
+
+			mu.Lock()
+			posts[nextPostID] = post
+			mu.Unlock()
+
+			nextPostID++
+		}
+	}()
 }
