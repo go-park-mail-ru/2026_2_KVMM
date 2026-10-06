@@ -5,4 +5,5 @@
 *.pem
 *.key
 *.ppk
+*.out
 deploy/.env

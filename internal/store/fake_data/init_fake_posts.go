@@ -13,17 +13,13 @@ func MakePosts() map[int64]domain.Post {
 	result := make(map[int64]domain.Post, 100)
 
 	for i := 1; i <= 100; i++ {
-		result[int64(i)] = makeFakePost(i)
+		result[int64(i)] = MakeFakePost(i)
 	}
 
 	return result
 }
 
-func MakePost(id int) domain.Post {
-	return makeFakePost(id)
-}
-
-func makeFakePost(i int) domain.Post {
+func MakeFakePost(i int) domain.Post {
 	createdAt := time.Now().UTC()
 
 	var deleteAt *time.Time

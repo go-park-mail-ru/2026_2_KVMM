@@ -55,7 +55,7 @@ func StartPostGenerator() {
 		nextPostID := int64(101)
 
 		for range ticker.C {
-			post := fake_data.MakePost(int(nextPostID))
+			post := fake_data.MakeFakePost(int(nextPostID))
 
 			mu.Lock()
 			posts[nextPostID] = post

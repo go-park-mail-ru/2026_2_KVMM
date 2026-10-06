@@ -179,3 +179,4 @@ Temporary Items
 *.p12
 deploy/.env
 bin/
+*.out
