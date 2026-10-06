@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -36,8 +37,12 @@ func deleteSessionCookie(w http.ResponseWriter) {
 
 // cookieSameSite возвращает режим SameSite из переменной окружения
 func cookieSameSite() http.SameSite {
-	if os.Getenv("COOKIE_SAMESITE") == "none" {
+	switch strings.ToLower(os.Getenv("COOKIE_SAMESITE")) {
+	case "strict":
+		return http.SameSiteStrictMode
+	case "none":
 		return http.SameSiteNoneMode
+	default:
+		return http.SameSiteLaxMode
 	}
-	return http.SameSiteLaxMode
 }
