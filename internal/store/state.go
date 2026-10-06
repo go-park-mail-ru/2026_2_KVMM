@@ -48,20 +48,18 @@ type Session struct {
 
 // startPostGenerator добавляет новый пост каждую минуту
 func StartPostGenerator() {
-	go func() {
-		ticker := time.NewTicker(time.Minute)
-		defer ticker.Stop()
+	ticker := time.NewTicker(time.Minute)
+	defer ticker.Stop()
 
-		nextPostID := int64(101)
+	nextPostID := int64(101)
 
-		for range ticker.C {
-			post := fake_data.MakeFakePost(int(nextPostID))
+	for range ticker.C {
+		post := fake_data.MakeFakePost(int(nextPostID))
 
-			mu.Lock()
-			posts[nextPostID] = post
-			mu.Unlock()
+		mu.Lock()
+		posts[nextPostID] = post
+		mu.Unlock()
 
-			nextPostID++
-		}
-	}()
+		nextPostID++
+	}
 }
