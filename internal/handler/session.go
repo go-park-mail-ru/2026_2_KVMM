@@ -18,7 +18,7 @@ import (
 // @Failure 401 {object} domain.ErrorResponse
 // @Router /api/auth/me [get]
 func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
-	if !methodAllowed(w, r, http.MethodGet) {
+	if !MethodAllowed(w, r, http.MethodGet) {
 		return
 	}
 	session := sessionCookie(r)
@@ -46,7 +46,7 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 // @Failure 403 {object} domain.ErrorResponse
 // @Router /api/auth/logout [post]
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
-	if !methodAllowed(w, r, http.MethodPost) {
+	if !MethodAllowed(w, r, http.MethodPost) {
 		return
 	}
 	session := sessionCookie(r)

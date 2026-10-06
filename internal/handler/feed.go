@@ -25,7 +25,7 @@ func NewFeedHandler() *FeedHandler { return &FeedHandler{} }
 // @Success 200 {object} domain.FeedResponse
 // @Router /api/posts [get]
 func (h *FeedHandler) List(w http.ResponseWriter, r *http.Request) {
-	if !methodAllowed(w, r, http.MethodGet) {
+	if !MethodAllowed(w, r, http.MethodGet) {
 		return
 	}
 	cursor, limit, err := feedPagination(r)

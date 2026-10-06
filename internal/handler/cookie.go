@@ -6,6 +6,8 @@ import (
 	"time"
 )
 
+const sessionCookieName = "session_id"
+
 // setSessionCookie устанавливает cookie
 func setSessionCookie(w http.ResponseWriter, session string) {
 	http.SetCookie(w, &http.Cookie{

@@ -95,7 +95,7 @@ func validateRegisterRequest(req domain.RegisterRequest) error {
 }
 
 // methodAllowed проверяет HTTP-метод и возвращает ошибку для неподдерживаемого метода
-func methodAllowed(w http.ResponseWriter, r *http.Request, method string) bool {
+func MethodAllowed(w http.ResponseWriter, r *http.Request, method string) bool {
 	if r.Method == method {
 		return true
 	}

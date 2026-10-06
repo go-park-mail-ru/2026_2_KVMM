@@ -20,7 +20,7 @@ import (
 // @Failure 401 {object} domain.ErrorResponse
 // @Router /api/auth/login [post]
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
-	if !methodAllowed(w, r, http.MethodPost) {
+	if !MethodAllowed(w, r, http.MethodPost) {
 		return
 	}
 	var req domain.LoginRequest

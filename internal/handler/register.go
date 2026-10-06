@@ -20,7 +20,7 @@ import (
 // @Failure 409 {object} domain.ErrorResponse
 // @Router /api/auth/register [post]
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
-	if !methodAllowed(w, r, http.MethodPost) {
+	if !MethodAllowed(w, r, http.MethodPost) {
 		return
 	}
 	var req domain.RegisterRequest

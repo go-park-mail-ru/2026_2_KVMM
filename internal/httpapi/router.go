@@ -22,16 +22,9 @@ func NewRouter() http.Handler {
 	mux.HandleFunc("/api/auth/login", authHandler.Login)
 	mux.HandleFunc("/api/auth/me", authHandler.Me)
 	mux.HandleFunc("/api/auth/logout", authHandler.Logout)
-	mux.HandleFunc("/api/posts", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodGet {
-			feedHandler.List(w, r)
-			return
-		}
-		w.Header().Set("Allow", http.MethodGet)
-		w.WriteHeader(http.StatusMethodNotAllowed)
-	})
+	mux.HandleFunc("/api/posts", feedHandler.List)
 	mux.HandleFunc("/api/media/", serveMedia)
-	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(`{"status":"ok"}`))
@@ -41,9 +34,7 @@ func NewRouter() http.Handler {
 
 // serveMedia отдаёт встроенный файл публикации с Сontent-Type
 func serveMedia(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		w.Header().Set("Allow", http.MethodGet)
-		w.WriteHeader(http.StatusMethodNotAllowed)
+	if !handler.MethodAllowed(w, r, http.MethodGet) {
 		return
 	}
 	name := strings.TrimPrefix(r.URL.Path, "/api/media/")
