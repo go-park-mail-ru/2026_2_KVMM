@@ -21,7 +21,7 @@ func main() {
 		addr = ":8080"
 	}
 	log.Printf("server listening on %s", addr)
-	go store.StartPostGenerator() // GOTO: удалить! генерирует фейк посты
+	go store.StartPostGenerator() // генерирует фейк посты
 
 	server := http.Server{
 		Addr:         addr,
