@@ -1,4 +1,4 @@
-package handler
+package feed
 
 import (
 	"fmt"
@@ -6,13 +6,9 @@ import (
 	"strconv"
 
 	"kvmm/internal/domain"
+	"kvmm/internal/handler/helpers"
 	"kvmm/internal/store"
 )
-
-type FeedHandler struct{}
-
-// NewFeedHandler создаёт обработчик запросов ленты
-func NewFeedHandler() *FeedHandler { return &FeedHandler{} }
 
 // List возвращает последовательность публикаций ленты
 // List godoc
@@ -25,12 +21,12 @@ func NewFeedHandler() *FeedHandler { return &FeedHandler{} }
 // @Success 200 {object} domain.FeedResponse
 // @Router /api/posts [get]
 func (h *FeedHandler) List(w http.ResponseWriter, r *http.Request) {
-	if !MethodAllowed(w, r, http.MethodGet) {
+	if !helpers.MethodAllowed(w, r, http.MethodGet) {
 		return
 	}
 	cursor, limit, err := feedPagination(r)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_pagination", err.Error())
+		helpers.WriteError(w, http.StatusBadRequest, "invalid_pagination", err.Error())
 		return
 	}
 	posts, hasMore, nextCursor := store.ListPosts(cursor, limit)
@@ -38,7 +34,7 @@ func (h *FeedHandler) List(w http.ResponseWriter, r *http.Request) {
 	if hasMore {
 		response.NextCursor = nextCursor
 	}
-	writeJSON(w, http.StatusOK, response)
+	helpers.WriteJSON(w, http.StatusOK, response)
 }
 
 // feedPagination читает cursor и размер страницы из query-параметров

@@ -165,6 +165,9 @@ const docTemplate = `{
             "domain.Profile": {
                 "properties": {
                     "avatar_urls": {
+                        "example": [
+                            "/api/media/avatar1.png"
+                        ],
                         "items": {
                             "type": "string"
                         },
@@ -198,10 +201,6 @@ const docTemplate = `{
                         "example": 1,
                         "type": "integer"
                     },
-                    "image_url": {
-                        "example": "/api/media/avatar1.png",
-                        "type": "string"
-                    },
                     "nickname": {
                         "example": "ivan_petrov",
                         "type": "string"
@@ -230,6 +229,37 @@ const docTemplate = `{
                 "type": "object"
             },
             "domain.RegisterRequest": {
+                "properties": {
+                    "confirm_password": {
+                        "example": "sjkdfhgs4536njbjjkh",
+                        "type": "string"
+                    },
+                    "nickname": {
+                        "example": "ivan67",
+                        "maxLength": 32,
+                        "minLength": 4,
+                        "type": "string"
+                    },
+                    "password": {
+                        "example": "sjkdfhgs4536njbjjkh",
+                        "maxLength": 64,
+                        "minLength": 8,
+                        "type": "string"
+                    },
+                    "privacy_policy_allowed": {
+                        "example": true,
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "confirm_password",
+                    "nickname",
+                    "password",
+                    "privacy_policy_allowed"
+                ],
+                "type": "object"
+            },
+            "domain.UpdateProfileRequest": {
                 "properties": {
                     "bio": {
                         "example": "hi!",
@@ -292,15 +322,6 @@ const docTemplate = `{
                         "type": "string"
                     }
                 },
-                "required": [
-                    "birthday",
-                    "confirm_password",
-                    "gender",
-                    "nickname",
-                    "password",
-                    "profile_name",
-                    "surname"
-                ],
                 "type": "object"
             }
         },
@@ -546,13 +567,92 @@ const docTemplate = `{
                     "posts"
                 ]
             }
+        },
+        "/api/profile/update": {
+            "patch": {
+                "description": "Изменяет профиль существующего пользователя",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/domain.UpdateProfileRequest",
+                                "summary": "request",
+                                "description": "Изменяемые поля"
+                            }
+                        }
+                    },
+                    "description": "Изменяемые поля",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.Profile"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Forbidden"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Conflict"
+                    }
+                },
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "summary": "Изменяет профиль пользователя",
+                "tags": [
+                    "profile"
+                ]
+            }
         }
     },
     "openapi": "3.1.0",
     "servers": [
         {
             "description": "Локальный backend",
-            "url": "http://localhost:8080"
+            "url": "http://localhost"
         }
     ]
 }`
@@ -561,7 +661,7 @@ const docTemplate = `{
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
 	Title:            "Kvmm API",
-	Description:      "API для регистрации, авторизации и последовательной ленты постов",
+	Description:      "API",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

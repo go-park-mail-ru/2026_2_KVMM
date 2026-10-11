@@ -1,9 +1,10 @@
-package handler
+package auth
 
 import (
 	"net/http"
 
 	"kvmm/internal/domain"
+	"kvmm/internal/handler/helpers"
 	"kvmm/internal/store"
 )
 
@@ -20,27 +21,27 @@ import (
 // @Failure 409 {object} domain.ErrorResponse
 // @Router /api/auth/register [post]
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
-	if !MethodAllowed(w, r, http.MethodPost) {
+	if !helpers.MethodAllowed(w, r, http.MethodPost) {
 		return
 	}
 	var req domain.RegisterRequest
-	if err := decodeJSON(w, r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, "validation_error", err.Error())
+	if err := helpers.DecodeJSON(w, r, &req); err != nil {
+		helpers.WriteError(w, http.StatusBadRequest, "validation_error", err.Error())
 		return
 	}
-	if err := validateRegisterRequest(req); err != nil {
-		writeError(w, http.StatusBadRequest, "validation_error", err.Error())
+	if err := helpers.ValidateRegisterRequest(req); err != nil {
+		helpers.WriteError(w, http.StatusBadRequest, "validation_error", err.Error())
 		return
 	}
 	profile, session, csrfToken, err := store.Register(req)
 	if err != nil {
 		if err == store.ErrConflict {
-			writeError(w, http.StatusConflict, "already_exists", "nickname, email or phone_number is already used")
+			helpers.WriteError(w, http.StatusConflict, "already_exists", "nickname, email or phone_number is already used")
 			return
 		}
-		writeError(w, http.StatusBadRequest, "invalid_request", "")
+		helpers.WriteError(w, http.StatusBadRequest, "invalid_request", "")
 		return
 	}
 	setSessionCookie(w, session)
-	writeJSON(w, http.StatusCreated, domain.AuthResponse{Profile: profile, CSRFToken: csrfToken})
+	helpers.WriteJSON(w, http.StatusCreated, domain.AuthResponse{Profile: profile, CSRFToken: csrfToken})
 }

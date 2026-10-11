@@ -14,6 +14,9 @@ func ListPosts(cursor int, limit int) ([]domain.Post, bool, int) {
 		return []domain.Post{}, false, -1
 	}
 
+	mu.RLock()
+	defer mu.RUnlock()
+
 	result := make([]domain.Post, 0, len(posts))
 
 	startID := int64(cursor) - 1

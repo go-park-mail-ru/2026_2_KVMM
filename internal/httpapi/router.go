@@ -9,21 +9,26 @@ import (
 	"strings"
 	"time"
 
-	"kvmm/internal/handler"
+	"kvmm/internal/handler/auth"
+	"kvmm/internal/handler/feed"
+	"kvmm/internal/handler/helpers"
+	"kvmm/internal/handler/profile"
 	"kvmm/internal/store"
 )
 
 // NewRouter создаёт маршрутизатор API на основе стандартного http.ServeMux
 func NewRouter() http.Handler {
 	mux := http.NewServeMux()
-	authHandler := handler.NewAuthHandler()
-	feedHandler := handler.NewFeedHandler()
+	authHandler := auth.NewAuthHandler()
+	feedHandler := feed.NewFeedHandler()
+	profileHandler := profile.NewProfileHandler()
 	mux.HandleFunc("/api/auth/register", authHandler.Register)
 	mux.HandleFunc("/api/auth/login", authHandler.Login)
 	mux.HandleFunc("/api/auth/me", authHandler.Me)
 	mux.HandleFunc("/api/auth/logout", authHandler.Logout)
 	mux.HandleFunc("/api/posts", feedHandler.List)
 	mux.HandleFunc("/api/media/", serveMedia)
+	mux.HandleFunc("/api/profile/update", profileHandler.Update)
 	mux.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -34,7 +39,7 @@ func NewRouter() http.Handler {
 
 // serveMedia отдаёт встроенный файл публикации с Сontent-Type
 func serveMedia(w http.ResponseWriter, r *http.Request) {
-	if !handler.MethodAllowed(w, r, http.MethodGet) {
+	if !helpers.MethodAllowed(w, r, http.MethodGet) {
 		return
 	}
 	name := strings.TrimPrefix(r.URL.Path, "/api/media/")

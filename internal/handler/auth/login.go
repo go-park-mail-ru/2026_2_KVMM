@@ -1,9 +1,10 @@
-package handler
+package auth
 
 import (
 	"net/http"
 
 	"kvmm/internal/domain"
+	"kvmm/internal/handler/helpers"
 	"kvmm/internal/store"
 )
 
@@ -20,23 +21,23 @@ import (
 // @Failure 401 {object} domain.ErrorResponse
 // @Router /api/auth/login [post]
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
-	if !MethodAllowed(w, r, http.MethodPost) {
+	if !helpers.MethodAllowed(w, r, http.MethodPost) {
 		return
 	}
 	var req domain.LoginRequest
-	if err := decodeJSON(w, r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, "validation_error", err.Error())
+	if err := helpers.DecodeJSON(w, r, &req); err != nil {
+		helpers.WriteError(w, http.StatusBadRequest, "validation_error", err.Error())
 		return
 	}
-	if !passwordPattern.MatchString(req.Password) {
-		writeError(w, http.StatusBadRequest, "validation_error", "password has invalid format")
+	if !helpers.PasswordPattern.MatchString(req.Password) {
+		helpers.WriteError(w, http.StatusBadRequest, "validation_error", "password has invalid format")
 		return
 	}
 	profile, session, csrfToken, err := store.Login(req)
 	if err != nil {
-		writeError(w, http.StatusUnauthorized, "invalid_credentials", "invalid login or password")
+		helpers.WriteError(w, http.StatusUnauthorized, "invalid_credentials", "invalid login or password")
 		return
 	}
 	setSessionCookie(w, session)
-	writeJSON(w, http.StatusOK, domain.AuthResponse{Profile: profile, CSRFToken: csrfToken})
+	helpers.WriteJSON(w, http.StatusOK, domain.AuthResponse{Profile: profile, CSRFToken: csrfToken})
 }
