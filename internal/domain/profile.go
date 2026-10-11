@@ -16,10 +16,10 @@ type Profile struct {
 	Nickname    string     `json:"nickname" example:"ivan_petrov"`
 	Email       *string    `json:"email,omitempty" example:"ivan@example.com"`
 	PhoneNumber *string    `json:"phone_number,omitempty" example:"+79999999999"`
-	ProfileName string     `json:"profile_name" example:"Иван"`
-	Surname     string     `json:"surname" example:"Иванов"`
+	ProfileName *string    `json:"profile_name" example:"Иван"`
+	Surname     *string    `json:"surname" example:"Иванов"`
 	Patronymic  *string    `json:"patronymic,omitempty" example:"Иванович"`
-	Gender      Gender     `json:"gender" example:"male" enums:"male,female,other"`
+	Gender      *Gender    `json:"gender" example:"male" enums:"male,female,other"`
 	Birthday    *time.Time `json:"birthday,omitempty" example:"2000-05-14T00:00:00Z"`
 	Bio         *string    `json:"bio,omitempty" example:"hi!"`
 	ImageURL    string     `json:"image_url,omitempty" example:"/api/media/avatar1.png"`

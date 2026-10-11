@@ -16,18 +16,7 @@ func Register(req domain.RegisterRequest) (domain.Profile, string, string, error
 		return domain.Profile{}, "", "", err
 	}
 	now := time.Now().UTC()
-	profile := domain.Profile{
-		Nickname: strings.TrimSpace(req.Nickname), Email: req.Email, PhoneNumber: req.PhoneNumber,
-		ProfileName: strings.TrimSpace(req.ProfileName), Surname: strings.TrimSpace(req.Surname),
-		Patronymic: req.Patronymic, Gender: req.Gender, Bio: req.Bio, CreatedAt: now,
-	}
-	if req.Birthday != nil && *req.Birthday != "" {
-		birthday, err := time.Parse("2006-01-02", *req.Birthday)
-		if err != nil {
-			return domain.Profile{}, "", "", err
-		}
-		profile.Birthday = &birthday
-	}
+	profile := domain.Profile{Nickname: strings.TrimSpace(req.Nickname), CreatedAt: now}
 
 	mu.Lock()
 	defer mu.Unlock()
