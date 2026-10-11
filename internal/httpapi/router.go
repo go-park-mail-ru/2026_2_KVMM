@@ -11,6 +11,7 @@ import (
 
 	"kvmm/internal/handler/auth"
 	"kvmm/internal/handler/feed"
+	"kvmm/internal/handler/friends"
 	"kvmm/internal/handler/helpers"
 	"kvmm/internal/handler/profile"
 	"kvmm/internal/store"
@@ -19,16 +20,30 @@ import (
 // NewRouter создаёт маршрутизатор API на основе стандартного http.ServeMux
 func NewRouter() http.Handler {
 	mux := http.NewServeMux()
+
 	authHandler := auth.NewAuthHandler()
 	feedHandler := feed.NewFeedHandler()
 	profileHandler := profile.NewProfileHandler()
+	friendsHandler := friends.NewFriendsHandler()
+
 	mux.HandleFunc("/api/auth/register", authHandler.Register)
 	mux.HandleFunc("/api/auth/login", authHandler.Login)
 	mux.HandleFunc("/api/auth/me", authHandler.Me)
 	mux.HandleFunc("/api/auth/logout", authHandler.Logout)
+
 	mux.HandleFunc("/api/posts", feedHandler.List)
+
 	mux.HandleFunc("/api/media/", serveMedia)
+
 	mux.HandleFunc("/api/profile/update", profileHandler.Update)
+
+	mux.HandleFunc("/api/friends/add", friendsHandler.Add)
+	mux.HandleFunc("/api/friends/list", friendsHandler.List)
+	mux.HandleFunc("/api/friends/delete", friendsHandler.Delete)
+	mux.HandleFunc("/api/friends/accept", friendsHandler.Accept)
+	mux.HandleFunc("/api/friends/requests", friendsHandler.Requests)
+	mux.HandleFunc("/api/friends/suggestions", friendsHandler.Suggestions)
+
 	mux.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
