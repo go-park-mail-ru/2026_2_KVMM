@@ -29,13 +29,3 @@ func DecodeJSON(w http.ResponseWriter, r *http.Request, target any) error {
 	}
 	return validate.Struct(target)
 }
-
-// methodAllowed проверяет HTTP-метод и возвращает ошибку для неподдерживаемого метода
-func MethodAllowed(w http.ResponseWriter, r *http.Request, method string) bool {
-	if r.Method == method {
-		return true
-	}
-	w.Header().Set("Allow", method)
-	WriteError(w, http.StatusMethodNotAllowed, "method_not_allowed", "method is not allowed")
-	return false
-}

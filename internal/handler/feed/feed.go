@@ -1,9 +1,7 @@
 package feed
 
 import (
-	"fmt"
 	"net/http"
-	"strconv"
 
 	"kvmm/internal/domain"
 	"kvmm/internal/handler/helpers"
@@ -24,7 +22,7 @@ func (h *FeedHandler) List(w http.ResponseWriter, r *http.Request) {
 	if !helpers.MethodAllowed(w, r, http.MethodGet) {
 		return
 	}
-	cursor, limit, err := feedPagination(r)
+	cursor, limit, err := helpers.Pagination(r)
 	if err != nil {
 		helpers.WriteError(w, http.StatusBadRequest, "invalid_pagination", err.Error())
 		return
@@ -35,26 +33,4 @@ func (h *FeedHandler) List(w http.ResponseWriter, r *http.Request) {
 		response.NextCursor = nextCursor
 	}
 	helpers.WriteJSON(w, http.StatusOK, response)
-}
-
-// feedPagination читает cursor и размер страницы из query-параметров
-func feedPagination(r *http.Request) (int, int, error) {
-	cursor := 0
-	limit := 10
-	query := r.URL.Query()
-	if value := query.Get("cursor"); value != "" {
-		parsed, err := strconv.Atoi(value)
-		if err != nil || parsed < 0 {
-			return 0, 0, fmt.Errorf("cursor must be a non-negative integer")
-		}
-		cursor = parsed
-	}
-	if value := query.Get("limit"); value != "" {
-		parsed, err := strconv.Atoi(value)
-		if err != nil || parsed < 1 || parsed > 10 {
-			return 0, 0, fmt.Errorf("limit must be between 1 and 10")
-		}
-		limit = parsed
-	}
-	return cursor, limit, nil
 }
