@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"kvmm/internal/handler/auth"
+	"kvmm/internal/handler/chat"
 	"kvmm/internal/handler/feed"
 	"kvmm/internal/handler/helpers"
 	"kvmm/internal/handler/profile"
@@ -22,6 +23,7 @@ func NewRouter() http.Handler {
 	mux := http.NewServeMux()
 
 	authHandler := auth.NewAuthHandler()
+	chatHandler := chat.NewChatHandler()
 	feedHandler := feed.NewFeedHandler()
 	profileHandler := profile.NewProfileHandler()
 	relationshipHandler := relationship.NewRelationshipHandler()
@@ -36,6 +38,11 @@ func NewRouter() http.Handler {
 	mux.HandleFunc("/api/media/", serveMedia)
 
 	mux.HandleFunc("/api/profile/update", profileHandler.Update)
+
+	mux.HandleFunc("/api/chats/list", chatHandler.List)
+	mux.HandleFunc("/api/chats/messages", chatHandler.Messages)
+	mux.HandleFunc("/api/chats/send", chatHandler.Send)
+	mux.HandleFunc("/api/chats/create", chatHandler.Create)
 
 	mux.HandleFunc("/api/relationships/list", relationshipHandler.List)
 	mux.HandleFunc("/api/relationships/typeslist", relationshipHandler.TypesList)

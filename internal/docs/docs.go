@@ -52,6 +52,69 @@ const docTemplate = `{
                 ],
                 "type": "object"
             },
+            "domain.Chat": {
+                "properties": {
+                    "created_at": {
+                        "example": "2026-01-01T12:00:00Z",
+                        "type": "string"
+                    },
+                    "id": {
+                        "example": 1,
+                        "type": "integer"
+                    },
+                    "last_message": {
+                        "$ref": "#/components/schemas/domain.Message"
+                    },
+                    "participants": {
+                        "items": {
+                            "$ref": "#/components/schemas/domain.Profile"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    }
+                },
+                "type": "object"
+            },
+            "domain.ChatsResponse": {
+                "properties": {
+                    "chats": {
+                        "items": {
+                            "$ref": "#/components/schemas/domain.Chat"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "has_more": {
+                        "example": true,
+                        "type": "boolean"
+                    },
+                    "limit": {
+                        "example": 10,
+                        "type": "integer"
+                    },
+                    "next_offset": {
+                        "example": 10,
+                        "type": "integer"
+                    },
+                    "offset": {
+                        "example": 0,
+                        "type": "integer"
+                    }
+                },
+                "type": "object"
+            },
+            "domain.CreateChatRequest": {
+                "properties": {
+                    "profile_id": {
+                        "example": 2,
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "profile_id"
+                ],
+                "type": "object"
+            },
             "domain.CreateRelationshipRequest": {
                 "properties": {
                     "profile_id_slave": {
@@ -151,6 +214,86 @@ const docTemplate = `{
                     },
                     "profile": {
                         "$ref": "#/components/schemas/domain.Profile"
+                    }
+                },
+                "type": "object"
+            },
+            "domain.Message": {
+                "properties": {
+                    "author_id": {
+                        "example": 1,
+                        "type": "integer"
+                    },
+                    "chat_id": {
+                        "example": 1,
+                        "type": "integer"
+                    },
+                    "created_at": {
+                        "example": "2026-01-01T12:00:00Z",
+                        "type": "string"
+                    },
+                    "deleted_at": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "example": 1,
+                        "type": "integer"
+                    },
+                    "message_text": {
+                        "example": "Привет!",
+                        "type": "string"
+                    },
+                    "reply_from": {
+                        "example": 7,
+                        "type": "integer"
+                    },
+                    "repost_from": {
+                        "example": 5,
+                        "type": "integer"
+                    },
+                    "updated_at": {
+                        "example": "2026-01-01T12:05:00Z",
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
+            "domain.MessagesResponse": {
+                "properties": {
+                    "chat_id": {
+                        "example": 1,
+                        "type": "integer"
+                    },
+                    "has_more": {
+                        "example": true,
+                        "type": "boolean"
+                    },
+                    "limit": {
+                        "example": 10,
+                        "type": "integer"
+                    },
+                    "messages": {
+                        "items": {
+                            "$ref": "#/components/schemas/domain.Message"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "next_offset": {
+                        "example": 10,
+                        "type": "integer"
+                    },
+                    "offset": {
+                        "example": 0,
+                        "type": "integer"
+                    },
+                    "parents": {
+                        "description": "если у какого одного или нескольих сообщений есть родители\n(RepostFrom, ReplyFrom) то они будут в этом масиве",
+                        "items": {
+                            "$ref": "#/components/schemas/domain.Message"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
                     }
                 },
                 "type": "object"
@@ -440,6 +583,32 @@ const docTemplate = `{
                 },
                 "type": "object"
             },
+            "domain.SendMessageRequest": {
+                "properties": {
+                    "chat_id": {
+                        "example": 1,
+                        "type": "integer"
+                    },
+                    "message_text": {
+                        "example": "Привет!",
+                        "maxLength": 256,
+                        "type": "string"
+                    },
+                    "reply_from": {
+                        "example": 7,
+                        "type": "integer"
+                    },
+                    "repost_from": {
+                        "example": 5,
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "chat_id",
+                    "message_text"
+                ],
+                "type": "object"
+            },
             "domain.UpdateProfileRequest": {
                 "properties": {
                     "bio": {
@@ -704,6 +873,349 @@ const docTemplate = `{
                 "summary": "Регистрация пользователя",
                 "tags": [
                     "auth"
+                ]
+            }
+        },
+        "/api/chats/create": {
+            "post": {
+                "description": "Создаёт чат между текущим пользователем и указанным пользователем",
+                "parameters": [
+                    {
+                        "description": "CSRF-токен",
+                        "in": "header",
+                        "name": "X-CSRF-Token",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/domain.CreateChatRequest",
+                                "summary": "request",
+                                "description": "Пользователь для создания чата"
+                            }
+                        }
+                    },
+                    "description": "Пользователь для создания чата",
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.Chat"
+                                }
+                            }
+                        },
+                        "description": "Created"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Forbidden"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Conflict"
+                    }
+                },
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "summary": "Создать чат",
+                "tags": [
+                    "chats"
+                ]
+            }
+        },
+        "/api/chats/list": {
+            "get": {
+                "description": "Возвращает чаты, в которых состоит текущий пользователь",
+                "parameters": [
+                    {
+                        "description": "Количество пропускаемых чатов",
+                        "in": "query",
+                        "name": "offset",
+                        "schema": {
+                            "default": 0,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Размер страницы (максимум 10)",
+                        "in": "query",
+                        "name": "limit",
+                        "schema": {
+                            "default": 10,
+                            "maximum": 10,
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ChatsResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    }
+                },
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "summary": "Получить список чатов",
+                "tags": [
+                    "chats"
+                ]
+            }
+        },
+        "/api/chats/messages": {
+            "get": {
+                "description": "Возвращает сообщения указанного чата в хронологическом порядке",
+                "parameters": [
+                    {
+                        "description": "Идентификатор чата",
+                        "in": "query",
+                        "name": "chat_id",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Количество пропускаемых сообщений",
+                        "in": "query",
+                        "name": "offset",
+                        "schema": {
+                            "default": 0,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Размер страницы (максимум 10)",
+                        "in": "query",
+                        "name": "limit",
+                        "schema": {
+                            "default": 10,
+                            "maximum": 10,
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.MessagesResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    }
+                },
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "summary": "Получить сообщения чата",
+                "tags": [
+                    "chats"
+                ]
+            }
+        },
+        "/api/chats/send": {
+            "post": {
+                "description": "Отправляет текстовое сообщение в чат, в котором состоит текущий пользователь",
+                "parameters": [
+                    {
+                        "description": "CSRF-токен",
+                        "in": "header",
+                        "name": "X-CSRF-Token",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/domain.SendMessageRequest",
+                                "summary": "request",
+                                "description": "Текст сообщения"
+                            }
+                        }
+                    },
+                    "description": "Текст сообщения",
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.Message"
+                                }
+                            }
+                        },
+                        "description": "Created"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Forbidden"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    }
+                },
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "summary": "Отправить сообщение",
+                "tags": [
+                    "chats"
                 ]
             }
         },
