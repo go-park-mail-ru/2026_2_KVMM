@@ -11,9 +11,9 @@ import (
 
 	"kvmm/internal/handler/auth"
 	"kvmm/internal/handler/feed"
-	"kvmm/internal/handler/friends"
 	"kvmm/internal/handler/helpers"
 	"kvmm/internal/handler/profile"
+	"kvmm/internal/handler/relationship"
 	"kvmm/internal/store"
 )
 
@@ -24,7 +24,7 @@ func NewRouter() http.Handler {
 	authHandler := auth.NewAuthHandler()
 	feedHandler := feed.NewFeedHandler()
 	profileHandler := profile.NewProfileHandler()
-	friendsHandler := friends.NewFriendsHandler()
+	relationshipHandler := relationship.NewRelationshipHandler()
 
 	mux.HandleFunc("/api/auth/register", authHandler.Register)
 	mux.HandleFunc("/api/auth/login", authHandler.Login)
@@ -37,12 +37,14 @@ func NewRouter() http.Handler {
 
 	mux.HandleFunc("/api/profile/update", profileHandler.Update)
 
-	mux.HandleFunc("/api/friends/add", friendsHandler.Add)
-	mux.HandleFunc("/api/friends/list", friendsHandler.List)
-	mux.HandleFunc("/api/friends/delete", friendsHandler.Delete)
-	mux.HandleFunc("/api/friends/accept", friendsHandler.Accept)
-	mux.HandleFunc("/api/friends/requests", friendsHandler.Requests)
-	mux.HandleFunc("/api/friends/suggestions", friendsHandler.Suggestions)
+	mux.HandleFunc("/api/relationships/list", relationshipHandler.List)
+	mux.HandleFunc("/api/relationships/typeslist", relationshipHandler.TypesList)
+	mux.HandleFunc("/api/relationships/create", relationshipHandler.Create)
+	mux.HandleFunc("/api/relationships/cancle", relationshipHandler.Cancle)
+	mux.HandleFunc("/api/relationships/accept", relationshipHandler.Accept)
+	mux.HandleFunc("/api/relationships/requests", relationshipHandler.Requests)
+	mux.HandleFunc("/api/relationships/suggestions", relationshipHandler.Suggestions)
+	mux.HandleFunc("/api/relationships/suggestionstypes", relationshipHandler.SuggestionsTypes)
 
 	mux.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -87,7 +89,7 @@ func cors(next http.Handler) http.Handler {
 			w.Header().Set("Vary", "Origin")
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-CSRF-Token")
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS")
 		}
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)

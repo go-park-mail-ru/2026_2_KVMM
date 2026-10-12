@@ -1,4 +1,4 @@
-package friends
+package relationship
 
 import (
 	"net/http"
@@ -8,20 +8,21 @@ import (
 	"kvmm/internal/store"
 )
 
-// Suggestions возвращает список возможных друзей текущего пользователя
-// Suggestions godoc
-// @Summary Получить список возможных друзей
-// @Description Возвращает список профилей (возможных друзей текущего пользователя)
-// @Tags friends
+// Requests возвращает входящие запросы на связи
+// Requests godoc
+// @Summary Получить входящие запросы на связи
+// @Description Возвращает активные запросы на связи, отправленные текущему пользователю
+// @Tags relationships
 // @Security SessionCookie
 // @Produce json
-// @Param cursor query int false "Количество пропускаемых аккаунтов" default(0)
+// @Param relationships_type query string false "Фильтр по виду связи" example(friendship)
+// @Param offset query int false "Количество пропускаемых записей" default(0)
 // @Param limit query int false "Размер страницы (максимум 10)" default(10) maximum(10)
 // @Success 200 {object} domain.RelationshipsResponse
 // @Failure 400 {object} domain.ErrorResponse
 // @Failure 401 {object} domain.ErrorResponse
-// @Router /api/friends/suggestions [get]
-func (h *FriendsHandler) Suggestions(w http.ResponseWriter, r *http.Request) {
+// @Router /api/relationships/requests [get]
+func (h *FriendsHandler) Requests(w http.ResponseWriter, r *http.Request) {
 	if !helpers.MethodAllowed(w, r, http.MethodGet) {
 		return
 	}

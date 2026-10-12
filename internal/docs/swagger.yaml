@@ -1,5 +1,16 @@
 components:
   schemas:
+    domain.AcceptRelationshipRequest:
+      properties:
+        profile_id:
+          type: integer
+        relationships_type:
+          example: friendship
+          type: string
+      required:
+      - profile_id
+      - relationships_type
+      type: object
     domain.AuthResponse:
       properties:
         csrf_token:
@@ -7,6 +18,29 @@ components:
           type: string
         profile:
           $ref: '#/components/schemas/domain.Profile'
+      type: object
+    domain.CancleRelationshipRequest:
+      properties:
+        profile_id:
+          type: integer
+        relationships_type:
+          example: friendship
+          type: string
+      required:
+      - profile_id
+      - relationships_type
+      type: object
+    domain.CreateRelationshipRequest:
+      properties:
+        profile_id_slave:
+          example: 2
+          type: integer
+        relationships_type:
+          example: friendship
+          type: string
+      required:
+      - profile_id_slave
+      - relationships_type
       type: object
     domain.ErrorResponse:
       properties:
@@ -158,6 +192,33 @@ components:
           example: "2026-01-02T12:00:00Z"
           type: string
       type: object
+    domain.ProfileRelationship:
+      properties:
+        created_at:
+          example: "2026-01-01T12:00:00Z"
+          type: string
+        deleted_at:
+          type: string
+        profile_id_master:
+          example: 1
+          type: integer
+        profile_id_slave:
+          example: 2
+          type: integer
+        relationships_status:
+          $ref: '#/components/schemas/domain.RelationshipStatus'
+          enum:
+          - request
+          - approved
+          - canceled
+          example: request
+        relationships_type:
+          example: friendship
+          type: string
+        updated_at:
+          example: "2026-01-02T12:00:00Z"
+          type: string
+      type: object
     domain.RegisterRequest:
       properties:
         confirm_password:
@@ -181,6 +242,73 @@ components:
       - nickname
       - password
       - privacy_policy_allowed
+      type: object
+    domain.RelationshipStatus:
+      enum:
+      - request
+      - accepted
+      - canceled
+      type: string
+      x-enum-varnames:
+      - RelationshipRequest
+      - RelationshipAccept
+      - RelationshipCanceled
+    domain.RelationshipSuggestion:
+      properties:
+        nickname:
+          type: string
+        profile_id:
+          type: integer
+      type: object
+    domain.RelationshipSuggestionsResponse:
+      properties:
+        has_more:
+          example: true
+          type: boolean
+        limit:
+          example: 10
+          type: integer
+        next_offset:
+          example: 10
+          type: integer
+        offset:
+          example: 0
+          type: integer
+        profiles:
+          items:
+            $ref: '#/components/schemas/domain.RelationshipSuggestion'
+          type: array
+          uniqueItems: false
+      type: object
+    domain.RelationshipTypes:
+      properties:
+        relationships_types:
+          items:
+            $ref: '#/components/schemas/domain.RelationshipSuggestion'
+          type: array
+          uniqueItems: false
+      required:
+      - relationships_types
+      type: object
+    domain.RelationshipsResponse:
+      properties:
+        has_more:
+          example: true
+          type: boolean
+        limit:
+          example: 10
+          type: integer
+        next_offset:
+          example: 10
+          type: integer
+        offset:
+          example: 0
+          type: integer
+        relationships:
+          items:
+            $ref: '#/components/schemas/domain.ProfileRelationship'
+          type: array
+          uniqueItems: false
       type: object
     domain.UpdateProfileRequest:
       properties:
@@ -283,7 +411,7 @@ paths:
       - auth
   /api/auth/logout:
     post:
-      description: Завершает текущую сессию пользователя.
+      description: Завершает текущую сессию пользователя
       responses:
         "204":
           description: No Content
@@ -359,6 +487,63 @@ paths:
       summary: Регистрация пользователя
       tags:
       - auth
+  /api/friends/accept:
+    patch:
+      description: Принимает запрос на связь указанному пользователю
+      parameters:
+      - description: CSRF-токен
+        in: header
+        name: X-CSRF-Token
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/domain.AcceptRelationshipRequest'
+              description: Данные для принятия запроса в друзья
+              summary: request
+        description: Данные для принятия запроса в друзья
+        required: true
+      responses:
+        "204":
+          description: Запрос в друзья отправлен
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ErrorResponse'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ErrorResponse'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ErrorResponse'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ErrorResponse'
+          description: Not Found
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ErrorResponse'
+          description: Conflict
+      security:
+      - SessionCookie: []
+      summary: Принять запрос на связь
+      tags:
+      - relationships
   /api/posts:
     get:
       description: Возвращает посты в обратном хронологическом порядке
@@ -434,6 +619,344 @@ paths:
       summary: Изменяет профиль пользователя
       tags:
       - profile
+  /api/relationships/cancle:
+    delete:
+      description: Отменяет входящую связь или удаляет созданую
+      parameters:
+      - description: CSRF-токен
+        in: header
+        name: X-CSRF-Token
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/domain.CancleRelationshipRequest'
+              description: Данные для отправки запроса в друзья
+              summary: request
+        description: Данные для отправки запроса в друзья
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ProfileRelationship'
+          description: Обновленная связь
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ErrorResponse'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ErrorResponse'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ErrorResponse'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ErrorResponse'
+          description: Not Found
+      security:
+      - SessionCookie: []
+      summary: Отменить связь
+      tags:
+      - relationships
+  /api/relationships/create:
+    post:
+      description: Отправляет указанному пользователю запрос на связь выбранного вида
+      parameters:
+      - description: CSRF-токен
+        in: header
+        name: X-CSRF-Token
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/domain.CreateRelationshipRequest'
+              description: Данные для создания связи
+              summary: request
+        description: Данные для создания связи
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ProfileRelationship'
+          description: Созданная связь
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ErrorResponse'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ErrorResponse'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ErrorResponse'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ErrorResponse'
+          description: Not Found
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ErrorResponse'
+          description: Conflict
+      security:
+      - SessionCookie: []
+      summary: Отправить запрос на связь
+      tags:
+      - relationships
+  /api/relationships/list:
+    get:
+      description: Возвращает связи текущего пользователя с фильтрацией по статусу
+        и виду
+      parameters:
+      - description: CSRF-токен, если требуется политикой приложения
+        in: header
+        name: X-CSRF-Token
+        schema:
+          type: string
+      - description: Статус связи
+        in: query
+        name: relationships_status
+        schema:
+          enum:
+          - request
+          - approved
+          - canceled
+          type: string
+      - description: Вид связи
+        example: friendship
+        in: query
+        name: relationships_type
+        schema:
+          type: string
+      - description: Количество пропускаемых записей
+        in: query
+        name: offset
+        schema:
+          default: 0
+          type: integer
+      - description: Размер страницы (максимум 10)
+        in: query
+        name: limit
+        schema:
+          default: 10
+          maximum: 10
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.RelationshipsResponse'
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ErrorResponse'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ErrorResponse'
+          description: Unauthorized
+      security:
+      - SessionCookie: []
+      summary: Получить список связей по типу
+      tags:
+      - relationships
+  /api/relationships/requests:
+    get:
+      description: Возвращает активные запросы на связи, отправленные текущему пользователю
+      parameters:
+      - description: Фильтр по виду связи
+        example: friendship
+        in: query
+        name: relationships_type
+        schema:
+          type: string
+      - description: Количество пропускаемых записей
+        in: query
+        name: offset
+        schema:
+          default: 0
+          type: integer
+      - description: Размер страницы (максимум 10)
+        in: query
+        name: limit
+        schema:
+          default: 10
+          maximum: 10
+          type: integer
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.RelationshipsResponse'
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ErrorResponse'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ErrorResponse'
+          description: Unauthorized
+      security:
+      - SessionCookie: []
+      summary: Получить входящие запросы на связи
+      tags:
+      - relationships
+  /api/relationships/suggestions:
+    get:
+      description: Возвращает список профилей, которым текущий пользователь может
+        имень связь.
+      parameters:
+      - description: Количество пропускаемых записей
+        in: query
+        name: offset
+        schema:
+          default: 0
+          type: integer
+      - description: Размер страницы (максимум 10)
+        in: query
+        name: limit
+        schema:
+          default: 10
+          maximum: 10
+          type: integer
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.RelationshipSuggestionsResponse'
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ErrorResponse'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ErrorResponse'
+          description: Unauthorized
+      security:
+      - SessionCookie: []
+      summary: Получить список профилей возможных связей получателя по типу
+      tags:
+      - relationships
+  /api/relationships/suggestionstypes:
+    get:
+      description: Возвращает список профилей, которым текущий пользователь может
+        имень связь.
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.RelationshipTypes'
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ErrorResponse'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ErrorResponse'
+          description: Unauthorized
+      security:
+      - SessionCookie: []
+      summary: Получить список возможных связей получателя
+      tags:
+      - relationships
+  /api/relationships/typeslist:
+    get:
+      description: Возвращает виды связий в которых участвует пользователь
+      parameters:
+      - description: CSRF-токен, если требуется политикой приложения
+        in: header
+        name: X-CSRF-Token
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.RelationshipsResponse'
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ErrorResponse'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ErrorResponse'
+          description: Unauthorized
+      security:
+      - SessionCookie: []
+      summary: Получить список связей по типам
+      tags:
+      - relationships
 servers:
 - description: Локальный backend
   url: http://localhost
