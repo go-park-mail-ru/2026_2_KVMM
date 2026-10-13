@@ -29,6 +29,24 @@
                 },
                 "type": "object"
             },
+            "domain.Author": {
+                "properties": {
+                    "avatar_urls": {
+                        "example": "/api/media/avatar1.png",
+                        "type": "string"
+                    },
+                    "name": {
+                        "description": "Name - для пользователей: surname + \" \" + profileName, если не добавлено Name - nickname;\nName - для сообществ: community_name",
+                        "example": "Petrov Ivan",
+                        "type": "string"
+                    },
+                    "type": {
+                        "$ref": "#/components/schemas/domain.PostAuthorType",
+                        "example": "profile"
+                    }
+                },
+                "type": "object"
+            },
             "domain.CancleRelationshipRequest": {
                 "properties": {
                     "profile_id": {
@@ -106,6 +124,16 @@
                 "required": [
                     "profile_id"
                 ],
+                "type": "object"
+            },
+            "domain.CreatePostRequest": {
+                "properties": {
+                    "post_text": {
+                        "example": "Привет, мир!",
+                        "maxLength": 256,
+                        "type": "string"
+                    }
+                },
                 "type": "object"
             },
             "domain.CreateRelationshipRequest": {
@@ -294,7 +322,7 @@
             "domain.Post": {
                 "properties": {
                     "author": {
-                        "$ref": "#/components/schemas/domain.Profile"
+                        "$ref": "#/components/schemas/domain.Author"
                     },
                     "author_community_id": {
                         "type": "integer"
@@ -346,6 +374,17 @@
                     }
                 },
                 "type": "object"
+            },
+            "domain.PostAuthorType": {
+                "enum": [
+                    "profile",
+                    "community"
+                ],
+                "type": "string",
+                "x-enum-varnames": [
+                    "AuthorProfile",
+                    "AuthorCommunity"
+                ]
             },
             "domain.Profile": {
                 "properties": {
@@ -602,6 +641,24 @@
                 ],
                 "type": "object"
             },
+            "domain.UpdatePostRequest": {
+                "properties": {
+                    "post_id": {
+                        "example": 1,
+                        "type": "integer"
+                    },
+                    "post_text": {
+                        "example": "Обновлённый текст",
+                        "maxLength": 256,
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "post_id",
+                    "post_text"
+                ],
+                "type": "object"
+            },
             "domain.UpdateProfileRequest": {
                 "properties": {
                     "bio": {
@@ -663,6 +720,38 @@
                         "maxLength": 32,
                         "minLength": 2,
                         "type": "string"
+                    }
+                },
+                "type": "object"
+            },
+            "domain.UserPostsResponse": {
+                "properties": {
+                    "cursor": {
+                        "example": 0,
+                        "type": "integer"
+                    },
+                    "has_more": {
+                        "example": true,
+                        "type": "boolean"
+                    },
+                    "limit": {
+                        "example": 10,
+                        "type": "integer"
+                    },
+                    "next_cursor": {
+                        "example": 10,
+                        "type": "integer"
+                    },
+                    "posts": {
+                        "items": {
+                            "$ref": "#/components/schemas/domain.Post"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "profile_id": {
+                        "example": 1,
+                        "type": "integer"
                     }
                 },
                 "type": "object"
@@ -1212,6 +1301,48 @@
                 ]
             }
         },
+        "/api/feed": {
+            "get": {
+                "description": "Возвращает посты в обратном хронологическом порядке",
+                "parameters": [
+                    {
+                        "description": "Количество пропускаемых постов",
+                        "in": "query",
+                        "name": "cursor",
+                        "schema": {
+                            "default": 0,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Размер страницы (максимум 10)",
+                        "in": "query",
+                        "name": "limit",
+                        "schema": {
+                            "default": 10,
+                            "maximum": 10,
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.FeedResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    }
+                },
+                "summary": "Лента публикаций",
+                "tags": [
+                    "feed"
+                ]
+            }
+        },
         "/api/friends/accept": {
             "patch": {
                 "description": "Принимает запрос на связь указанному пользователю",
@@ -1305,12 +1436,289 @@
                 ]
             }
         },
-        "/api/posts": {
-            "get": {
-                "description": "Возвращает посты в обратном хронологическом порядке",
+        "/api/posts/create": {
+            "post": {
+                "description": "Создаёт публикацию текущего пользователя. Автор определяется по сессии",
                 "parameters": [
                     {
-                        "description": "Количество пропускаемых постов",
+                        "description": "CSRF-токен",
+                        "in": "header",
+                        "name": "X-CSRF-Token",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/domain.CreatePostRequest",
+                                "summary": "request",
+                                "description": "Данные публикации"
+                            }
+                        }
+                    },
+                    "description": "Данные публикации",
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.Post"
+                                }
+                            }
+                        },
+                        "description": "Created"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Forbidden"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    }
+                },
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "summary": "Создать публикацию",
+                "tags": [
+                    "posts"
+                ]
+            }
+        },
+        "/api/posts/delete": {
+            "delete": {
+                "description": "Помечает публикацию текущего пользователя удалённой",
+                "parameters": [
+                    {
+                        "description": "CSRF-токен",
+                        "in": "header",
+                        "name": "X-CSRF-Token",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "ID публикации",
+                        "in": "query",
+                        "name": "request",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "Публикация удалена"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Forbidden"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    }
+                },
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "summary": "Удалить свою публикацию",
+                "tags": [
+                    "posts"
+                ]
+            }
+        },
+        "/api/posts/update": {
+            "patch": {
+                "description": "Изменяет публикации текущего пользователя",
+                "parameters": [
+                    {
+                        "description": "CSRF-токен",
+                        "in": "header",
+                        "name": "X-CSRF-Token",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/domain.UpdatePostRequest",
+                                "summary": "request",
+                                "description": "Новое содержание публикации"
+                            }
+                        }
+                    },
+                    "description": "Новое содержание публикации",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.Post"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Forbidden"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    }
+                },
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "summary": "Редактировать свою публикацию",
+                "tags": [
+                    "posts"
+                ]
+            }
+        },
+        "/api/posts/user": {
+            "get": {
+                "description": "Возвращает публикации указанного пользователя в обратном хронологическом порядке",
+                "parameters": [
+                    {
+                        "description": "ID пользователя",
+                        "in": "query",
+                        "name": "profile_id",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Количество пропускаемых публикаций",
                         "in": "query",
                         "name": "cursor",
                         "schema": {
@@ -1334,14 +1742,34 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/domain.FeedResponse"
+                                    "$ref": "#/components/schemas/domain.UserPostsResponse"
                                 }
                             }
                         },
                         "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
                     }
                 },
-                "summary": "Лента публикаций",
+                "summary": "Получить публикации пользователя",
                 "tags": [
                     "posts"
                 ]

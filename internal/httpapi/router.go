@@ -13,6 +13,7 @@ import (
 	"kvmm/internal/handler/chat"
 	"kvmm/internal/handler/feed"
 	"kvmm/internal/handler/helpers"
+	"kvmm/internal/handler/posts"
 	"kvmm/internal/handler/profile"
 	"kvmm/internal/handler/relationship"
 	"kvmm/internal/store"
@@ -25,6 +26,7 @@ func NewRouter() http.Handler {
 	authHandler := auth.NewAuthHandler()
 	chatHandler := chat.NewChatHandler()
 	feedHandler := feed.NewFeedHandler()
+	postHandler := posts.NewPostHandler()
 	profileHandler := profile.NewProfileHandler()
 	relationshipHandler := relationship.NewRelationshipHandler()
 
@@ -33,7 +35,12 @@ func NewRouter() http.Handler {
 	mux.HandleFunc("/api/auth/me", authHandler.Me)
 	mux.HandleFunc("/api/auth/logout", authHandler.Logout)
 
-	mux.HandleFunc("/api/posts", feedHandler.List)
+	mux.HandleFunc("/api/feed", feedHandler.List)
+
+	mux.HandleFunc("/api/posts/create", postHandler.Create)
+	mux.HandleFunc("/api/posts/delete", postHandler.Delete)
+	mux.HandleFunc("/api/posts/update", postHandler.Update)
+	mux.HandleFunc("/api/posts/user", postHandler.UserPosts)
 
 	mux.HandleFunc("/api/media/", serveMedia)
 

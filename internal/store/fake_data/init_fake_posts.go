@@ -27,7 +27,6 @@ func MakeFakePost(i int) domain.Post {
 	id := int64(i)
 
 	avatar := "/api/media/avatar1.png"
-	gender := domain.GenderFemale
 	profileName := gofakeit.FirstName()
 	surname := gofakeit.LastName()
 
@@ -39,7 +38,6 @@ func MakeFakePost(i int) domain.Post {
 
 	if i%2 == 0 {
 		avatar = "/api/media/avatar2.png"
-		gender = domain.GenderMale
 
 		mediaURLs = []string{
 			"/api/media/post_media2.1.png",
@@ -58,20 +56,16 @@ func MakeFakePost(i int) domain.Post {
 		gofakeit.Sentence(5),
 	)
 
-	profile := domain.Profile{
-		ID:          id,
-		Nickname:    gofakeit.Username(),
-		ProfileName: &profileName,
-		Surname:     &surname,
-		Gender:      &gender,
-		AvatarURLs:  []string{avatar},
-		CreatedAt:   createdAt,
+	profile := domain.Author{
+		AvatarURL: avatar,
+		Name:      surname + " " + profileName,
+		Type:      domain.AuthorProfile,
 	}
 
 	return domain.Post{
 		ID:              id,
 		PostText:        &postText,
-		AuthorProfileID: &profile.ID,
+		AuthorProfileID: &id,
 		Author:          profile,
 		CreatedAt:       createdAt,
 		MediaCount:      int64(len(mediaURLs)),

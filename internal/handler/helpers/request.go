@@ -7,9 +7,9 @@ import (
 )
 
 // Pagination читает cursor и размер страницы из query-параметров
-func Pagination(r *http.Request) (int, int, error) {
+func Pagination(r *http.Request, max_limit int) (int, int, error) {
 	cursor := 0
-	limit := 10
+	limit := max_limit
 	query := r.URL.Query()
 	if value := query.Get("cursor"); value != "" {
 		parsed, err := strconv.Atoi(value)
@@ -21,7 +21,7 @@ func Pagination(r *http.Request) (int, int, error) {
 	if value := query.Get("limit"); value != "" {
 		parsed, err := strconv.Atoi(value)
 		if err != nil || parsed < 1 || parsed > 10 {
-			return 0, 0, fmt.Errorf("limit must be between 1 and 10")
+			return 0, 0, fmt.Errorf("limit must be between 1 and %d", max_limit)
 		}
 		limit = parsed
 	}
