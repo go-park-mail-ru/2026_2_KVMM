@@ -15,7 +15,7 @@ import (
 // @Tags chats
 // @Security SessionCookie
 // @Produce json
-// @Param offset query int false "Количество пропускаемых чатов" default(0)
+// @Param cursor query int false "Указатель на начальный элемент для чатов" default(0)
 // @Param limit query int false "Размер страницы (максимум 10)" default(10) maximum(10)
 // @Success 200 {object} domain.ChatsResponse
 // @Failure 400 {object} domain.ErrorResponse
@@ -31,5 +31,11 @@ func (h *ChatHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: получить список чатов с offset/limit
+	// cursor, limit, err := helpers.Pagination(r, 10)
+	// if err != nil {
+	// 	helpers.WriteError(w, http.StatusBadRequest, "invalid_pagination", err.Error())
+	// 	return
+	// }
+
+	// TODO: получить список чатов с cursor/limit
 }

@@ -102,6 +102,10 @@ const docTemplate = `{
                         "type": "array",
                         "uniqueItems": false
                     },
+                    "cursor": {
+                        "example": 0,
+                        "type": "integer"
+                    },
                     "has_more": {
                         "example": true,
                         "type": "boolean"
@@ -110,12 +114,8 @@ const docTemplate = `{
                         "example": 10,
                         "type": "integer"
                     },
-                    "next_offset": {
+                    "next_cursor": {
                         "example": 10,
-                        "type": "integer"
-                    },
-                    "offset": {
-                        "example": 0,
                         "type": "integer"
                     }
                 },
@@ -292,6 +292,10 @@ const docTemplate = `{
                         "example": 1,
                         "type": "integer"
                     },
+                    "cursor": {
+                        "example": 0,
+                        "type": "integer"
+                    },
                     "has_more": {
                         "example": true,
                         "type": "boolean"
@@ -307,12 +311,8 @@ const docTemplate = `{
                         "type": "array",
                         "uniqueItems": false
                     },
-                    "next_offset": {
+                    "next_cursor": {
                         "example": 10,
-                        "type": "integer"
-                    },
-                    "offset": {
-                        "example": 0,
                         "type": "integer"
                     },
                     "parents": {
@@ -553,6 +553,10 @@ const docTemplate = `{
             },
             "domain.RelationshipSuggestionsResponse": {
                 "properties": {
+                    "cursor": {
+                        "example": 0,
+                        "type": "integer"
+                    },
                     "has_more": {
                         "example": true,
                         "type": "boolean"
@@ -561,12 +565,8 @@ const docTemplate = `{
                         "example": 10,
                         "type": "integer"
                     },
-                    "next_offset": {
+                    "next_cursor": {
                         "example": 10,
-                        "type": "integer"
-                    },
-                    "offset": {
-                        "example": 0,
                         "type": "integer"
                     },
                     "profiles": {
@@ -596,6 +596,10 @@ const docTemplate = `{
             },
             "domain.RelationshipsResponse": {
                 "properties": {
+                    "cursor": {
+                        "example": 0,
+                        "type": "integer"
+                    },
                     "has_more": {
                         "example": true,
                         "type": "boolean"
@@ -604,12 +608,8 @@ const docTemplate = `{
                         "example": 10,
                         "type": "integer"
                     },
-                    "next_offset": {
+                    "next_cursor": {
                         "example": 10,
-                        "type": "integer"
-                    },
-                    "offset": {
-                        "example": 0,
                         "type": "integer"
                     },
                     "relationships": {
@@ -1070,9 +1070,9 @@ const docTemplate = `{
                 "description": "Возвращает чаты, в которых состоит текущий пользователь",
                 "parameters": [
                     {
-                        "description": "Количество пропускаемых чатов",
+                        "description": "Указатель на начальный элемент для чатов",
                         "in": "query",
-                        "name": "offset",
+                        "name": "cursor",
                         "schema": {
                             "default": 0,
                             "type": "integer"
@@ -1146,9 +1146,9 @@ const docTemplate = `{
                         }
                     },
                     {
-                        "description": "Количество пропускаемых сообщений",
+                        "description": "Указатель на начальный элемент для сообщений",
                         "in": "query",
-                        "name": "offset",
+                        "name": "cursor",
                         "schema": {
                             "default": 0,
                             "type": "integer"
@@ -1313,7 +1313,7 @@ const docTemplate = `{
                 "description": "Возвращает посты в обратном хронологическом порядке",
                 "parameters": [
                     {
-                        "description": "Количество пропускаемых постов",
+                        "description": "Указатель на начальный элемент для постов",
                         "in": "query",
                         "name": "cursor",
                         "schema": {
@@ -1725,7 +1725,7 @@ const docTemplate = `{
                         }
                     },
                     {
-                        "description": "Количество пропускаемых публикаций",
+                        "description": "Указатель на начальный элемент для публикаций",
                         "in": "query",
                         "name": "cursor",
                         "schema": {
@@ -2086,9 +2086,9 @@ const docTemplate = `{
                         }
                     },
                     {
-                        "description": "Количество пропускаемых записей",
+                        "description": "Указатель на начальный элемент для записей",
                         "in": "query",
-                        "name": "offset",
+                        "name": "cursor",
                         "schema": {
                             "default": 0,
                             "type": "integer"
@@ -2171,9 +2171,9 @@ const docTemplate = `{
                         }
                     },
                     {
-                        "description": "Количество пропускаемых записей",
+                        "description": "Указатель на начальный элемент для записей",
                         "in": "query",
-                        "name": "offset",
+                        "name": "cursor",
                         "schema": {
                             "default": 0,
                             "type": "integer"
@@ -2238,9 +2238,9 @@ const docTemplate = `{
                 "description": "Возвращает список профилей, которым текущий пользователь может имень связь.",
                 "parameters": [
                     {
-                        "description": "Количество пропускаемых записей",
+                        "description": "Указатель на начальный элемент для записей",
                         "in": "query",
-                        "name": "offset",
+                        "name": "cursor",
                         "schema": {
                             "default": 0,
                             "type": "integer"

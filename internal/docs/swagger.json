@@ -95,6 +95,10 @@
                         "type": "array",
                         "uniqueItems": false
                     },
+                    "cursor": {
+                        "example": 0,
+                        "type": "integer"
+                    },
                     "has_more": {
                         "example": true,
                         "type": "boolean"
@@ -103,12 +107,8 @@
                         "example": 10,
                         "type": "integer"
                     },
-                    "next_offset": {
+                    "next_cursor": {
                         "example": 10,
-                        "type": "integer"
-                    },
-                    "offset": {
-                        "example": 0,
                         "type": "integer"
                     }
                 },
@@ -285,6 +285,10 @@
                         "example": 1,
                         "type": "integer"
                     },
+                    "cursor": {
+                        "example": 0,
+                        "type": "integer"
+                    },
                     "has_more": {
                         "example": true,
                         "type": "boolean"
@@ -300,12 +304,8 @@
                         "type": "array",
                         "uniqueItems": false
                     },
-                    "next_offset": {
+                    "next_cursor": {
                         "example": 10,
-                        "type": "integer"
-                    },
-                    "offset": {
-                        "example": 0,
                         "type": "integer"
                     },
                     "parents": {
@@ -546,6 +546,10 @@
             },
             "domain.RelationshipSuggestionsResponse": {
                 "properties": {
+                    "cursor": {
+                        "example": 0,
+                        "type": "integer"
+                    },
                     "has_more": {
                         "example": true,
                         "type": "boolean"
@@ -554,12 +558,8 @@
                         "example": 10,
                         "type": "integer"
                     },
-                    "next_offset": {
+                    "next_cursor": {
                         "example": 10,
-                        "type": "integer"
-                    },
-                    "offset": {
-                        "example": 0,
                         "type": "integer"
                     },
                     "profiles": {
@@ -589,6 +589,10 @@
             },
             "domain.RelationshipsResponse": {
                 "properties": {
+                    "cursor": {
+                        "example": 0,
+                        "type": "integer"
+                    },
                     "has_more": {
                         "example": true,
                         "type": "boolean"
@@ -597,12 +601,8 @@
                         "example": 10,
                         "type": "integer"
                     },
-                    "next_offset": {
+                    "next_cursor": {
                         "example": 10,
-                        "type": "integer"
-                    },
-                    "offset": {
-                        "example": 0,
                         "type": "integer"
                     },
                     "relationships": {
@@ -1063,9 +1063,9 @@
                 "description": "Возвращает чаты, в которых состоит текущий пользователь",
                 "parameters": [
                     {
-                        "description": "Количество пропускаемых чатов",
+                        "description": "Указатель на начальный элемент для чатов",
                         "in": "query",
-                        "name": "offset",
+                        "name": "cursor",
                         "schema": {
                             "default": 0,
                             "type": "integer"
@@ -1139,9 +1139,9 @@
                         }
                     },
                     {
-                        "description": "Количество пропускаемых сообщений",
+                        "description": "Указатель на начальный элемент для сообщений",
                         "in": "query",
-                        "name": "offset",
+                        "name": "cursor",
                         "schema": {
                             "default": 0,
                             "type": "integer"
@@ -1306,7 +1306,7 @@
                 "description": "Возвращает посты в обратном хронологическом порядке",
                 "parameters": [
                     {
-                        "description": "Количество пропускаемых постов",
+                        "description": "Указатель на начальный элемент для постов",
                         "in": "query",
                         "name": "cursor",
                         "schema": {
@@ -1718,7 +1718,7 @@
                         }
                     },
                     {
-                        "description": "Количество пропускаемых публикаций",
+                        "description": "Указатель на начальный элемент для публикаций",
                         "in": "query",
                         "name": "cursor",
                         "schema": {
@@ -2079,9 +2079,9 @@
                         }
                     },
                     {
-                        "description": "Количество пропускаемых записей",
+                        "description": "Указатель на начальный элемент для записей",
                         "in": "query",
-                        "name": "offset",
+                        "name": "cursor",
                         "schema": {
                             "default": 0,
                             "type": "integer"
@@ -2164,9 +2164,9 @@
                         }
                     },
                     {
-                        "description": "Количество пропускаемых записей",
+                        "description": "Указатель на начальный элемент для записей",
                         "in": "query",
-                        "name": "offset",
+                        "name": "cursor",
                         "schema": {
                             "default": 0,
                             "type": "integer"
@@ -2231,9 +2231,9 @@
                 "description": "Возвращает список профилей, которым текущий пользователь может имень связь.",
                 "parameters": [
                     {
-                        "description": "Количество пропускаемых записей",
+                        "description": "Указатель на начальный элемент для записей",
                         "in": "query",
-                        "name": "offset",
+                        "name": "cursor",
                         "schema": {
                             "default": 0,
                             "type": "integer"

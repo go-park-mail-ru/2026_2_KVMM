@@ -14,7 +14,7 @@ import (
 // @Tags posts
 // @Produce json
 // @Param profile_id query int true "ID пользователя"
-// @Param cursor query int false "Количество пропускаемых публикаций" default(0)
+// @Param cursor query int false "Указатель на начальный элемент для публикаций" default(0)
 // @Param limit query int false "Размер страницы (максимум 10)" default(10) maximum(10)
 // @Success 200 {object} domain.UserPostsResponse
 // @Failure 400 {object} domain.ErrorResponse

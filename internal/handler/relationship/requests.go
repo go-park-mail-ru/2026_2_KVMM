@@ -16,7 +16,7 @@ import (
 // @Security SessionCookie
 // @Produce json
 // @Param relationships_type query string false "Фильтр по виду связи" example(friendship)
-// @Param offset query int false "Количество пропускаемых записей" default(0)
+// @Param cursor query int false "Указатель на начальный элемент для записей" default(0)
 // @Param limit query int false "Размер страницы (максимум 10)" default(10) maximum(10)
 // @Success 200 {object} domain.RelationshipsResponse
 // @Failure 400 {object} domain.ErrorResponse
@@ -35,7 +35,12 @@ func (h *FriendsHandler) Requests(w http.ResponseWriter, r *http.Request) {
 		helpers.WriteError(w, http.StatusForbidden, "csrf_failed", "valid X-CSRF-Token header is required")
 		return
 	}
-	// cursor, limit, err := helpers.Pagination(r)
+
+	// cursor, limit, err := helpers.Pagination(r, 10)
+	// if err != nil {
+	// 	helpers.WriteError(w, http.StatusBadRequest, "invalid_pagination", err.Error())
+	// 	return
+	// }
 
 	// TODO
 }

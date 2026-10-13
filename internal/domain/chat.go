@@ -39,10 +39,10 @@ type CreateChatRequest struct {
 // ChatsResponse содержит страницу списка чатов
 type ChatsResponse struct {
 	Chats      []Chat `json:"chats"`
-	Offset     int    `json:"offset" example:"0"`
+	Cursor     int    `json:"cursor" example:"0"`
 	Limit      int    `json:"limit" example:"10"`
 	HasMore    bool   `json:"has_more" example:"true"`
-	NextOffset int    `json:"next_offset,omitempty" example:"10"`
+	NextCursor int    `json:"next_cursor,omitempty" example:"10"`
 }
 
 // MessagesResponse содержит страницу сообщений чата
@@ -53,8 +53,8 @@ type MessagesResponse struct {
 	// (RepostFrom, ReplyFrom) то они будут в этом масиве
 	Parents    []Message `json:"parents"`
 	ChatID     int64     `json:"chat_id" example:"1"`
-	Offset     int       `json:"offset" example:"0"`
+	Cursor     int       `json:"cursor" example:"0"`
 	Limit      int       `json:"limit" example:"10"`
 	HasMore    bool      `json:"has_more" example:"true"`
-	NextOffset int       `json:"next_offset,omitempty" example:"10"`
+	NextCursor int       `json:"next_cursor,omitempty" example:"10"`
 }

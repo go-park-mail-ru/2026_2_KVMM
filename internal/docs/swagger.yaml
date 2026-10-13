@@ -68,17 +68,17 @@ components:
             $ref: '#/components/schemas/domain.Chat'
           type: array
           uniqueItems: false
+        cursor:
+          example: 0
+          type: integer
         has_more:
           example: true
           type: boolean
         limit:
           example: 10
           type: integer
-        next_offset:
+        next_cursor:
           example: 10
-          type: integer
-        offset:
-          example: 0
           type: integer
       type: object
     domain.CreateChatRequest:
@@ -204,6 +204,9 @@ components:
         chat_id:
           example: 1
           type: integer
+        cursor:
+          example: 0
+          type: integer
         has_more:
           example: true
           type: boolean
@@ -215,11 +218,8 @@ components:
             $ref: '#/components/schemas/domain.Message'
           type: array
           uniqueItems: false
-        next_offset:
+        next_cursor:
           example: 10
-          type: integer
-        offset:
-          example: 0
           type: integer
         parents:
           description: |-
@@ -396,17 +396,17 @@ components:
       type: object
     domain.RelationshipSuggestionsResponse:
       properties:
+        cursor:
+          example: 0
+          type: integer
         has_more:
           example: true
           type: boolean
         limit:
           example: 10
           type: integer
-        next_offset:
+        next_cursor:
           example: 10
-          type: integer
-        offset:
-          example: 0
           type: integer
         profiles:
           items:
@@ -426,17 +426,17 @@ components:
       type: object
     domain.RelationshipsResponse:
       properties:
+        cursor:
+          example: 0
+          type: integer
         has_more:
           example: true
           type: boolean
         limit:
           example: 10
           type: integer
-        next_offset:
+        next_cursor:
           example: 10
-          type: integer
-        offset:
-          example: 0
           type: integer
         relationships:
           items:
@@ -741,9 +741,9 @@ paths:
     get:
       description: Возвращает чаты, в которых состоит текущий пользователь
       parameters:
-      - description: Количество пропускаемых чатов
+      - description: Указатель на начальный элемент для чатов
         in: query
-        name: offset
+        name: cursor
         schema:
           default: 0
           type: integer
@@ -788,9 +788,9 @@ paths:
         required: true
         schema:
           type: integer
-      - description: Количество пропускаемых сообщений
+      - description: Указатель на начальный элемент для сообщений
         in: query
-        name: offset
+        name: cursor
         schema:
           default: 0
           type: integer
@@ -891,7 +891,7 @@ paths:
     get:
       description: Возвращает посты в обратном хронологическом порядке
       parameters:
-      - description: Количество пропускаемых постов
+      - description: Указатель на начальный элемент для постов
         in: query
         name: cursor
         schema:
@@ -1146,7 +1146,7 @@ paths:
         required: true
         schema:
           type: integer
-      - description: Количество пропускаемых публикаций
+      - description: Указатель на начальный элемент для публикаций
         in: query
         name: cursor
         schema:
@@ -1370,9 +1370,9 @@ paths:
         name: relationships_type
         schema:
           type: string
-      - description: Количество пропускаемых записей
+      - description: Указатель на начальный элемент для записей
         in: query
-        name: offset
+        name: cursor
         schema:
           default: 0
           type: integer
@@ -1422,9 +1422,9 @@ paths:
         name: relationships_type
         schema:
           type: string
-      - description: Количество пропускаемых записей
+      - description: Указатель на начальный элемент для записей
         in: query
-        name: offset
+        name: cursor
         schema:
           default: 0
           type: integer
@@ -1464,9 +1464,9 @@ paths:
       description: Возвращает список профилей, которым текущий пользователь может
         имень связь.
       parameters:
-      - description: Количество пропускаемых записей
+      - description: Указатель на начальный элемент для записей
         in: query
-        name: offset
+        name: cursor
         schema:
           default: 0
           type: integer

@@ -13,7 +13,7 @@ import (
 // @Summary Лента публикаций
 // @Description Возвращает посты в обратном хронологическом порядке
 // @Tags feed
-// @Param cursor query int false "Количество пропускаемых постов" default(0)
+// @Param cursor query int false "Указатель на начальный элемент для постов" default(0)
 // @Param limit query int false "Размер страницы (максимум 10)" default(10) maximum(10)
 // @Produce json
 // @Success 200 {object} domain.FeedResponse
