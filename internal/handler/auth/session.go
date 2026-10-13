@@ -1,9 +1,10 @@
-package handler
+package auth
 
 import (
 	"net/http"
 
 	"kvmm/internal/domain"
+	"kvmm/internal/handler/helpers"
 	"kvmm/internal/store"
 )
 
@@ -18,21 +19,21 @@ import (
 // @Failure 401 {object} domain.ErrorResponse
 // @Router /api/auth/me [get]
 func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
-	if !MethodAllowed(w, r, http.MethodGet) {
+	if !helpers.MethodAllowed(w, r, http.MethodGet) {
 		return
 	}
-	session := sessionCookie(r)
+	session := SessionCookie(r)
 	profile, err := store.ProfileBySession(session)
 	if err != nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "authentication required")
+		helpers.WriteError(w, http.StatusUnauthorized, "unauthorized", "authentication required")
 		return
 	}
 	csrfToken, err := store.CSRFTokenBySession(session)
 	if err != nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "authentication required")
+		helpers.WriteError(w, http.StatusUnauthorized, "unauthorized", "authentication required")
 		return
 	}
-	writeJSON(w, http.StatusOK, domain.MeResponse{Profile: profile, CSRFToken: csrfToken})
+	helpers.WriteJSON(w, http.StatusOK, domain.MeResponse{Profile: profile, CSRFToken: csrfToken})
 }
 
 // Logout завершает текущую сессию после проверки CSRF-токена.
@@ -46,16 +47,16 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 // @Failure 403 {object} domain.ErrorResponse
 // @Router /api/auth/logout [post]
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
-	if !MethodAllowed(w, r, http.MethodPost) {
+	if !helpers.MethodAllowed(w, r, http.MethodPost) {
 		return
 	}
-	session := sessionCookie(r)
+	session := SessionCookie(r)
 	if _, err := store.ProfileBySession(session); err != nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "authentication required")
+		helpers.WriteError(w, http.StatusUnauthorized, "unauthorized", "authentication required")
 		return
 	}
 	if err := store.ValidateCSRF(session, r.Header.Get("X-CSRF-Token")); err != nil {
-		writeError(w, http.StatusForbidden, "csrf_failed", "valid X-CSRF-Token header is required")
+		helpers.WriteError(w, http.StatusForbidden, "csrf_failed", "valid X-CSRF-Token header is required")
 		return
 	}
 	store.Logout(session)
@@ -63,8 +64,8 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// sessionCookie возвращает значение cookie сессии из запроса.
-func sessionCookie(r *http.Request) string {
+// SessionCookie возвращает значение cookie сессии из запроса.
+func SessionCookie(r *http.Request) string {
 	cookie, err := r.Cookie(sessionCookieName)
 	if err != nil {
 		return ""

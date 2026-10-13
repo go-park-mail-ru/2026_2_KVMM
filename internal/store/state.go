@@ -17,12 +17,14 @@ var ErrNotFound = errors.New("not found")
 var ErrConflict = errors.New("conflict")
 var ErrInvalidCredentials = errors.New("invalid credentials")
 var ErrInvalidCSRF = errors.New("invalid csrf token")
+var ErrInvalidEmailCode = errors.New("invalid email code")
 
 // in-merory хранилище
 var mu sync.RWMutex
 var nextID int64 = 1
 var users = map[int64]User{}
 var sessions = map[string]Session{}
+var emailCodes = map[string]EmailCode{}
 var posts = fake_data.MakePosts()
 
 // Reset очищает in-memory данные (используется для тестов)
@@ -32,6 +34,7 @@ func Reset() {
 	nextID = 1
 	users = map[int64]User{}
 	sessions = map[string]Session{}
+	emailCodes = map[string]EmailCode{}
 }
 
 // User хранит профиль и хеш пароля пользователя
@@ -44,6 +47,12 @@ type User struct {
 type Session struct {
 	UserID    int64
 	CSRFToken string
+}
+
+// EmailCode хранит временный код подтверждения email
+type EmailCode struct {
+	Code      string
+	ExpiresAt time.Time
 }
 
 // startPostGenerator добавляет новый пост каждую минуту

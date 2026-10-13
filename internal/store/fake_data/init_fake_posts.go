@@ -28,6 +28,8 @@ func MakeFakePost(i int) domain.Post {
 
 	avatar := "/api/media/avatar1.png"
 	gender := domain.GenderFemale
+	profileName := gofakeit.FirstName()
+	surname := gofakeit.LastName()
 
 	mediaURLs := []string{
 		"/api/media/post_media1.jpg",
@@ -59,10 +61,9 @@ func MakeFakePost(i int) domain.Post {
 	profile := domain.Profile{
 		ID:          id,
 		Nickname:    gofakeit.Username(),
-		ProfileName: gofakeit.FirstName(),
-		Surname:     gofakeit.LastName(),
-		Gender:      gender,
-		ImageURL:    avatar,
+		ProfileName: &profileName,
+		Surname:     &surname,
+		Gender:      &gender,
 		AvatarURLs:  []string{avatar},
 		CreatedAt:   createdAt,
 	}

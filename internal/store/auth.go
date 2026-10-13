@@ -4,8 +4,18 @@ import (
 	"crypto/rand"
 	"crypto/subtle"
 	"encoding/hex"
+	"fmt"
+	"math/big"
+	"strings"
+	"time"
 
 	"kvmm/internal/domain"
+)
+
+const (
+	EmailCodeRegister = "register"
+	EmailCodeLogin    = "login"
+	emailCodeTTL      = 2 * time.Minute
 )
 
 // ValidateCSRF проверяет CSRF-токен сессии
@@ -57,4 +67,47 @@ func Logout(token string) {
 	mu.Lock()
 	defer mu.Unlock()
 	delete(sessions, token)
+}
+
+// CreateEmailCode создаёт и сохраняет шестизначный код подтверждения email
+func CreateEmailCode(email, purpose string) (string, error) {
+	value, err := rand.Int(rand.Reader, big.NewInt(900000))
+	if err != nil {
+		return "", err
+	}
+	code := fmt.Sprintf("%06d", value.Int64()+100000)
+	key := emailCodeKey(email, purpose)
+
+	mu.Lock()
+	emailCodes[key] = EmailCode{Code: code, ExpiresAt: time.Now().UTC().Add(emailCodeTTL)}
+	mu.Unlock()
+
+	return code, nil
+}
+
+// CancelEmailCode удаляет код, если письмо с ним не удалось отправить
+func CancelEmailCode(email, purpose string) {
+	mu.Lock()
+	defer mu.Unlock()
+	delete(emailCodes, emailCodeKey(email, purpose))
+}
+
+// ConsumeEmailCode проверяет код и удаляет его после успешного использования.
+func ConsumeEmailCode(email, purpose, code string) error {
+	key := emailCodeKey(email, purpose)
+
+	mu.Lock()
+	defer mu.Unlock()
+	stored, ok := emailCodes[key]
+	if !ok || time.Now().UTC().After(stored.ExpiresAt) ||
+		subtle.ConstantTimeCompare([]byte(stored.Code), []byte(strings.TrimSpace(code))) != 1 {
+		return ErrInvalidEmailCode
+	}
+	delete(emailCodes, key)
+	return nil
+}
+
+// emailCodeKey создаёт ключ для отдельного кода регистрации или входа.
+func emailCodeKey(email, purpose string) string {
+	return purpose + ":" + strings.ToLower(strings.TrimSpace(email))
 }

@@ -31,6 +31,31 @@ func Login(req domain.LoginRequest) (domain.Profile, string, string, error) {
 	return found.Profile, sessionToken, csrfToken, nil
 }
 
+// LoginByEmail выполняет авторизацию одноразовым кодом из email
+func LoginByEmail(req domain.LoginByEmailRequest) (domain.Profile, string, string, error) {
+	if err := ConsumeEmailCode(req.Email, EmailCodeLogin, req.Code); err != nil {
+		return domain.Profile{}, "", "", ErrInvalidCredentials
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+	var found User
+	for _, candidate := range users {
+		if equalString(candidate.Profile.Email, strings.TrimSpace(req.Email)) {
+			found = candidate
+			break
+		}
+	}
+	if found.Profile.ID == 0 {
+		return domain.Profile{}, "", "", ErrInvalidCredentials
+	}
+
+	sessionToken := randomToken()
+	csrfToken := randomToken()
+	sessions[sessionToken] = Session{UserID: found.Profile.ID, CSRFToken: csrfToken}
+	return found.Profile, sessionToken, csrfToken, nil
+}
+
 // equalString сравнивает строку value с target без учёта регистра
 func equalString(value *string, target string) bool {
 	return value != nil && strings.EqualFold(*value, target)

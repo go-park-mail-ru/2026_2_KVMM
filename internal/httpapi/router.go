@@ -9,19 +9,28 @@ import (
 	"strings"
 	"time"
 
-	"kvmm/internal/handler"
+	"kvmm/internal/handler/auth"
+	"kvmm/internal/handler/feed"
+	"kvmm/internal/handler/helpers"
+	"kvmm/internal/handler/profile"
 	"kvmm/internal/store"
 )
 
 // NewRouter создаёт маршрутизатор API на основе стандартного http.ServeMux
 func NewRouter() http.Handler {
 	mux := http.NewServeMux()
-	authHandler := handler.NewAuthHandler()
-	feedHandler := handler.NewFeedHandler()
+	authHandler := auth.NewAuthHandler()
+	feedHandler := feed.NewFeedHandler()
+	profileHandler := profile.NewProfileHandler()
 	mux.HandleFunc("/api/auth/register", authHandler.Register)
+	mux.HandleFunc("/api/auth/register/email/send/code", authHandler.RequestRegisterCode)
+	mux.HandleFunc("/api/auth/register/email/code", authHandler.RegisterByEmail)
 	mux.HandleFunc("/api/auth/login", authHandler.Login)
+	mux.HandleFunc("/api/auth/login/email/send/code", authHandler.RequestLoginCode)
+	mux.HandleFunc("/api/auth/login/email/code", authHandler.LoginByEmail)
 	mux.HandleFunc("/api/auth/me", authHandler.Me)
 	mux.HandleFunc("/api/auth/logout", authHandler.Logout)
+	mux.HandleFunc("/api/profile/update", profileHandler.Update)
 	mux.HandleFunc("/api/posts", feedHandler.List)
 	mux.HandleFunc("/api/media/", serveMedia)
 	mux.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
@@ -34,7 +43,7 @@ func NewRouter() http.Handler {
 
 // serveMedia отдаёт встроенный файл публикации с Сontent-Type
 func serveMedia(w http.ResponseWriter, r *http.Request) {
-	if !handler.MethodAllowed(w, r, http.MethodGet) {
+	if !helpers.MethodAllowed(w, r, http.MethodGet) {
 		return
 	}
 	name := strings.TrimPrefix(r.URL.Path, "/api/media/")
@@ -67,7 +76,7 @@ func cors(next http.Handler) http.Handler {
 			w.Header().Set("Vary", "Origin")
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-CSRF-Token")
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS")
 		}
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)

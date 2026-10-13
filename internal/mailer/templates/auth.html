@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nexly — Код авторизации</title>
+
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background-color: #ffffff;
+    }
+
+    table {
+      border-collapse: collapse;
+    }
+
+    .email-wrapper {
+      width: 100%;
+    }
+
+    .email-container {
+      width: 478px;
+      max-width: 100%;
+      height: 588px;
+      border: 1px solid #82888F;
+      border-radius: 16px;
+      background: #ffffff;
+      border-collapse: separate;
+      border-spacing: 0;
+      overflow: hidden;
+    }
+
+    .email-content {
+      padding: 24px 24px 15px;
+    }
+
+    .logo {
+      display: block;
+      width: 82px;
+      height: 82px;
+    }
+
+    .brand-name {
+      margin: 0;
+      color: #000000;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 58px;
+      line-height: 1.05;
+      font-weight: 700;
+      letter-spacing: -2px;
+    }
+
+    .email-title {
+      margin: 30px 0 14px;
+      color: #000000;
+      font-size: 16px;
+      line-height: 20px;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .email-description {
+      margin: 0 0 24px;
+      color: #82888F;
+      font-size: 16px;
+      line-height: 24px;
+      text-align: center;
+    }
+
+    .code-container {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      background: #EEFBF9;
+      border: 1px solid #D1F3ED;
+      border-radius: 12px;
+    }
+
+    .code {
+      height: 79px;
+      padding: 0 8px;
+      color: #07877F;
+      font-size: 32px;
+      line-height: 40px;
+      font-weight: 700;
+      letter-spacing: 8px;
+      overflow-wrap: anywhere;
+    }
+
+    .code-expiration {
+      margin: 24px 0 0;
+      color: #82888F;
+      font-size: 16px;
+      line-height: 24px;
+      text-align: center;
+    }
+
+    .email-footer {
+      width: 100%;
+      margin-top: 24px;
+      border-collapse: collapse;
+      border-top: 1px solid #EDF0F4;
+    }
+
+    .email-footer-text {
+      padding: 20px 0 0;
+      color: #82888F;
+      font-size: 14px;
+      line-height: 20px;
+      text-align: center;
+    }
+
+    .brand-slogan {
+      margin: 24px 0 0;
+      color: #82888F;
+      font-size: 14px;
+      line-height: 20px;
+      text-align: center;
+    }
+
+    @media screen and (max-width: 500px) {
+      .email-container {
+        width: 100% !important;
+        height: auto !important;
+      }
+
+      .email-content {
+        padding: 24px 16px 15px !important;
+      }
+
+      .brand-name {
+        font-size: 48px !important;
+      }
+
+      .code {
+        font-size: 28px !important;
+        letter-spacing: 5px !important;
+      }
+    }
+  </style>
+</head>
+
+<body style="margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;">
+  <table role="presentation" class="email-wrapper" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse;">
+    <tr>
+      <td align="center" style="padding:24px 10px;">
+        <table role="presentation" class="email-container" width="478" cellspacing="0" cellpadding="0" border="0"
+          style="width:478px;max-width:100%;height:588px;border:1px solid #82888F;border-radius:16px;background:#ffffff;border-collapse:separate;border-spacing:0;overflow:hidden;">
+          <tr>
+            <td class="email-content" align="center" valign="top" style="padding:24px 24px 15px;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse;">
+                <tr>
+                  <td align="center" style="padding:0;">
+                    <svg class="logo" width="82" height="82" viewBox="0 0 86 82" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;width:82px;height:82px;">
+                      <path d="M31 48.1085L0 19V74.5708C0 87.2727 31 84.0972 31 61.8689V48.1085Z" fill="url(#paint0_linear)"/>
+                      <path d="M54 33.8915L86 63V7.42921C86 -5.27268 54 -2.09721 54 20.1311V33.8915Z" fill="url(#paint1_linear)"/>
+                      <path d="M85.4551 59.9304C83.4323 56.1338 24.6512 2.9812 20.6055 0.811723C16.5599 -1.35776 9.91825 0.983142 6.05907 5.90895C5.91667 6.0907 -2.03224 19.2524 0.49629 20.3372C3.02482 21.4219 63.0849 79.7824 63.0849 79.7824C70.4166 83.4996 74.0449 82.6282 79.7733 76.5281C83.4851 71.8872 87.4779 63.727 85.4551 59.9304Z" fill="url(#paint2_linear)"/>
+                      <defs>
+                        <linearGradient id="paint0_linear" x1="15.5" y1="19" x2="15.5" y2="82" gradientUnits="userSpaceOnUse">
+                          <stop stop-color="#01BFA6"/><stop offset="1" stop-color="#3047F4"/>
+                        </linearGradient>
+                        <linearGradient id="paint1_linear" x1="70" y1="63" x2="70" y2="0" gradientUnits="userSpaceOnUse">
+                          <stop stop-color="#01BFA6"/><stop offset="1" stop-color="#3047F4"/>
+                        </linearGradient>
+                        <linearGradient id="paint2_linear" x1="42.8496" y1="-0.273041" x2="42.8496" y2="82" gradientUnits="userSpaceOnUse">
+                          <stop stop-color="#00D4FF"/><stop offset="0.5" stop-color="#F26AFF"/><stop offset="1" stop-color="#00D4FF"/>
+                        </linearGradient>
+                      </defs>
+                    </svg>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center" style="padding:0;">
+                    <div class="brand-name" style="margin:0;color:#000000;font-family:Arial,Helvetica,sans-serif;font-size:58px;line-height:1.05;font-weight:700;letter-spacing:-2px;">Nexly</div>
+                  </td>
+                </tr>
+              </table>
+
+              <h1 class="email-title" style="margin:30px 0 14px;color:#000000;font-size:16px;line-height:20px;font-weight:700;text-align:center;">
+                Код авторизации
+              </h1>
+
+              <p class="email-description" style="margin:0 0 24px;color:#82888F;font-size:16px;line-height:24px;text-align:center;">
+                Используйте следующий код для<br>
+                подтверждения входа в аккаунт Nexly:
+              </p>
+
+              <table role="presentation" class="code-container" width="100%" cellspacing="0" cellpadding="0" border="0"
+                style="width:100%;border-collapse:separate;border-spacing:0;background:#EEFBF9;border:1px solid #D1F3ED;border-radius:12px;">
+                <tr>
+                  <td class="code" align="center" valign="middle" height="79"
+                    style="height:79px;padding:0 8px;color:#07877F;font-size:32px;line-height:40px;font-weight:700;letter-spacing:8px;overflow-wrap:anywhere;">
+                    {{.Code}}
+                  </td>
+                </tr>
+              </table>
+
+              <p class="code-expiration" style="margin:24px 0 0;color:#82888F;font-size:16px;line-height:24px;text-align:center;">
+                Код действителен в течение <strong style="font-weight:700;">2 минут.</strong>
+              </p>
+
+              <table role="presentation" class="email-footer" width="100%" cellspacing="0" cellpadding="0" border="0"
+                style="width:100%;margin-top:24px;border-collapse:collapse;border-top:1px solid #EDF0F4;">
+                <tr>
+                  <td class="email-footer-text" align="center" style="padding:20px 0 0;color:#82888F;font-size:14px;line-height:20px;text-align:center;">
+                    Если вы не запрашивали этот код, просто проигнорируйте это письмо.<br>
+                    Никому не сообщайте код авторизации
+                  </td>
+                </tr>
+              </table>
+
+              <p class="brand-slogan" style="margin:24px 0 0;color:#82888F;font-size:14px;line-height:20px;text-align:center;">
+                Nexly - Люди. Идеи. Ближе.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
