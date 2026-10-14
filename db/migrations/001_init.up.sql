@@ -27,13 +27,17 @@ CREATE TABLE profile (
     email TEXT NULL,
     phone_number TEXT NULL,
 
-    profile_name TEXT NOT NULL
+    -- profile_name TEXT NOT NULL
+    profile_name TEXT NULL
         CHECK (LENGTH(profile_name) BETWEEN 2 AND 32),
-    surname TEXT NOT NULL
+    -- surname TEXT NOT NULL
+    surname TEXT NULL
         CHECK (LENGTH(surname) BETWEEN 2 AND 32),
+    -- patronymic TEXT NOT NULL
     patronymic TEXT NULL
         CHECK (LENGTH(patronymic) BETWEEN 2 AND 32),
-    gender gender_enum NOT NULL,
+    -- gender gender_enum NOT NULL,
+    gender gender_enum NULL,
     birthday DATE NULL,
     bio TEXT NULL
         CHECK (LENGTH(bio) <= 256),
@@ -44,7 +48,7 @@ CREATE TABLE profile (
 
     password_hash TEXT NOT NULL
         CHECK (LENGTH(password_hash) <= 512),
-    password_salt TEXT NOT NULL,
+    -- password_salt TEXT NOT NULL,
 
 
     PRIMARY KEY (id),
