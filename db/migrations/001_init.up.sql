@@ -7,7 +7,7 @@ CREATE TYPE role_enum AS ENUM (
 
 CREATE TYPE relationships_enum AS ENUM (
     'friendship',
-    'blocked',
+    'accepted',
     'friend_request'
 );
 

@@ -21,9 +21,7 @@ func Register(req domain.RegisterRequest) (domain.Profile, string, string, error
 	mu.Lock()
 	defer mu.Unlock()
 	for _, existing := range users {
-		if strings.EqualFold(existing.Profile.Nickname, profile.Nickname) ||
-			sameContact(existing.Profile.Email, profile.Email) ||
-			sameContact(existing.Profile.PhoneNumber, profile.PhoneNumber) {
+		if profile.Nickname != "" && strings.EqualFold(existing.Profile.Nickname, profile.Nickname) {
 			return domain.Profile{}, "", "", ErrConflict
 		}
 	}
