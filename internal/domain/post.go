@@ -28,6 +28,13 @@ type Post struct {
 	MediaURLs         []string   `json:"media_urls,omitempty"`
 }
 
+// Post — публикация пользователя в ленте
+type PostUpdateRequest struct {
+	ID        int64    `json:"id" example:"1"`
+	PostText  *string  `json:"post_text,omitempty" example:"Привет, мир!"`
+	MediaURLs []string `json:"media_urls,omitempty"`
+}
+
 type Author struct {
 	// Name - для пользователей: surname + " " + profileName, если не добавлено Name - nickname;
 	// Name - для сообществ: community_name
@@ -38,7 +45,8 @@ type Author struct {
 
 // CreatePostRequest содержит данные для создания публикации
 type CreatePostRequest struct {
-	PostText string `json:"post_text,omitempty" example:"Привет, мир!" validate:"omitempty,max=256"`
+	PostText  string   `json:"post_text,omitempty" example:"Привет, мир!" validate:"omitempty,max=256"`
+	MediaURLs []string `json:"media_urls,omitempty"`
 }
 
 // UpdatePostRequest новый текст публикации.

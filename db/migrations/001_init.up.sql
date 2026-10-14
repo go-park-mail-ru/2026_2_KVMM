@@ -5,10 +5,10 @@ CREATE TYPE role_enum AS ENUM (
     'member'
 );
 
-CREATE TYPE relationships_enum AS ENUM (
-    'friendship',
+CREATE TYPE relationships_starus_enum AS ENUM (
+    'request',
     'accepted',
-    'friend_request'
+    'canceled'
 );
 
 CREATE TYPE gender_enum AS ENUM (
@@ -107,10 +107,12 @@ CREATE TABLE post (
 
     CONSTRAINT post_author_check
         CHECK (
-            (author_profile_id IS NOT NULL
+            ((author_profile_id IS NOT NULL
              AND author_community_id IS NULL)
             OR
             (author_profile_id IS NULL
+             AND author_community_id IS NOT NULL))
+            AND (author_profile_id IS NOT NULL AND
              AND author_community_id IS NOT NULL)
         ),
 
@@ -301,12 +303,14 @@ CREATE TABLE message_media (
 );
 
 
--- Связи между пользователями (дружба, бан и тд)
+-- Связи между пользователями (дружба, и тд)
 CREATE TABLE profile_relationship (
     profile_id_master BIGINT NOT NULL,
     profile_id_slave BIGINT NOT NULL,
 
-    status relationships_enum NOT NULL,
+    relationships_status relationships_status_enum NOT NULL,
+    relationships_type TEXT NULL 
+        CHECK (LENGTH(message_text) <= 32),
 
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NULL,

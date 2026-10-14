@@ -9,11 +9,12 @@ import (
 
 	"kvmm/internal/domain"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-var ErrNotFound = errors.New("profile not found")
+var ErrProfileNotFound = errors.New("profile not found")
 
 const profileColumns = `
     id,
@@ -70,7 +71,10 @@ type AuthProfile struct {
 }
 
 // Create вставляет пользователя и возвращает созданный профиль
-func (r *ProfileRepository) Create(ctx context.Context, params CreateProfileParams) (domain.Profile, error) {
+func (r *ProfileRepository) Create(
+	ctx context.Context,
+	params CreateProfileParams,
+) (domain.Profile, error) {
 	const query = `
         INSERT INTO profile (
             nickname,
@@ -90,42 +94,51 @@ func (r *ProfileRepository) Create(ctx context.Context, params CreateProfilePara
 	)
 
 	profile, _, err := scanProfile(row, false)
-	return profile, normalizeError(err)
+	return profile, normalizeProfileError(err)
 }
 
-// ReadByID возвращает активный профиль по идентификатору
-func (r *ProfileRepository) ReadByID(ctx context.Context, id int64) (domain.Profile, error) {
-	query := `SELECT ` + profileColumns + ` FROM profile WHERE id = $1 AND deleted_at IS NULL`
+// ReadByID возвращает активный профиль по ID
+func (r *ProfileRepository) ReadByID(
+	ctx context.Context,
+	id int64,
+) (domain.Profile, error) {
+	const query = `SELECT ` + profileColumns + ` FROM profile WHERE id = $1 AND deleted_at IS NULL`
 	profile, _, err := scanProfile(r.pool.QueryRow(ctx, query, id), false)
-	return profile, normalizeError(err)
+	return profile, normalizeProfileError(err)
 }
 
 // ReadByLogin возвращает публичный профиль без password_hash и других данных авторизации
-func (r *ProfileRepository) ReadByLogin(ctx context.Context, login string) (domain.Profile, error) {
-	query := `SELECT ` + profileColumns + `
+func (r *ProfileRepository) ReadByLogin(
+	ctx context.Context,
+	login string,
+) (domain.Profile, error) {
+	const query = `SELECT ` + profileColumns + `
         FROM profile
         WHERE deleted_at IS NULL
-          AND (
-            LOWER(nickname) = LOWER($1)
-            OR LOWER(email) = LOWER($1)
-            OR phone_number = $1
-          )
+        	AND (
+        		LOWER(nickname) = LOWER($1)
+        		OR LOWER(email) = LOWER($1)
+        		OR phone_number = $1
+        )
         LIMIT 1`
 
 	profile, _, err := scanProfile(r.pool.QueryRow(ctx, query, strings.TrimSpace(login)), false)
-	return profile, normalizeError(err)
+	return profile, normalizeProfileError(err)
 }
 
 // ReadByLoginAuth ищет пользователя по nickname, email или номеру телефона для входа
-func (r *ProfileRepository) ReadByLoginAuth(ctx context.Context, login string) (AuthProfile, error) {
-	query := `SELECT ` + profileColumns + `, password_hash
+func (r *ProfileRepository) ReadByLoginAuth(
+	ctx context.Context,
+	login string,
+) (AuthProfile, error) {
+	const query = `SELECT ` + profileColumns + `, password_hash
         FROM profile
         WHERE deleted_at IS NULL
-          AND (
-            LOWER(nickname) = LOWER($1)
-            OR LOWER(email) = LOWER($1)
-            OR phone_number = $1
-          )
+        	AND (
+            	LOWER(nickname) = LOWER($1)
+				OR LOWER(email) = LOWER($1)
+				OR phone_number = $1
+        	)
         LIMIT 1`
 
 	profile, passwordHash, err := scanProfile(
@@ -133,7 +146,7 @@ func (r *ProfileRepository) ReadByLoginAuth(ctx context.Context, login string) (
 		true,
 	)
 	if err != nil {
-		return AuthProfile{}, normalizeError(err)
+		return AuthProfile{}, normalizeProfileError(err)
 	}
 	return AuthProfile{
 		Profile:      profile,
@@ -142,7 +155,11 @@ func (r *ProfileRepository) ReadByLoginAuth(ctx context.Context, login string) (
 }
 
 // Update изменяет переданные поля активного профиля
-func (r *ProfileRepository) Update(ctx context.Context, id int64, params UpdateProfileParams) (domain.Profile, error) {
+func (r *ProfileRepository) Update(
+	ctx context.Context,
+	id int64,
+	params UpdateProfileParams,
+) (domain.Profile, error) {
 	sets := make([]string, 0, 11)
 	args := make([]any, 0, 11)
 	add := func(column string, value any) {
@@ -186,46 +203,59 @@ func (r *ProfileRepository) Update(ctx context.Context, id int64, params UpdateP
 
 	sets = append(sets, "updated_at = NOW()")
 	args = append(args, id)
-	query := `UPDATE profile SET ` + strings.Join(sets, ", ") +
-		fmt.Sprintf(` WHERE id = $%d AND deleted_at IS NULL RETURNING `, len(args)) + profileColumns
+
+	const updateProfileQuery = `UPDATE profile SET %s
+		WHERE id = $%d
+		AND deleted_at IS NULL
+		RETURNING ` + postColumns
+	query := fmt.Sprintf(
+		updateProfileQuery,
+		strings.Join(sets, ", "),
+		len(args),
+	)
 
 	profile, _, err := scanProfile(r.pool.QueryRow(ctx, query, args...), false)
-	return profile, normalizeError(err)
+	return profile, normalizeProfileError(err)
 }
 
 // Delete помечает профиль удалённым soft delete
-func (r *ProfileRepository) Delete(ctx context.Context, id int64) error {
+func (r *ProfileRepository) Delete(
+	ctx context.Context,
+	id int64,
+) error {
+	const query = `UPDATE profile SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL`
 	command, err := r.pool.Exec(
 		ctx,
-		`UPDATE profile SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL`,
+		query,
 		id,
 	)
 	if err != nil {
 		return err
 	}
 	if command.RowsAffected() == 0 {
-		return ErrNotFound
+		return ErrProfileNotFound
 	}
 	return nil
-}
-
-type rowScanner interface {
-	Scan(dest ...any) error
 }
 
 // scanProfile сериализует ответ базы в domain.Profile
 // withCredentials - добавлять ли приватные поля (хэш пароля)
 func scanProfile(row rowScanner, withCredentials bool) (domain.Profile, string, error) {
 	var (
-		id                      int64
-		nickname                string
-		email, phoneNumber      pgtype.Text
-		profileName, surname    pgtype.Text
-		patronymic, gender, bio pgtype.Text
-		birthday                pgtype.Date
-		createdAt, updatedAt    pgtype.Timestamptz
-		deletedAt               pgtype.Timestamptz
-		passwordHash            string
+		id           int64
+		nickname     pgtype.Text
+		email        pgtype.Text
+		phoneNumber  pgtype.Text
+		profileName  pgtype.Text
+		surname      pgtype.Text
+		patronymic   pgtype.Text
+		gender       pgtype.Text
+		bio          pgtype.Text
+		birthday     pgtype.Date
+		createdAt    pgtype.Timestamptz
+		updatedAt    pgtype.Timestamptz
+		deletedAt    pgtype.Timestamptz
+		passwordHash pgtype.Text
 	)
 
 	dest := []any{
@@ -253,7 +283,7 @@ func scanProfile(row rowScanner, withCredentials bool) (domain.Profile, string, 
 
 	profile := domain.Profile{
 		ID:          id,
-		Nickname:    nickname,
+		Nickname:    nickname.String,
 		Email:       textPointer(email),
 		PhoneNumber: textPointer(phoneNumber),
 		ProfileName: textPointer(profileName),
@@ -266,5 +296,18 @@ func scanProfile(row rowScanner, withCredentials bool) (domain.Profile, string, 
 		UpdatedAt:   timestampPointer(updatedAt),
 		DeletedAt:   timestampPointer(deletedAt),
 	}
-	return profile, passwordHash, nil
+
+	var hash string
+	if withCredentials {
+		hash = passwordHash.String
+	}
+
+	return profile, hash, nil
+}
+
+func normalizeProfileError(err error) error {
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrProfileNotFound
+	}
+	return err
 }
