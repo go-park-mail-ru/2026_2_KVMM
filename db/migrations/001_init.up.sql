@@ -5,7 +5,7 @@ CREATE TYPE role_enum AS ENUM (
     'member'
 );
 
-CREATE TYPE relationships_starus_enum AS ENUM (
+CREATE TYPE relationships_status_enum AS ENUM (
     'request',
     'accepted',
     'canceled'
