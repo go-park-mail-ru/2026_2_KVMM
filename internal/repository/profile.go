@@ -31,7 +31,8 @@ const profileColumns = `
     updated_at,
     deleted_at`
 
-const updateProfileQuery = `UPDATE profile SET %s
+const updateProfileQuery = `
+	UPDATE profile SET %s
 	WHERE id = $%d
 	AND deleted_at IS NULL
 	RETURNING ` + postColumns
@@ -45,7 +46,8 @@ const createProfileQuery = `
 	VALUES ($1, $2, $3)
 	RETURNING ` + profileColumns
 
-const readProfileByLoginQuery = `SELECT ` + profileColumns + `
+const readProfileByLoginQuery = `
+	SELECT ` + profileColumns + `
 	FROM profile
 	WHERE deleted_at IS NULL
 		AND (
@@ -55,7 +57,8 @@ const readProfileByLoginQuery = `SELECT ` + profileColumns + `
 	)
 	LIMIT 1`
 
-const readByLoginAuthQuery = `SELECT ` + profileColumns + `, password_hash
+const readByLoginAuthQuery = `
+	SELECT ` + profileColumns + `, password_hash
 	FROM profile
 	WHERE deleted_at IS NULL
 		AND (
@@ -65,10 +68,12 @@ const readByLoginAuthQuery = `SELECT ` + profileColumns + `, password_hash
 		)
 	LIMIT 1`
 
-const readProfileByIDQuery = `SELECT ` + profileColumns +
+const readProfileByIDQuery = `
+	SELECT ` + profileColumns +
 	` FROM profile WHERE id = $1 AND deleted_at IS NULL`
 
-const deleteProfileQuery = `UPDATE profile SET deleted_at = NOW() 
+const deleteProfileQuery = `
+	UPDATE profile SET deleted_at = NOW() 
 	WHERE id = $1 AND deleted_at IS NULL`
 
 // ProfileRepository выполняет sql-операции с таблицей profile

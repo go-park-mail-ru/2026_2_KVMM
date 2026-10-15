@@ -27,7 +27,8 @@ const postColumns = `
     updated_at,
     deleted_at`
 
-const postDeleteQuery = `UPDATE post
+const postDeleteQuery = `
+	UPDATE post
     SET deleted_at = NOW()
     WHERE id = $1
     AND deleted_at IS NULL`
@@ -41,12 +42,14 @@ const cretePostQuery = `
 	VALUES ($1, $2, $3)
 	RETURNING ` + postColumns
 
-const updatePostQuery = `UPDATE post SET %s
+const updatePostQuery = `
+	UPDATE post SET %s
 	WHERE id = $%d
 	AND deleted_at IS NULL
 	RETURNING ` + postColumns
 
-const readPostQuery = `SELECT ` + postColumns + ` FROM post
+const readPostQuery = `
+	SELECT ` + postColumns + ` FROM post
 	WHERE author_profile_id = $1
 		AND deleted_at IS NULL
 		AND ($2 = 0 OR id < $2)
@@ -59,7 +62,8 @@ const readPostQuery = `SELECT ` + postColumns + ` FROM post
 	ORDER BY id DESC
 	LIMIT $3`
 
-const readRelationshipPostsQuery = `SELECT ` + postColumns + `
+const readRelationshipPostsQuery = `
+	SELECT ` + postColumns + `
 	FROM post
 	WHERE author_profile_id IS NOT NULL
 	AND deleted_at IS NULL
@@ -92,16 +96,18 @@ const readRelationshipPostsQuery = `SELECT ` + postColumns + `
 	ORDER BY id DESC
 	LIMIT $3`
 
-const readFeedPostsQuery = `SELECT ` + postColumns + `
-		FROM post
-		WHERE author_profile_id IS NOT NULL
-		AND deleted_at IS NULL
-		AND ($1 = 0 OR id < $1)
+const readFeedPostsQuery = `
+	SELECT ` + postColumns + `
+	FROM post
+	WHERE author_profile_id IS NOT NULL
+	AND deleted_at IS NULL
+	AND ($1 = 0 OR id < $1)
 
-		ORDER BY id DESC
-		LIMIT $2`
+	ORDER BY id DESC
+	LIMIT $2`
 
-const readPostByIDQuery = `SELECT ` + postColumns +
+const readPostByIDQuery = `
+	SELECT ` + postColumns +
 	` FROM post WHERE id = $1 AND deleted_at IS NULL`
 
 // PostRepository выполняет sql-операции с таблицей profile
