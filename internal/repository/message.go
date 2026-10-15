@@ -6,6 +6,7 @@ import (
 
 	"kvmm/internal/domain"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -36,7 +37,7 @@ const messageColumns = `
 	updated_at,
 	deleted_at`
 
-const insertMessageQuery = `
+const createMessageQuery = `
 	INSERT INTO message (
 		chat_id,
 		author_id,
@@ -63,6 +64,15 @@ const parentMessagesQuery = `
 		AND id = ANY($2::BIGINT[])
 		AND deleted_at IS NULL
 	ORDER BY id`
+
+type createMessage struct {
+	ID          int64   `json:"id" example:"1"`
+	ChatID      int64   `json:"chat_id" example:"1"`
+	AuthorID    int64   `json:"author_id" example:"1"`
+	MessageText *string `json:"message_text" example:"Привет!"`
+	RepostFrom  *int64  `json:"repost_from,omitempty" example:"5"`
+	ReplyFrom   *int64  `json:"reply_from,omitempty" example:"7"`
+}
 
 func scanMessage(row rowScanner) (domain.Message, error) {
 	var (
@@ -100,10 +110,28 @@ func scanMessage(row rowScanner) (domain.Message, error) {
 	return message, nil
 }
 
-// ListMessages возвращает страницу сообщений и их родительские сообщения
-func (r *ChatRepository) ListMessages(
+func (r *MessageRepository) Create(
 	ctx context.Context,
-	profileID int64,
+	createParam createMessage,
+) (domain.Message, error) {
+	row := r.pool.QueryRow(
+		ctx,
+		createMessageQuery,
+
+		createParam.ChatID,
+		createParam.AuthorID,
+		nullableString(createParam.MessageText),
+		nullableInt64(createParam.RepostFrom),
+		nullableInt64(createParam.ReplyFrom),
+	)
+
+	message, err := scanMessage(row)
+	return message, normalizeMessageError(err)
+}
+
+// ListMessages возвращает страницу сообщений и их родительские сообщения
+func (r *MessageRepository) ListMessages(
+	ctx context.Context,
 	chatID int64,
 	cursor int64,
 	limit int,
@@ -111,14 +139,8 @@ func (r *ChatRepository) ListMessages(
 	cursor = normalizeCursor(cursor)
 	limit = normalizeLimit(limit, 100)
 
-	if profileID <= 0 {
-		return domain.MessagesResponse{}, ErrProfileNotFound
-	} else if chatID <= 0 {
+	if chatID <= 0 {
 		return domain.MessagesResponse{}, ErrChatNotFound
-	}
-
-	if err := r.requireParticipant(ctx, chatID, profileID); err != nil {
-		return domain.MessagesResponse{}, err
 	}
 
 	response := domain.MessagesResponse{
@@ -189,7 +211,7 @@ func paginateMessages(
 }
 
 // readParentMessages загружает родительские сообщения
-func (r *ChatRepository) readParentMessages(
+func (r *MessageRepository) readParentMessages(
 	ctx context.Context,
 	chatID int64,
 	parentIDs []int64,
@@ -242,4 +264,11 @@ func collectParentIDs(messages []domain.Message) []int64 {
 	}
 
 	return ids
+}
+
+func normalizeMessageError(err error) error {
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrMessageNotFound
+	}
+	return err
 }
