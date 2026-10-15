@@ -27,6 +27,83 @@ const postColumns = `
     updated_at,
     deleted_at`
 
+const postDeleteQuery = `UPDATE post
+    SET deleted_at = NOW()
+    WHERE id = $1
+    AND deleted_at IS NULL`
+
+const cretePostQuery = `
+	INSERT INTO post (
+		post_text,
+		author_profile_id,
+		author_community_id
+	)
+	VALUES ($1, $2, $3)
+	RETURNING ` + postColumns
+
+const updatePostQuery = `UPDATE post SET %s
+	WHERE id = $%d
+	AND deleted_at IS NULL
+	RETURNING ` + postColumns
+
+const readPostQuery = `SELECT ` + postColumns + ` FROM post
+	WHERE author_profile_id = $1
+		AND deleted_at IS NULL
+		AND ($2 = 0 OR id < $2)
+		AND EXISTS (
+			SELECT 1
+			FROM profile p
+			WHERE p.id = post.author_profile_id
+			AND p.deleted_at IS NULL
+		)
+	ORDER BY id DESC
+	LIMIT $3`
+
+const readRelationshipPostsQuery = `SELECT ` + postColumns + `
+	FROM post
+	WHERE author_profile_id IS NOT NULL
+	AND deleted_at IS NULL
+	AND ($2 = 0 OR id < $2)
+
+	AND EXISTS (
+		SELECT 1
+		FROM profile p
+		WHERE p.id = post.author_profile_id
+			AND p.deleted_at IS NULL
+	)
+
+	AND EXISTS (
+		SELECT 1
+		FROM profile_relationship pr
+		WHERE pr.deleted_at IS NULL
+			AND pr.relationships_status = 'accepted'
+			AND (
+				(pr.profile_id_master = $1
+				AND pr.profile_id_slave = post.author_profile_id)
+				OR
+				(pr.profile_id_slave = $1
+				AND pr.profile_id_master = post.author_profile_id)
+			)
+			AND (
+				cardinality($4::text[]) = 0
+				OR pr.relationships_type = ANY($4::text[])
+			)
+	)
+	ORDER BY id DESC
+	LIMIT $3`
+
+const readFeedPostsQuery = `SELECT ` + postColumns + `
+		FROM post
+		WHERE author_profile_id IS NOT NULL
+		AND deleted_at IS NULL
+		AND ($1 = 0 OR id < $1)
+
+		ORDER BY id DESC
+		LIMIT $2`
+
+const readPostByIDQuery = `SELECT ` + postColumns +
+	` FROM post WHERE id = $1 AND deleted_at IS NULL`
+
 // PostRepository выполняет sql-операции с таблицей profile
 type PostRepository struct {
 	pool *pgxpool.Pool
@@ -58,18 +135,9 @@ func (r *PostRepository) Create(
 		return domain.Post{}, ErrInvalidPostAuthor
 	}
 
-	const query = `
-        INSERT INTO post (
-            post_text,
-            author_profile_id,
-            author_community_id
-        )
-        VALUES ($1, $2, $3)
-        RETURNING ` + postColumns
-
 	row := r.pool.QueryRow(
 		ctx,
-		query,
+		cretePostQuery,
 		nullableString(params.PostText),
 		nullableInt64(params.AuthorProfileID),
 		nullableInt64(params.AuthorCommunityID),
@@ -88,8 +156,7 @@ func (r *PostRepository) ReadByID(
 	ctx context.Context,
 	id int64) (domain.Post, error) {
 
-	const query = `SELECT ` + postColumns + ` FROM post WHERE id = $1 AND deleted_at IS NULL`
-	post, err := scanPost(r.pool.QueryRow(ctx, query, id))
+	post, err := scanPost(r.pool.QueryRow(ctx, readPostByIDQuery, id))
 	return post, normalizePostError(err)
 }
 
@@ -103,25 +170,16 @@ func (r *PostRepository) ReadProfilePosts(
 	cursor int64,
 	limit int,
 ) ([]domain.Post, int64, bool, error) {
-	if id < 1 || cursor < 0 || limit < 1 {
-		return nil, 0, false, fmt.Errorf("invalid pagination parameters")
+	if id < 1 {
+		return nil, 0, false, ErrProfileNotFound
 	}
 
-	queryLimit := limit + 1
-	const query = `SELECT ` + postColumns + ` FROM post
-		WHERE author_profile_id = $1
-        	AND deleted_at IS NULL
-        	AND ($2 = 0 OR id < $2)
-			AND EXISTS (
-        		SELECT 1
-            	FROM profile p
-            	WHERE p.id = post.author_profile_id
-                AND p.deleted_at IS NULL
-        	)
-        ORDER BY id DESC
-        LIMIT $3`
+	cursor = normalizeCursor(cursor)
+	limit = normalizeLimit(limit, 10)
 
-	rows, err := r.pool.Query(ctx, query, id, cursor, queryLimit)
+	queryLimit := limit + 1
+
+	rows, err := r.pool.Query(ctx, readPostQuery, id, cursor, queryLimit)
 	if err != nil {
 		return nil, 0, false, err
 	}
@@ -161,50 +219,22 @@ func (r *PostRepository) ReadRelationshipPosts(
 	limit int,
 	relationshipTypes []string,
 ) ([]domain.Post, int64, bool, error) {
-	if profileID < 1 || cursor < 0 || limit < 1 {
-		return nil, 0, false, fmt.Errorf("invalid pagination parameters")
+	if profileID < 1 {
+		return nil, 0, false, ErrProfileNotFound
 	}
+
+	cursor = normalizeCursor(cursor)
+	limit = normalizeLimit(limit, 100)
+
 	if relationshipTypes == nil {
 		relationshipTypes = []string{}
 	}
 
 	queryLimit := limit + 1
 
-	const query = `SELECT ` + postColumns + `
-		FROM post
-		WHERE author_profile_id IS NOT NULL
-		AND deleted_at IS NULL
-		AND ($2 = 0 OR id < $2)
-
-		AND EXISTS (
-			SELECT 1
-			FROM profile p
-			WHERE p.id = post.author_profile_id
-				AND p.deleted_at IS NULL
-		)
-
-		AND EXISTS (
-			SELECT 1
-			FROM profile_relationship pr
-			WHERE pr.deleted_at IS NULL
-				AND pr.relationships_status = 'accepted'
-				AND (
-					(pr.profile_id_master = $1
-					AND pr.profile_id_slave = post.author_profile_id)
-					OR
-					(pr.profile_id_slave = $1
-					AND pr.profile_id_master = post.author_profile_id)
-				)
-				AND (
-					cardinality($4::text[]) = 0
-					OR pr.relationships_type = ANY($4::text[])
-				)
-		)
-		ORDER BY id DESC
-		LIMIT $3`
 	rows, err := r.pool.Query(
 		ctx,
-		query,
+		readRelationshipPostsQuery,
 		profileID,
 		cursor,
 		queryLimit,
@@ -245,24 +275,14 @@ func (r *PostRepository) ReadFeedPosts(
 	cursor int64,
 	limit int,
 ) ([]domain.Post, int64, bool, error) {
-	if cursor < 0 || limit < 1 {
-		return nil, 0, false, fmt.Errorf("invalid pagination parameters")
-	}
+	cursor = normalizeCursor(cursor)
+	limit = normalizeLimit(limit, 100)
 
 	queryLimit := limit + 1
 
-	const query = `SELECT ` + postColumns + `
-		FROM post
-		WHERE author_profile_id IS NOT NULL
-		AND deleted_at IS NULL
-		AND ($1 = 0 OR id < $1)
-
-		
-		ORDER BY id DESC
-		LIMIT $2`
 	rows, err := r.pool.Query(
 		ctx,
-		query,
+		readFeedPostsQuery,
 		cursor,
 		queryLimit,
 	)
@@ -321,10 +341,6 @@ func (r *PostRepository) Update(
 
 	args = append(args, id)
 
-	const updatePostQuery = `UPDATE post SET %s
-		WHERE id = $%d
-		AND deleted_at IS NULL
-		RETURNING ` + postColumns
 	query := fmt.Sprintf(
 		updatePostQuery,
 		strings.Join(sets, ", "),
@@ -343,13 +359,9 @@ func (r *PostRepository) Delete(
 	id int64,
 ) error {
 
-	const query = `UPDATE post
-        SET deleted_at = NOW()
-        WHERE id = $1
-        AND deleted_at IS NULL`
 	command, err := r.pool.Exec(
 		ctx,
-		query,
+		postDeleteQuery,
 		id,
 	)
 	if err != nil {

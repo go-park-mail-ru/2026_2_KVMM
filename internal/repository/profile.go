@@ -31,6 +31,46 @@ const profileColumns = `
     updated_at,
     deleted_at`
 
+const updateProfileQuery = `UPDATE profile SET %s
+	WHERE id = $%d
+	AND deleted_at IS NULL
+	RETURNING ` + postColumns
+
+const createProfileQuery = `
+	INSERT INTO profile (
+		nickname,
+		email,
+		password_hash
+	)
+	VALUES ($1, $2, $3)
+	RETURNING ` + profileColumns
+
+const readProfileByLoginQuery = `SELECT ` + profileColumns + `
+	FROM profile
+	WHERE deleted_at IS NULL
+		AND (
+			LOWER(nickname) = LOWER($1)
+			OR LOWER(email) = LOWER($1)
+			OR phone_number = $1
+	)
+	LIMIT 1`
+
+const readByLoginAuthQuery = `SELECT ` + profileColumns + `, password_hash
+	FROM profile
+	WHERE deleted_at IS NULL
+		AND (
+			LOWER(nickname) = LOWER($1)
+			OR LOWER(email) = LOWER($1)
+			OR phone_number = $1
+		)
+	LIMIT 1`
+
+const readProfileByIDQuery = `SELECT ` + profileColumns +
+	` FROM profile WHERE id = $1 AND deleted_at IS NULL`
+
+const deleteProfileQuery = `UPDATE profile SET deleted_at = NOW() 
+	WHERE id = $1 AND deleted_at IS NULL`
+
 // ProfileRepository выполняет sql-операции с таблицей profile
 type ProfileRepository struct {
 	pool *pgxpool.Pool
@@ -75,18 +115,10 @@ func (r *ProfileRepository) Create(
 	ctx context.Context,
 	params CreateProfileParams,
 ) (domain.Profile, error) {
-	const query = `
-        INSERT INTO profile (
-            nickname,
-            email,
-            password_hash
-        )
-        VALUES ($1, $2, $3)
-        RETURNING ` + profileColumns
 
 	row := r.pool.QueryRow(
 		ctx,
-		query,
+		createProfileQuery,
 
 		strings.TrimSpace(params.Nickname),
 		nullableString(params.Email),
@@ -102,8 +134,7 @@ func (r *ProfileRepository) ReadByID(
 	ctx context.Context,
 	id int64,
 ) (domain.Profile, error) {
-	const query = `SELECT ` + profileColumns + ` FROM profile WHERE id = $1 AND deleted_at IS NULL`
-	profile, _, err := scanProfile(r.pool.QueryRow(ctx, query, id), false)
+	profile, _, err := scanProfile(r.pool.QueryRow(ctx, readProfileByIDQuery, id), false)
 	return profile, normalizeProfileError(err)
 }
 
@@ -112,17 +143,13 @@ func (r *ProfileRepository) ReadByLogin(
 	ctx context.Context,
 	login string,
 ) (domain.Profile, error) {
-	const query = `SELECT ` + profileColumns + `
-        FROM profile
-        WHERE deleted_at IS NULL
-        	AND (
-        		LOWER(nickname) = LOWER($1)
-        		OR LOWER(email) = LOWER($1)
-        		OR phone_number = $1
-        )
-        LIMIT 1`
 
-	profile, _, err := scanProfile(r.pool.QueryRow(ctx, query, strings.TrimSpace(login)), false)
+	profile, _, err := scanProfile(r.pool.QueryRow(
+		ctx,
+		readProfileByLoginQuery,
+		strings.TrimSpace(login)),
+		false,
+	)
 	return profile, normalizeProfileError(err)
 }
 
@@ -131,18 +158,9 @@ func (r *ProfileRepository) ReadByLoginAuth(
 	ctx context.Context,
 	login string,
 ) (AuthProfile, error) {
-	const query = `SELECT ` + profileColumns + `, password_hash
-        FROM profile
-        WHERE deleted_at IS NULL
-        	AND (
-            	LOWER(nickname) = LOWER($1)
-				OR LOWER(email) = LOWER($1)
-				OR phone_number = $1
-        	)
-        LIMIT 1`
 
 	profile, passwordHash, err := scanProfile(
-		r.pool.QueryRow(ctx, query, strings.TrimSpace(login)),
+		r.pool.QueryRow(ctx, readByLoginAuthQuery, strings.TrimSpace(login)),
 		true,
 	)
 	if err != nil {
@@ -204,10 +222,6 @@ func (r *ProfileRepository) Update(
 	sets = append(sets, "updated_at = NOW()")
 	args = append(args, id)
 
-	const updateProfileQuery = `UPDATE profile SET %s
-		WHERE id = $%d
-		AND deleted_at IS NULL
-		RETURNING ` + postColumns
 	query := fmt.Sprintf(
 		updateProfileQuery,
 		strings.Join(sets, ", "),
@@ -223,10 +237,9 @@ func (r *ProfileRepository) Delete(
 	ctx context.Context,
 	id int64,
 ) error {
-	const query = `UPDATE profile SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL`
 	command, err := r.pool.Exec(
 		ctx,
-		query,
+		deleteProfileQuery,
 		id,
 	)
 	if err != nil {

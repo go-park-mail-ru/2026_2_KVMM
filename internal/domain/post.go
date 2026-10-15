@@ -59,8 +59,8 @@ type UpdatePostRequest struct {
 type UserPostsResponse struct {
 	Posts      []Post `json:"posts"`
 	ProfileID  int64  `json:"profile_id" example:"1"`
-	Cursor     int    `json:"cursor" example:"0"`
+	Cursor     int64  `json:"cursor" example:"0"`
 	Limit      int    `json:"limit" example:"10"`
 	HasMore    bool   `json:"has_more" example:"true"`
-	NextCursor int    `json:"next_cursor,omitempty" example:"10"`
+	NextCursor int64  `json:"next_cursor,omitempty" example:"10"`
 }

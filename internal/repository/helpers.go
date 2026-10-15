@@ -86,3 +86,20 @@ func nullableTime(value *time.Time) any {
 type rowScanner interface {
 	Scan(dest ...any) error
 }
+
+func normalizeLimit(limit int, limit_max int) int {
+	if limit <= 0 {
+		return 10
+	}
+	if limit > limit_max {
+		return limit_max
+	}
+	return limit
+}
+
+func normalizeCursor(cursor int64) int64 {
+	if cursor < 0 {
+		return 0
+	}
+	return cursor
+}
