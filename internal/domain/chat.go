@@ -7,6 +7,7 @@ type Chat struct {
 	ID           int64     `json:"id" example:"1"`
 	Participants []Profile `json:"participants,omitempty"`
 	LastMessage  *Message  `json:"last_message,omitempty"`
+	StreakDays   int       `json:"streak_days" example:"5"`
 	CreatedAt    time.Time `json:"created_at" example:"2026-01-01T12:00:00Z"`
 }
 
@@ -15,7 +16,7 @@ type Message struct {
 	ID          int64      `json:"id" example:"1"`
 	ChatID      int64      `json:"chat_id" example:"1"`
 	AuthorID    int64      `json:"author_id" example:"1"`
-	MessageText string     `json:"message_text" example:"Привет!"`
+	MessageText *string    `json:"message_text" example:"Привет!"`
 	RepostFrom  *int64     `json:"repost_from,omitempty" example:"5"`
 	ReplyFrom   *int64     `json:"reply_from,omitempty" example:"7"`
 	CreatedAt   time.Time  `json:"created_at" example:"2026-01-01T12:00:00Z"`
@@ -25,10 +26,10 @@ type Message struct {
 
 // SendMessageRequest содержит текст нового сообщения
 type SendMessageRequest struct {
-	ChatID      int64  `json:"chat_id" example:"1" validate:"required,gt=0"`
-	MessageText string `json:"message_text" example:"Привет!" validate:"required,max=256"`
-	RepostFrom  *int64 `json:"repost_from,omitempty" example:"5" validate:"omitempty,gt=0"`
-	ReplyFrom   *int64 `json:"reply_from,omitempty" example:"7" validate:"omitempty,gt=0"`
+	ChatID      int64   `json:"chat_id" example:"1" validate:"required,gt=0"`
+	MessageText *string `json:"message_text" example:"Привет!" validate:"required,max=256"`
+	RepostFrom  *int64  `json:"repost_from,omitempty" example:"5" validate:"omitempty,gt=0"`
+	ReplyFrom   *int64  `json:"reply_from,omitempty" example:"7" validate:"omitempty,gt=0"`
 }
 
 // CreateChatRequest содержит id пользователя, с которым создаётся чат
@@ -39,10 +40,10 @@ type CreateChatRequest struct {
 // ChatsResponse содержит страницу списка чатов
 type ChatsResponse struct {
 	Chats      []Chat `json:"chats"`
-	Cursor     int    `json:"cursor" example:"0"`
+	Cursor     int64  `json:"cursor" example:"0"`
 	Limit      int    `json:"limit" example:"10"`
 	HasMore    bool   `json:"has_more" example:"true"`
-	NextCursor int    `json:"next_cursor,omitempty" example:"10"`
+	NextCursor int64  `json:"next_cursor,omitempty" example:"10"`
 }
 
 // MessagesResponse содержит страницу сообщений чата
@@ -53,8 +54,8 @@ type MessagesResponse struct {
 	// (RepostFrom, ReplyFrom) то они будут в этом масиве
 	Parents    []Message `json:"parents"`
 	ChatID     int64     `json:"chat_id" example:"1"`
-	Cursor     int       `json:"cursor" example:"0"`
+	Cursor     int64     `json:"cursor" example:"0"`
 	Limit      int       `json:"limit" example:"10"`
 	HasMore    bool      `json:"has_more" example:"true"`
-	NextCursor int       `json:"next_cursor,omitempty" example:"10"`
+	NextCursor int64     `json:"next_cursor,omitempty" example:"10"`
 }
