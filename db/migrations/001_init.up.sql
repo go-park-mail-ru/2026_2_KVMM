@@ -569,3 +569,25 @@ CREATE TABLE profile_avatar (
         ON UPDATE NO ACTION
         ON DELETE NO ACTION
 );
+
+-- Аватары пользователей
+CREATE TABLE community_avatar (
+    community_id BIGINT NOT NULL,
+
+    media_id BIGINT NOT NULL,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMPTZ NULL,
+
+    PRIMARY KEY (community_id, media_id),
+
+    FOREIGN KEY (community_id)
+        REFERENCES profile (id)
+        ON UPDATE NO ACTION
+        ON DELETE NO ACTION,
+
+    FOREIGN KEY (media_id)
+        REFERENCES media (id)
+        ON UPDATE NO ACTION
+        ON DELETE NO ACTION
+);

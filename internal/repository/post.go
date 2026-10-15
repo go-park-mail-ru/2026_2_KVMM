@@ -19,96 +19,80 @@ var (
 )
 
 const postColumns = `
-    id,
-    post_text,
-    author_profile_id,
-	author_community_id,
-    created_at,
-    updated_at,
-    deleted_at`
+	post.id,
+	post.post_text,
+	post.author_profile_id,
+	post.author_community_id,
+	post.created_at,
+	post.updated_at,
+	post.deleted_at`
 
-const postDeleteQuery = `
-	UPDATE post
-    SET deleted_at = NOW()
-    WHERE id = $1
-    AND deleted_at IS NULL`
+const postAuthorColumns = `
+	author.author_name,
+	author.avatar_url,
+	author.author_type`
 
-const cretePostQuery = `
-	INSERT INTO post (
-		post_text,
-		author_profile_id,
-		author_community_id
-	)
-	VALUES ($1, $2, $3)
-	RETURNING ` + postColumns
-
-const updatePostQuery = `
-	UPDATE post SET %s
-	WHERE id = $%d
-	AND deleted_at IS NULL
-	RETURNING ` + postColumns
-
-const readPostQuery = `
-	SELECT ` + postColumns + ` FROM post
-	WHERE author_profile_id = $1
-		AND deleted_at IS NULL
-		AND ($2 = 0 OR id < $2)
-		AND EXISTS (
-			SELECT 1
-			FROM profile p
-			WHERE p.id = post.author_profile_id
-			AND p.deleted_at IS NULL
-		)
-	ORDER BY id DESC
-	LIMIT $3`
-
-const readRelationshipPostsQuery = `
-	SELECT ` + postColumns + `
-	FROM post
-	WHERE author_profile_id IS NOT NULL
-	AND deleted_at IS NULL
-	AND ($2 = 0 OR id < $2)
-
-	AND EXISTS (
-		SELECT 1
+const postAuthorJoin = `
+	LEFT JOIN LATERAL (
+		SELECT
+			COALESCE(
+				NULLIF(
+					CONCAT_WS(
+						' ',
+						NULLIF(BTRIM(p.surname), ''),
+						NULLIF(BTRIM(p.profile_name), '')
+					),
+					''
+				),
+				p.nickname
+			) AS author_name,
+			avatar.media_path AS avatar_url,
+			'profile'::TEXT AS author_type
 		FROM profile p
+		LEFT JOIN LATERAL (
+			SELECT m.media_path
+			FROM profile_avatar pa
+			JOIN media m ON m.id = pa.media_id
+			WHERE pa.profile_id = p.id
+				AND pa.deleted_at IS NULL
+				AND m.deleted_at IS NULL
+			ORDER BY pa.created_at DESC, pa.media_id DESC
+			LIMIT 1
+		) avatar ON TRUE
 		WHERE p.id = post.author_profile_id
 			AND p.deleted_at IS NULL
-	)
 
-	AND EXISTS (
-		SELECT 1
-		FROM profile_relationship pr
-		WHERE pr.deleted_at IS NULL
-			AND pr.relationships_status = 'accepted'
-			AND (
-				(pr.profile_id_master = $1
-				AND pr.profile_id_slave = post.author_profile_id)
-				OR
-				(pr.profile_id_slave = $1
-				AND pr.profile_id_master = post.author_profile_id)
-			)
-			AND (
-				cardinality($4::text[]) = 0
-				OR pr.relationships_type = ANY($4::text[])
-			)
-	)
-	ORDER BY id DESC
-	LIMIT $3`
+		/*
+		UNION ALL
 
-const readFeedPostsQuery = `
-	SELECT ` + postColumns + `
-	FROM post
-	WHERE author_profile_id IS NOT NULL
-	AND deleted_at IS NULL
-	AND ($1 = 0 OR id < $1)
+		SELECT
+			c.community_name AS author_name,
+			avatar.media_path AS avatar_url,
+			'community'::TEXT AS author_type
+		FROM community c
+		LEFT JOIN LATERAL (
+			SELECT m.media_path
+			FROM community_avatar ca
+			JOIN media m ON m.id = ca.media_id
+			WHERE ca.community_id = c.id
+				AND ca.deleted_at IS NULL
+				AND m.deleted_at IS NULL
+			ORDER BY ca.created_at DESC, ca.media_id DESC
+			LIMIT 1
+		) avatar ON TRUE
+		WHERE c.id = post.author_community_id
+			AND c.deleted_at IS NULL
+		*/
+	) author ON TRUE`
 
-	ORDER BY id DESC
-	LIMIT $2`
-
-const readPostByIDQuery = `
-	SELECT ` + postColumns +
-	` FROM post WHERE id = $1 AND deleted_at IS NULL`
+const postReturningColumns = `
+	id,
+	post_text,
+	author_profile_id,
+	author_community_id,
+	created_at,
+	updated_at,
+	deleted_at`
 
 // PostRepository выполняет sql-операции с таблицей profile
 type PostRepository struct {
@@ -141,9 +125,25 @@ func (r *PostRepository) Create(
 		return domain.Post{}, ErrInvalidPostAuthor
 	}
 
+	const createPostQuery = `
+		WITH created_post AS (
+			INSERT INTO post (
+				post_text,
+				author_profile_id,
+				author_community_id
+			)
+			VALUES ($1, $2, $3)
+			RETURNING ` + postReturningColumns + `
+		)
+		SELECT
+			` + postColumns + `,
+			` + postAuthorColumns + `
+		FROM created_post AS post
+		` + postAuthorJoin
+
 	row := r.pool.QueryRow(
 		ctx,
-		cretePostQuery,
+		createPostQuery,
 		nullableString(params.PostText),
 		nullableInt64(params.AuthorProfileID),
 		nullableInt64(params.AuthorCommunityID),
@@ -162,6 +162,15 @@ func (r *PostRepository) ReadByID(
 	ctx context.Context,
 	id int64) (domain.Post, error) {
 
+	const readPostByIDQuery = `
+		SELECT
+			` + postColumns + `,
+			` + postAuthorColumns + `
+		FROM post
+		` + postAuthorJoin + `
+		WHERE post.id = $1
+			AND post.deleted_at IS NULL`
+
 	post, err := scanPost(r.pool.QueryRow(ctx, readPostByIDQuery, id))
 	return post, normalizePostError(err)
 }
@@ -179,6 +188,24 @@ func (r *PostRepository) ReadProfilePosts(
 	if id < 1 {
 		return nil, 0, false, ErrProfileNotFound
 	}
+
+	const readPostQuery = `
+		SELECT
+			` + postColumns + `,
+			` + postAuthorColumns + `
+		FROM post
+		` + postAuthorJoin + `
+		WHERE post.author_profile_id = $1
+			AND post.deleted_at IS NULL
+			AND ($2 = 0 OR post.id < $2)
+			AND EXISTS (
+				SELECT 1
+				FROM profile p
+				WHERE p.id = post.author_profile_id
+					AND p.deleted_at IS NULL
+			)
+		ORDER BY post.id DESC
+		LIMIT $3`
 
 	cursor = normalizeCursor(cursor)
 	limit = normalizeLimit(limit, 10)
@@ -228,6 +255,43 @@ func (r *PostRepository) ReadRelationshipPosts(
 	if profileID < 1 {
 		return nil, 0, false, ErrProfileNotFound
 	}
+
+	const readRelationshipPostsQuery = `
+		SELECT
+			` + postColumns + `,
+			` + postAuthorColumns + `
+		FROM post
+		` + postAuthorJoin + `
+		WHERE post.deleted_at IS NULL
+			AND ($2 = 0 OR post.id < $2)
+			AND post.author_profile_id IS NOT NULL
+
+			AND EXISTS (
+				SELECT 1
+				FROM profile p
+				WHERE p.id = post.author_profile_id
+					AND p.deleted_at IS NULL
+			)
+
+			AND EXISTS (
+				SELECT 1
+				FROM profile_relationship pr
+				WHERE pr.deleted_at IS NULL
+					AND pr.relationships_status = 'accepted'
+					AND (
+						(pr.profile_id_master = $1
+							AND pr.profile_id_slave = post.author_profile_id)
+						OR
+						(pr.profile_id_slave = $1
+							AND pr.profile_id_master = post.author_profile_id)
+					)
+					AND (
+						cardinality($4::text[]) = 0
+						OR pr.relationships_type = ANY($4::text[])
+					)
+			)
+		ORDER BY post.id DESC
+		LIMIT $3`
 
 	cursor = normalizeCursor(cursor)
 	limit = normalizeLimit(limit, 100)
@@ -284,6 +348,18 @@ func (r *PostRepository) ReadFeedPosts(
 	cursor = normalizeCursor(cursor)
 	limit = normalizeLimit(limit, 100)
 
+	const readFeedPostsQuery = `
+		SELECT
+			` + postColumns + `,
+			` + postAuthorColumns + `
+		FROM post
+		` + postAuthorJoin + `
+		WHERE post.deleted_at IS NULL
+			AND ($1 = 0 OR post.id < $1)
+			AND post.author_profile_id IS NOT NULL
+		ORDER BY post.id DESC
+		LIMIT $2`
+
 	queryLimit := limit + 1
 
 	rows, err := r.pool.Query(
@@ -327,6 +403,19 @@ func (r *PostRepository) Update(
 	sets := make([]string, 0, 1)
 	args := make([]any, 0, 2)
 
+	const updatePostQuery = `
+		WITH updated_post AS (
+			UPDATE post SET %s
+			WHERE id = $%d
+				AND deleted_at IS NULL
+			RETURNING ` + postReturningColumns + `
+		)
+		SELECT
+			` + postColumns + `,
+			` + postAuthorColumns + `
+		FROM updated_post AS post
+		` + postAuthorJoin
+
 	add := func(column string, value any) {
 		args = append(args, value)
 		sets = append(
@@ -353,9 +442,7 @@ func (r *PostRepository) Update(
 		len(args),
 	)
 
-	post, err := scanPost(
-		r.pool.QueryRow(ctx, query, args...),
-	)
+	post, err := scanPost(r.pool.QueryRow(ctx, query, args...))
 	return post, normalizePostError(err)
 }
 
@@ -364,6 +451,12 @@ func (r *PostRepository) Delete(
 	ctx context.Context,
 	id int64,
 ) error {
+
+	const postDeleteQuery = `
+		UPDATE post
+		SET deleted_at = NOW()
+		WHERE id = $1
+		AND deleted_at IS NULL`
 
 	command, err := r.pool.Exec(
 		ctx,
@@ -391,6 +484,10 @@ func scanPost(row rowScanner) (domain.Post, error) {
 		createdAt           pgtype.Timestamptz
 		updatedAt           pgtype.Timestamptz
 		deletedAt           pgtype.Timestamptz
+
+		authorName pgtype.Text
+		avatarURL  pgtype.Text
+		authorType pgtype.Text
 	)
 
 	dest := []any{
@@ -401,6 +498,9 @@ func scanPost(row rowScanner) (domain.Post, error) {
 		&createdAt,
 		&updatedAt,
 		&deletedAt,
+		&authorName,
+		&avatarURL,
+		&authorType,
 	}
 
 	if err := row.Scan(dest...); err != nil {
@@ -416,6 +516,16 @@ func scanPost(row rowScanner) (domain.Post, error) {
 		UpdatedAt:         timestampPointer(updatedAt),
 		DeletedAt:         timestampPointer(deletedAt),
 	}
+
+	post.Author = domain.Author{
+		Name: authorName.String,
+		Type: domain.PostAuthorType(authorType.String),
+	}
+
+	if avatarURL.Valid {
+		post.Author.AvatarURL = avatarURL.String
+	}
+
 	return post, nil
 }
 
