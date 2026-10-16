@@ -31,7 +31,7 @@ type CreateRelationshipRequest struct {
 type ListRelationshipsRequest struct {
 	RelationshipsStatus RelationshipStatus `json:"relationships_status,omitempty" example:"approved"`
 	RelationshipsType   string             `json:"relationships_type,omitempty" example:"friendship"`
-	Cursor              int                `json:"cursor" example:"0"`
+	Cursor              int64              `json:"cursor" example:"0"`
 	Limit               int                `json:"limit" example:"10"`
 }
 
@@ -50,10 +50,10 @@ type AcceptRelationshipRequest struct {
 // RelationshipsResponse — результат получения списка связей
 type RelationshipsResponse struct {
 	Relationships []ProfileRelationship `json:"relationships"`
-	Cursor        int                   `json:"cursor" example:"0"`
+	Cursor        int64                 `json:"cursor" example:"0"`
 	Limit         int                   `json:"limit" example:"10"`
 	HasMore       bool                  `json:"has_more" example:"true"`
-	NextCursor    int                   `json:"next_cursor,omitempty" example:"10"`
+	NextCursor    int64                 `json:"next_cursor,omitempty" example:"10"`
 }
 
 // RelationshipSuggestion — профиль пользователя, которому можно отправить запрос на связь
@@ -65,10 +65,10 @@ type RelationshipSuggestion struct {
 // RelationshipSuggestionsResponse — ответ со списком возможных получателей связи
 type RelationshipSuggestionsResponse struct {
 	Profiles   []RelationshipSuggestion `json:"profiles"`
-	Cursor     int                      `json:"cursor" example:"0"`
+	Cursor     int64                    `json:"cursor" example:"0"`
 	Limit      int                      `json:"limit" example:"10"`
 	HasMore    bool                     `json:"has_more" example:"true"`
-	NextCursor int                      `json:"next_cursor,omitempty" example:"10"`
+	NextCursor int64                    `json:"next_cursor,omitempty" example:"10"`
 }
 
 // RelationshipTypes — типы отношений пользователя

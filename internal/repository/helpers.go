@@ -1,15 +1,22 @@
 package repository
 
 import (
-	"errors"
 	"strings"
 	"time"
 
 	"kvmm/internal/domain"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
+
+func int64Pointer(value pgtype.Int8) *int64 {
+	if !value.Valid {
+		return nil
+	}
+
+	result := value.Int64
+	return &result
+}
 
 func textPointer(value pgtype.Text) *string {
 	if !value.Valid {
@@ -43,6 +50,14 @@ func timestampPointer(value pgtype.Timestamptz) *time.Time {
 	return &result
 }
 
+func nullableInt64(value *int64) any {
+	if value == nil {
+		return nil
+	}
+
+	return *value
+}
+
 func nullableString(value *string) any {
 	if value == nil {
 		return nil
@@ -68,9 +83,23 @@ func nullableTime(value *time.Time) any {
 	return *value
 }
 
-func normalizeError(err error) error {
-	if errors.Is(err, pgx.ErrNoRows) {
-		return ErrNotFound
+type rowScanner interface {
+	Scan(dest ...any) error
+}
+
+func normalizeLimit(limit int, limit_max int) int {
+	if limit <= 0 {
+		return 10
 	}
-	return err
+	if limit > limit_max {
+		return limit_max
+	}
+	return limit
+}
+
+func normalizeCursor(cursor int64) int64 {
+	if cursor < 0 {
+		return 0
+	}
+	return cursor
 }
