@@ -4,9 +4,8 @@ import (
 	"net/http"
 
 	"kvmm/internal/domain"
-	"kvmm/internal/handler/auth"
 	"kvmm/internal/handler/helpers"
-	"kvmm/internal/store"
+	postusecase "kvmm/internal/usecase/post"
 )
 
 // Create создаёт публикацию от имени текущего пользователя
@@ -29,21 +28,31 @@ func (h *PostHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if !helpers.MethodAllowed(w, r, http.MethodPost) {
 		return
 	}
-	session := auth.SessionCookie(r)
-	if _, err := store.ProfileBySession(session); err != nil {
-		helpers.WriteError(w, http.StatusUnauthorized, "unauthorized", "authentication required")
-		return
-	}
-	if err := store.ValidateCSRF(session, r.Header.Get("X-CSRF-Token")); err != nil {
-		helpers.WriteError(w, http.StatusForbidden, "csrf_failed", "valid X-CSRF-Token header is required")
-		return
-	}
-
 	var req domain.CreatePostRequest
 	if err := helpers.DecodeJSON(w, r, &req); err != nil {
 		helpers.WriteError(w, http.StatusBadRequest, "validation_error", err.Error())
 		return
 	}
 
-	// TODO: сохранить публикацию
+	post, err := h.useCase.Create(r.Context(), helpers.SessionCookie(r), r.Header.Get("X-CSRF-Token"), req)
+	if err != nil {
+		h.writeError(w, err)
+		return
+	}
+	helpers.WriteJSON(w, http.StatusCreated, post)
+}
+
+func (h *PostHandler) writeError(w http.ResponseWriter, err error) {
+	switch err {
+	case postusecase.ErrUnauthorized:
+		helpers.WriteError(w, http.StatusUnauthorized, "unauthorized", "authentication required")
+	case postusecase.ErrInvalidCSRF:
+		helpers.WriteError(w, http.StatusForbidden, "csrf_failed", "valid X-CSRF-Token header is required")
+	case postusecase.ErrForbidden:
+		helpers.WriteError(w, http.StatusForbidden, "forbidden", "you can change only your own post")
+	case postusecase.ErrInvalidPost:
+		helpers.WriteError(w, http.StatusBadRequest, "validation_error", err.Error())
+	default:
+		helpers.WriteError(w, http.StatusBadRequest, "invalid_request", err.Error())
+	}
 }

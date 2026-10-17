@@ -65,8 +65,7 @@ const parentMessagesQuery = `
 		AND deleted_at IS NULL
 	ORDER BY id`
 
-type createMessage struct {
-	ID          int64   `json:"id" example:"1"`
+type CreateMessageParams struct {
 	ChatID      int64   `json:"chat_id" example:"1"`
 	AuthorID    int64   `json:"author_id" example:"1"`
 	MessageText *string `json:"message_text" example:"Привет!"`
@@ -112,7 +111,7 @@ func scanMessage(row rowScanner) (domain.Message, error) {
 
 func (r *MessageRepository) Create(
 	ctx context.Context,
-	createParam createMessage,
+	createParam CreateMessageParams,
 ) (domain.Message, error) {
 	row := r.pool.QueryRow(
 		ctx,

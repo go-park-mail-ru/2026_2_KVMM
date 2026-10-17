@@ -1,34 +1,46 @@
 package httpapi
 
 import (
-	"bytes"
-	"mime"
+	// "bytes"
+	// "mime"
 	"net/http"
 	"os"
-	"path/filepath"
-	"strings"
-	"time"
+
+	// "path/filepath"
+	// "strings"
+	// "time"
 
 	"kvmm/internal/handler/auth"
 	"kvmm/internal/handler/chat"
 	"kvmm/internal/handler/feed"
-	"kvmm/internal/handler/helpers"
+
+	// "kvmm/internal/handler/helpers"
 	"kvmm/internal/handler/posts"
 	"kvmm/internal/handler/profile"
 	"kvmm/internal/handler/relationship"
-	"kvmm/internal/store"
+	// "kvmm/internal/store"
 )
 
+// обработчики приложения
+type Dependencies struct {
+	Auth         *auth.AuthHandler
+	Chat         *chat.ChatHandler
+	Feed         *feed.FeedHandler
+	Posts        *posts.PostHandler
+	Profile      *profile.ProfileHandler
+	Relationship *relationship.FriendsHandler
+}
+
 // NewRouter создаёт маршрутизатор API на основе стандартного http.ServeMux
-func NewRouter() http.Handler {
+func NewRouter(deps Dependencies) http.Handler {
 	mux := http.NewServeMux()
 
-	authHandler := auth.NewAuthHandler()
-	chatHandler := chat.NewChatHandler()
-	feedHandler := feed.NewFeedHandler()
-	postHandler := posts.NewPostHandler()
-	profileHandler := profile.NewProfileHandler()
-	relationshipHandler := relationship.NewRelationshipHandler()
+	authHandler := deps.Auth
+	chatHandler := deps.Chat
+	feedHandler := deps.Feed
+	postHandler := deps.Posts
+	profileHandler := deps.Profile
+	relationshipHandler := deps.Relationship
 
 	mux.HandleFunc("/api/auth/register", authHandler.Register)
 	mux.HandleFunc("/api/auth/login", authHandler.Login)
@@ -42,7 +54,7 @@ func NewRouter() http.Handler {
 	mux.HandleFunc("/api/posts/update", postHandler.Update)
 	mux.HandleFunc("/api/posts/user", postHandler.UserPosts)
 
-	mux.HandleFunc("/api/media/", serveMedia)
+	// mux.HandleFunc("/api/media/", serveMedia)
 
 	mux.HandleFunc("/api/profile/update", profileHandler.Update)
 
@@ -69,23 +81,23 @@ func NewRouter() http.Handler {
 }
 
 // serveMedia отдаёт встроенный файл публикации с Сontent-Type
-func serveMedia(w http.ResponseWriter, r *http.Request) {
-	if !helpers.MethodAllowed(w, r, http.MethodGet) {
-		return
-	}
-	name := strings.TrimPrefix(r.URL.Path, "/api/media/")
-	data, err := readMediaFile(name)
-	if err != nil {
-		http.NotFound(w, r)
-		return
-	}
-	contentType := mime.TypeByExtension(strings.ToLower(filepath.Ext(name)))
-	if contentType == "" {
-		contentType = "application/octet-stream"
-	}
-	w.Header().Set("Content-Type", contentType)
-	http.ServeContent(w, r, name, time.Time{}, bytes.NewReader(data))
-}
+// func serveMedia(w http.ResponseWriter, r *http.Request) {
+// 	if !helpers.MethodAllowed(w, r, http.MethodGet) {
+// 		return
+// 	}
+// 	name := strings.TrimPrefix(r.URL.Path, "/api/media/")
+// 	data, err := readMediaFile(name)
+// 	if err != nil {
+// 		http.NotFound(w, r)
+// 		return
+// 	}
+// 	contentType := mime.TypeByExtension(strings.ToLower(filepath.Ext(name)))
+// 	if contentType == "" {
+// 		contentType = "application/octet-stream"
+// 	}
+// 	w.Header().Set("Content-Type", contentType)
+// 	http.ServeContent(w, r, name, time.Time{}, bytes.NewReader(data))
+// }
 
 // cors добавляет CORS-заголовки и обрабатывает preflight-запросы
 func cors(next http.Handler) http.Handler {
@@ -114,9 +126,9 @@ func cors(next http.Handler) http.Handler {
 }
 
 // readMediaFile возвращает встроенный файл публикации по безопасному имени
-func readMediaFile(name string) ([]byte, error) {
-	if name == "" || strings.Contains(name, "..") || strings.ContainsAny(name, `/\\`) {
-		return nil, store.ErrNotFound
-	}
-	return store.EmbeddedMediaFiles.ReadFile("media/" + name)
-}
+// func readMediaFile(name string) ([]byte, error) {
+// 	if name == "" || strings.Contains(name, "..") || strings.ContainsAny(name, `/\\`) {
+// 		return nil, store.ErrNotFound
+// 	}
+// 	return store.EmbeddedMediaFiles.ReadFile("media/" + name)
+// }

@@ -4,9 +4,7 @@ import (
 	"net/http"
 
 	"kvmm/internal/domain"
-	"kvmm/internal/handler/auth"
 	"kvmm/internal/handler/helpers"
-	"kvmm/internal/store"
 )
 
 // Send отправляет текстовое сообщение в чат
@@ -29,21 +27,16 @@ func (h *ChatHandler) Send(w http.ResponseWriter, r *http.Request) {
 	if !helpers.MethodAllowed(w, r, http.MethodPost) {
 		return
 	}
-	session := auth.SessionCookie(r)
-	if _, err := store.ProfileBySession(session); err != nil {
-		helpers.WriteError(w, http.StatusUnauthorized, "unauthorized", "authentication required")
-		return
-	}
-	if err := store.ValidateCSRF(session, r.Header.Get("X-CSRF-Token")); err != nil {
-		helpers.WriteError(w, http.StatusForbidden, "csrf_failed", "valid X-CSRF-Token header is required")
-		return
-	}
-
 	var req domain.SendMessageRequest
 	if err := helpers.DecodeJSON(w, r, &req); err != nil {
 		helpers.WriteError(w, http.StatusBadRequest, "validation_error", err.Error())
 		return
 	}
 
-	// TODO: сохранить сообщение после проверки участия пользователя в чате
+	message, err := h.useCase.Send(r.Context(), helpers.SessionCookie(r), r.Header.Get("X-CSRF-Token"), req)
+	if err != nil {
+		h.writeError(w, err)
+		return
+	}
+	helpers.WriteJSON(w, http.StatusCreated, message)
 }

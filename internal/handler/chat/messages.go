@@ -3,9 +3,7 @@ package chat
 import (
 	"net/http"
 
-	"kvmm/internal/handler/auth"
 	"kvmm/internal/handler/helpers"
-	"kvmm/internal/store"
 )
 
 // Messages возвращает сообщения конкретного чата с пагинацией
@@ -14,6 +12,7 @@ import (
 // @Description Возвращает сообщения указанного чата в хронологическом порядке
 // @Tags chats
 // @Security SessionCookie
+// @Param X-CSRF-Token header string true "CSRF-токен"
 // @Produce json
 // @Param chat_id query int true "Идентификатор чата"
 // @Param cursor query int false "Указатель на начальный элемент для сообщений" default(0)
@@ -27,17 +26,27 @@ func (h *ChatHandler) Messages(w http.ResponseWriter, r *http.Request) {
 	if !helpers.MethodAllowed(w, r, http.MethodGet) {
 		return
 	}
-	session := auth.SessionCookie(r)
-	if _, err := store.ProfileBySession(session); err != nil {
-		helpers.WriteError(w, http.StatusUnauthorized, "unauthorized", "authentication required")
+	chatID, err := helpers.PositiveQueryInt64(r, "chat_id")
+	if err != nil {
+		helpers.WriteError(w, http.StatusBadRequest, "invalid_chat_id", err.Error())
 		return
 	}
-
-	// cursor, limit, err := helpers.Pagination(r, 10)
-	// if err != nil {
-	// 	helpers.WriteError(w, http.StatusBadRequest, "invalid_pagination", err.Error())
-	// 	return
-	// }
-
-	// TODO: проверить участие пользователя в чате и получить его сообщения
+	cursor, limit, err := helpers.Pagination(r, 10)
+	if err != nil {
+		helpers.WriteError(w, http.StatusBadRequest, "invalid_pagination", err.Error())
+		return
+	}
+	response, err := h.useCase.Messages(
+		r.Context(),
+		helpers.SessionCookie(r),
+		r.Header.Get("X-CSRF-Token"),
+		chatID,
+		int64(cursor),
+		limit,
+	)
+	if err != nil {
+		h.writeError(w, err)
+		return
+	}
+	helpers.WriteJSON(w, http.StatusOK, response)
 }

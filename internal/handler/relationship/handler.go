@@ -1,6 +1,14 @@
 package relationship
 
-type FriendsHandler struct{}
+import (
+	relusecase "kvmm/internal/usecase/relationship"
+)
+
+type FriendsHandler struct {
+	useCase *relusecase.UseCase
+}
 
 // NewRelationshipHandler создаёт обработчик связей
-func NewRelationshipHandler() *FriendsHandler { return &FriendsHandler{} }
+func NewRelationshipHandler(useCase *relusecase.UseCase) *FriendsHandler {
+	return &FriendsHandler{useCase: useCase}
+}

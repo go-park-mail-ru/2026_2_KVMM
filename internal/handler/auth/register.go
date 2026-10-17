@@ -5,7 +5,7 @@ import (
 
 	"kvmm/internal/domain"
 	"kvmm/internal/handler/helpers"
-	"kvmm/internal/store"
+	authusecase "kvmm/internal/usecase/auth"
 )
 
 // Register регистрирует пользователя и создаёт сессию
@@ -33,15 +33,15 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		helpers.WriteError(w, http.StatusBadRequest, "validation_error", err.Error())
 		return
 	}
-	profile, session, csrfToken, err := store.Register(req)
+	response, session, err := h.useCase.Register(r.Context(), req)
 	if err != nil {
-		if err == store.ErrConflict {
+		if err == authusecase.ErrConflict {
 			helpers.WriteError(w, http.StatusConflict, "already_exists", "nickname, email or phone_number is already used")
 			return
 		}
-		helpers.WriteError(w, http.StatusBadRequest, "invalid_request", "")
+		helpers.WriteError(w, http.StatusInternalServerError, "internal_error", "internal server error")
 		return
 	}
-	setSessionCookie(w, session)
-	helpers.WriteJSON(w, http.StatusCreated, domain.AuthResponse{Profile: profile, CSRFToken: csrfToken})
+	helpers.SetSessionCookie(w, session)
+	helpers.WriteJSON(w, http.StatusCreated, response)
 }

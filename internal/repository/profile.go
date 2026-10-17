@@ -35,7 +35,7 @@ const updateProfileQuery = `
 	UPDATE profile SET %s
 	WHERE id = $%d
 	AND deleted_at IS NULL
-	RETURNING ` + postColumns
+	RETURNING ` + profileColumns
 
 const createProfileQuery = `
 	INSERT INTO profile (

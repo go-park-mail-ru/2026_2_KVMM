@@ -4,9 +4,8 @@ import (
 	"net/http"
 
 	"kvmm/internal/domain"
-	"kvmm/internal/handler/auth"
 	"kvmm/internal/handler/helpers"
-	"kvmm/internal/store"
+	profileusecase "kvmm/internal/usecase/profile"
 )
 
 // Update изменяет профиль текущего пользователя
@@ -28,33 +27,29 @@ func (h *ProfileHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if !helpers.MethodAllowed(w, r, http.MethodPatch) {
 		return
 	}
-	session := auth.SessionCookie(r)
-	if _, err := store.ProfileBySession(session); err != nil {
-		helpers.WriteError(w, http.StatusUnauthorized, "unauthorized", "authentication required")
-		return
-	}
-	if err := store.ValidateCSRF(session, r.Header.Get("X-CSRF-Token")); err != nil {
-		helpers.WriteError(w, http.StatusForbidden, "csrf_failed", "valid X-CSRF-Token header is required")
-		return
-	}
+	session := helpers.SessionCookie(r)
 	var req domain.UpdateProfileRequest
 	if err := helpers.DecodeJSON(w, r, &req); err != nil {
-		helpers.WriteError(w, http.StatusBadRequest, "validation_error", err.Error())
+		helpers.WriteError(w, http.StatusBadRequest, "validation_error", "")
 		return
 	}
 	if err := helpers.ValidateUpdateProfileRequest(req); err != nil {
-		helpers.WriteError(w, http.StatusBadRequest, "validation_error", err.Error())
+		helpers.WriteError(w, http.StatusBadRequest, "validation_error", "")
 		return
 	}
-	profile, err := store.UpdateProfileBySession(session, req)
+	updatedProfile, err := h.useCase.Update(r.Context(), session, r.Header.Get("X-CSRF-Token"), req)
 	if err != nil {
 		switch err {
-		case store.ErrConflict:
+		case profileusecase.ErrInvalidCSRF:
+			helpers.WriteError(w, http.StatusForbidden, "csrf_failed", "valid X-CSRF-Token header is required")
+		case profileusecase.ErrUnauthorized:
+			helpers.WriteError(w, http.StatusUnauthorized, "unauthorized", "authentication required")
+		case profileusecase.ErrConflict:
 			helpers.WriteError(w, http.StatusConflict, "already_exists", "nickname, email or phone_number is already used")
 		default:
-			helpers.WriteError(w, http.StatusBadRequest, "invalid_request", err.Error())
+			helpers.WriteError(w, http.StatusBadRequest, "invalid_request", "")
 		}
 		return
 	}
-	helpers.WriteJSON(w, http.StatusOK, profile)
+	helpers.WriteJSON(w, http.StatusOK, updatedProfile)
 }

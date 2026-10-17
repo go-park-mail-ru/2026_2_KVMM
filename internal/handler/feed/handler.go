@@ -1,6 +1,12 @@
 package feed
 
-type FeedHandler struct{}
+import feedusecase "kvmm/internal/usecase/feed"
+
+type FeedHandler struct {
+	useCase *feedusecase.UseCase
+}
 
 // NewFeedHandler создаёт обработчик запросов ленты
-func NewFeedHandler() *FeedHandler { return &FeedHandler{} }
+func NewFeedHandler(useCase *feedusecase.UseCase) *FeedHandler {
+	return &FeedHandler{useCase: useCase}
+}

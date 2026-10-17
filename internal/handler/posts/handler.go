@@ -1,6 +1,12 @@
 package posts
 
-type PostHandler struct{}
+import postusecase "kvmm/internal/usecase/post"
+
+type PostHandler struct {
+	useCase *postusecase.UseCase
+}
 
 // NewProfileHandler создаёт обработчик профиля
-func NewPostHandler() *PostHandler { return &PostHandler{} }
+func NewPostHandler(useCase *postusecase.UseCase) *PostHandler {
+	return &PostHandler{useCase: useCase}
+}

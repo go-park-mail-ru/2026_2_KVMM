@@ -4,9 +4,7 @@ import (
 	"net/http"
 
 	"kvmm/internal/domain"
-	"kvmm/internal/handler/auth"
 	"kvmm/internal/handler/helpers"
-	"kvmm/internal/store"
 )
 
 // Create создаёт чат с указанным пользователем
@@ -30,21 +28,16 @@ func (h *ChatHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if !helpers.MethodAllowed(w, r, http.MethodPost) {
 		return
 	}
-	session := auth.SessionCookie(r)
-	if _, err := store.ProfileBySession(session); err != nil {
-		helpers.WriteError(w, http.StatusUnauthorized, "unauthorized", "authentication required")
-		return
-	}
-	if err := store.ValidateCSRF(session, r.Header.Get("X-CSRF-Token")); err != nil {
-		helpers.WriteError(w, http.StatusForbidden, "csrf_failed", "valid X-CSRF-Token header is required")
-		return
-	}
-
 	var req domain.CreateChatRequest
 	if err := helpers.DecodeJSON(w, r, &req); err != nil {
 		helpers.WriteError(w, http.StatusBadRequest, "validation_error", err.Error())
 		return
 	}
 
-	// TODO: создать чат и добавить в него текущего и указанного пользователей
+	chat, err := h.useCase.Create(r.Context(), helpers.SessionCookie(r), r.Header.Get("X-CSRF-Token"), req)
+	if err != nil {
+		h.writeError(w, err)
+		return
+	}
+	helpers.WriteJSON(w, http.StatusCreated, chat)
 }
