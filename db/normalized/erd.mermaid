@@ -15,7 +15,6 @@ erDiagram
         TIMESTAMPTZ updated_at
         TIMESTAMPTZ deleted_at
         TEXT password_hash
-        TEXT password_salt
     }
 
     community {
@@ -39,7 +38,7 @@ erDiagram
 
     media {
         BIGINT id PK
-        TEXT media_path "S3_PATH"
+        TEXT media_path "PATH"
         TEXT description
         TIMESTAMPTZ created_at
         TIMESTAMPTZ updated_at
@@ -101,7 +100,8 @@ erDiagram
     profile_relationship {
         BIGINT profile_id_master PK, FK
         BIGINT profile_id_slave PK, FK
-        relationships_enum status
+        relationships_status_enum relationships_status
+        TEXT relationships_type
         TIMESTAMPTZ created_at
         TIMESTAMPTZ updated_at
         TIMESTAMPTZ deleted_at
@@ -118,7 +118,7 @@ erDiagram
 
     emoji_reaction {
         BIGINT id PK
-        TEXT emoji_path "S3_PATH"
+        TEXT emoji_path "PATH"
         TEXT description
         TIMESTAMPTZ created_at
         TIMESTAMPTZ updated_at
@@ -162,7 +162,7 @@ erDiagram
 
     sticker {
         BIGINT id PK
-        TEXT sticker_path "S3_PATH"
+        TEXT sticker_path "PATH"
         BIGINT sticker_pack
         TEXT description
         TIMESTAMPTZ created_at
@@ -187,7 +187,14 @@ erDiagram
         TIMESTAMPTZ deleted_at
     }
 
-    profile |o--o{ post : "authors (or community)"
+    community_avatar {
+        BIGINT community_id PK, FK
+        BIGINT media_id PK, FK
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ deleted_at
+    }
+
+    profile ||--o{ post : "authors (or community)"
     profile ||--o{ profile_repost : "reposts"
     profile ||--o{ profile_like : "likes"
 
@@ -207,7 +214,9 @@ erDiagram
     profile ||--o{ comment_like : "likes comments"
 
     profile ||--o{ profile_avatar : "avatars"
+    community ||--o{ community_avatar : "avatars"
 
+    community_avatar }o--|| media : "uses"
     community |o--o{ post : "authors (or profile)"
 
     post ||--o{ post_media : "media"
@@ -246,6 +255,8 @@ erDiagram
 
     media ||--o{ profile_avatar : "used as avatar"
 
+    media ||--o{ community_avatar : "used as community avatar"
+
     role_enum {
         ENUM admin
         ENUM moderator
@@ -253,10 +264,10 @@ erDiagram
         ENUM member
     }
 
-    relationships_enum {
-        ENUM friendship
-        ENUM blocked
-        ENUM friend_request
+    relationships_status_enum {
+        ENUM request
+        ENUM accepted
+        ENUM canceled
     }
 
     gender_enum {

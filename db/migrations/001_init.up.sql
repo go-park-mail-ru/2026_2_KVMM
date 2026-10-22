@@ -60,9 +60,9 @@ CREATE TABLE profile (
         UNIQUE (phone_number)
 
 );
-CREATE INDEX profile_name ON profile(profile_name);
-CREATE INDEX profile_surname ON profile(surname);
-CREATE INDEX profile_patronymic ON profile(patronymic);
+-- CREATE INDEX profile_name ON profile(profile_name);
+-- CREATE INDEX profile_surname ON profile(surname);
+-- CREATE INDEX profile_patronymic ON profile(patronymic);
 
 
 -- Сообщества пользователей
@@ -127,7 +127,7 @@ CREATE TABLE post (
 -- Медиафайлы
 CREATE TABLE media (
     id BIGINT GENERATED ALWAYS AS IDENTITY,
-    media_path TEXT NOT NULL, -- S3 path
+    media_path TEXT NOT NULL, -- path
     description TEXT NULL,
 
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -352,7 +352,7 @@ CREATE TABLE community_member (
 -- Эмодзи реакций
 CREATE TABLE emoji_reaction (
     id BIGINT GENERATED ALWAYS AS IDENTITY,
-    emoji_path TEXT NOT NULL, -- S3 path
+    emoji_path TEXT NOT NULL, -- path
     description TEXT NULL,
 
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -492,7 +492,7 @@ CREATE TABLE comment_media (
 -- Стикеры
 CREATE TABLE sticker (
     id BIGINT GENERATED ALWAYS AS IDENTITY,
-    sticker_path TEXT NOT NULL, -- S3 path
+    sticker_path TEXT NOT NULL, -- path
     sticker_pack BIGINT NOT NULL,
     description TEXT NULL,
 
