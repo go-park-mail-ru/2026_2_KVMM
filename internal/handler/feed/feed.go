@@ -3,9 +3,7 @@ package feed
 import (
 	"net/http"
 
-	"kvmm/internal/domain"
 	"kvmm/internal/handler/helpers"
-	"kvmm/internal/store"
 )
 
 // List возвращает последовательность публикаций ленты
@@ -27,10 +25,10 @@ func (h *FeedHandler) List(w http.ResponseWriter, r *http.Request) {
 		helpers.WriteError(w, http.StatusBadRequest, "invalid_pagination", err.Error())
 		return
 	}
-	posts, hasMore, nextCursor := store.ListPosts(cursor, limit)
-	response := domain.FeedResponse{Posts: posts, Cursor: cursor, Limit: limit, HasMore: hasMore}
-	if hasMore {
-		response.NextCursor = nextCursor
+	response, err := h.useCase.List(r.Context(), int64(cursor), limit)
+	if err != nil {
+		helpers.WriteError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
 	}
 	helpers.WriteJSON(w, http.StatusOK, response)
 }

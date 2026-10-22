@@ -2,10 +2,9 @@ package posts
 
 import (
 	"net/http"
+	"strconv"
 
-	"kvmm/internal/handler/auth"
 	"kvmm/internal/handler/helpers"
-	"kvmm/internal/store"
 )
 
 // Delete удаляет публикацию текущего пользователя
@@ -17,7 +16,7 @@ import (
 // @Accept json
 // @Produce json
 // @Param X-CSRF-Token header string true "CSRF-токен"
-// @Param request query int true "ID публикации"
+// @Param post_id query int true "ID публикации"
 // @Success 204 "Публикация удалена"
 // @Failure 400 {object} domain.ErrorResponse
 // @Failure 401 {object} domain.ErrorResponse
@@ -28,15 +27,14 @@ func (h *PostHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	if !helpers.MethodAllowed(w, r, http.MethodDelete) {
 		return
 	}
-	session := auth.SessionCookie(r)
-	if _, err := store.ProfileBySession(session); err != nil {
-		helpers.WriteError(w, http.StatusUnauthorized, "unauthorized", "authentication required")
+	postID, err := strconv.ParseInt(r.URL.Query().Get("post_id"), 10, 64)
+	if err != nil || postID <= 0 {
+		helpers.WriteError(w, http.StatusBadRequest, "validation_error", "post_id must be a positive integer")
 		return
 	}
-	if err := store.ValidateCSRF(session, r.Header.Get("X-CSRF-Token")); err != nil {
-		helpers.WriteError(w, http.StatusForbidden, "csrf_failed", "valid X-CSRF-Token header is required")
+	if err := h.useCase.Delete(r.Context(), helpers.SessionCookie(r), r.Header.Get("X-CSRF-Token"), postID); err != nil {
+		h.writeError(w, err)
 		return
 	}
-
-	// TODO: проверить автора публикации и выполнить soft delete
+	w.WriteHeader(http.StatusNoContent)
 }

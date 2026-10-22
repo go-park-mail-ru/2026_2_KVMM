@@ -5,7 +5,7 @@ import (
 
 	"kvmm/internal/domain"
 	"kvmm/internal/handler/helpers"
-	"kvmm/internal/store"
+	authusecase "kvmm/internal/usecase/auth"
 )
 
 // Login авторизует пользователя по логину и паролю
@@ -33,11 +33,15 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		helpers.WriteError(w, http.StatusBadRequest, "validation_error", "password has invalid format")
 		return
 	}
-	profile, session, csrfToken, err := store.Login(req)
+	response, session, err := h.useCase.Login(r.Context(), req)
 	if err != nil {
-		helpers.WriteError(w, http.StatusUnauthorized, "invalid_credentials", "invalid login or password")
+		if err == authusecase.ErrInvalidCredentials {
+			helpers.WriteError(w, http.StatusUnauthorized, "invalid_credentials", "invalid login or password")
+			return
+		}
+		helpers.WriteError(w, http.StatusInternalServerError, "internal_error", "internal server error")
 		return
 	}
-	setSessionCookie(w, session)
-	helpers.WriteJSON(w, http.StatusOK, domain.AuthResponse{Profile: profile, CSRFToken: csrfToken})
+	helpers.SetSessionCookie(w, session)
+	helpers.WriteJSON(w, http.StatusOK, response)
 }

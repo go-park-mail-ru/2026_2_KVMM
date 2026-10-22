@@ -28,6 +28,16 @@ func Pagination(r *http.Request, max_limit int) (int, int, error) {
 	return cursor, limit, nil
 }
 
+// PositiveQueryInt64 читает положительное число из query-параметра
+func PositiveQueryInt64(r *http.Request, name string) (int64, error) {
+	value := r.URL.Query().Get(name)
+	parsed, err := strconv.ParseInt(value, 10, 64)
+	if err != nil || parsed <= 0 {
+		return 0, fmt.Errorf("%s must be a positive integer", name)
+	}
+	return parsed, nil
+}
+
 // methodAllowed проверяет HTTP-метод и возвращает ошибку для неподдерживаемого метода
 func MethodAllowed(w http.ResponseWriter, r *http.Request, method string) bool {
 	if r.Method == method {

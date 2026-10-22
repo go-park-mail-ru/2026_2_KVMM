@@ -277,7 +277,7 @@ func (r *ChatRepository) ListChats(
 }
 
 // requireParticipant проверяет, что пользователь состоит в чате
-func (r *ChatRepository) requireParticipant(
+func (r *ChatRepository) IsParticipant(
 	ctx context.Context,
 	chatID int64,
 	profileID int64,

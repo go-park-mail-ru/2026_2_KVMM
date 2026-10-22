@@ -3,7 +3,6 @@ package posts
 import (
 	"net/http"
 
-	// "kvmm/internal/domain"
 	"kvmm/internal/handler/helpers"
 )
 
@@ -25,9 +24,20 @@ func (h *PostHandler) UserPosts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// cursor, limit, err := helpers.Pagination(r, 10)
-	// if err != nil {
-	// 	helpers.WriteError(w, http.StatusBadRequest, "invalid_pagination", err.Error())
-	// 	return
-	// }
+	profileID, err := helpers.PositiveQueryInt64(r, "profile_id")
+	if err != nil {
+		helpers.WriteError(w, http.StatusBadRequest, "invalid_profile_id", err.Error())
+		return
+	}
+	cursor, limit, err := helpers.Pagination(r, 10)
+	if err != nil {
+		helpers.WriteError(w, http.StatusBadRequest, "invalid_pagination", err.Error())
+		return
+	}
+	response, err := h.useCase.UserPosts(r.Context(), profileID, int64(cursor), limit)
+	if err != nil {
+		helpers.WriteError(w, http.StatusNotFound, "not_found", "profile or posts not found")
+		return
+	}
+	helpers.WriteJSON(w, http.StatusOK, response)
 }

@@ -10,8 +10,21 @@ import (
 	"syscall"
 	"time"
 
+	"kvmm/internal/handler/auth"
+	"kvmm/internal/handler/chat"
+	"kvmm/internal/handler/feed"
+	"kvmm/internal/handler/posts"
+	"kvmm/internal/handler/profile"
+	"kvmm/internal/handler/relationship"
 	"kvmm/internal/httpapi"
-	"kvmm/internal/store"
+	"kvmm/internal/repository"
+	authusecase "kvmm/internal/usecase/auth"
+	chatusecase "kvmm/internal/usecase/chat"
+	feedusecase "kvmm/internal/usecase/feed"
+	postusecase "kvmm/internal/usecase/post"
+	profileusecase "kvmm/internal/usecase/profile"
+	relationshipusecase "kvmm/internal/usecase/relationship"
+	sessionusecase "kvmm/internal/usecase/session"
 )
 
 // main запускает HTTP-сервер backend API.
@@ -20,12 +33,44 @@ func main() {
 	if addr == "" {
 		addr = ":8080"
 	}
+	databaseURL := os.Getenv("DATABASE_URL")
+	if databaseURL == "" {
+		log.Fatal("DATABASE_URL is required")
+	}
+	databaseContext, cancelDatabase := context.WithTimeout(context.Background(), 10*time.Second)
+	database, err := repository.NewPool(databaseContext, databaseURL)
+	cancelDatabase()
+	if err != nil {
+		log.Fatalf("database connection failed: %v", err)
+	}
+	defer database.Close()
+
+	sessions := repository.NewSessionRepository()
+	sessionReader := sessionusecase.New(sessions)
+	profiles := repository.NewProfileRepository(database)
+	postsRepository := repository.NewPostRepository(database)
+	chats := repository.NewChatRepository(database)
+	messages := repository.NewMessageRepository(database)
+
+	authUseCase := authusecase.New(profiles, sessions)
+	profileUseCase := profileusecase.New(profiles, sessionReader)
+	feedUseCase := feedusecase.New(postsRepository)
+	postUseCase := postusecase.New(postsRepository, sessionReader)
+	chatUseCase := chatusecase.New(chats, messages, sessionReader)
+	relationshipUseCase := relationshipusecase.New(sessionReader)
+
 	log.Printf("server listening on %s", addr)
-	go store.StartPostGenerator() // генерирует фейк посты
 
 	server := http.Server{
-		Addr:         addr,
-		Handler:      httpapi.NewRouter(),
+		Addr: addr,
+		Handler: httpapi.NewRouter(httpapi.Dependencies{
+			Auth:         auth.NewAuthHandler(authUseCase),
+			Chat:         chat.NewChatHandler(chatUseCase),
+			Feed:         feed.NewFeedHandler(feedUseCase),
+			Posts:        posts.NewPostHandler(postUseCase),
+			Profile:      profile.NewProfileHandler(profileUseCase),
+			Relationship: relationship.NewRelationshipHandler(relationshipUseCase),
+		}),
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
