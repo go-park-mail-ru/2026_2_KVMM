@@ -8,6 +8,11 @@ services:
       - ./deploy/.env
     expose:
       - "8080"
+    environment:
+      MEDIA_DIR: /data/media
+      MEDIA_PUBLIC_URL: /api/media
+    volumes:
+      - media_data:/data/media
     restart: unless-stopped
     networks:
       - kvmm
@@ -61,6 +66,7 @@ services:
 
 volumes:
   postgres_data:
+  media_data:
 
 networks:
   kvmm:
