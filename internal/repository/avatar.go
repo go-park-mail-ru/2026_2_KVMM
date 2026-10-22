@@ -55,7 +55,7 @@ const avatarProfileExistsQuery = `
 		SELECT 1
 		FROM profile
 		WHERE id = $1
-		  AND deleted_at IS NULL
+			AND deleted_at IS NULL
 	)`
 
 const avatarCountQuery = `
@@ -63,8 +63,8 @@ const avatarCountQuery = `
 	FROM profile_avatar pa
 	JOIN media m ON m.id = pa.media_id
 	WHERE pa.profile_id = $1
-	  AND pa.deleted_at IS NULL
-	  AND m.deleted_at IS NULL`
+		AND pa.deleted_at IS NULL
+		AND m.deleted_at IS NULL`
 
 const createMediaQuery = `
 	INSERT INTO media (media_path)
@@ -80,28 +80,41 @@ const listAvatarsQuery = `
 	FROM profile_avatar pa
 	JOIN media m ON m.id = pa.media_id
 	WHERE pa.profile_id = $1
-	  AND pa.deleted_at IS NULL
-	  AND m.deleted_at IS NULL
+		AND pa.deleted_at IS NULL
+		AND m.deleted_at IS NULL
 	ORDER BY pa.created_at DESC, m.id DESC`
 
 const readAvatarForDeleteQuery = `
-	SELECT m.media_path
+	SELECT pa.media_id
 	FROM profile_avatar pa
 	JOIN media m ON m.id = pa.media_id
 	WHERE pa.profile_id = $1
-	  AND pa.media_id = $2
-	  AND pa.deleted_at IS NULL
-	  AND m.deleted_at IS NULL
+		AND pa.media_id = $2
+		AND pa.deleted_at IS NULL
+		AND m.deleted_at IS NULL
 	FOR UPDATE OF pa, m`
 
 const deleteProfileAvatarQuery = `
 	UPDATE profile_avatar
 	SET deleted_at = CURRENT_TIMESTAMP
 	WHERE profile_id = $1
-	  AND media_id = $2
-	  AND deleted_at IS NULL`
+		AND media_id = $2
+		AND deleted_at IS NULL`
 
-// Create сохраняет новую аватарку и добавляет её к профилю.
+const deleteMediaQuery = `
+	UPDATE media
+	SET deleted_at = CURRENT_TIMESTAMP,
+		updated_at = CURRENT_TIMESTAMP
+	WHERE id = $1
+		AND deleted_at IS NULL
+		AND NOT EXISTS (
+			SELECT 1
+			FROM profile_avatar
+			WHERE media_id = $1
+				AND deleted_at IS NULL
+		)`
+
+// Create сохраняет новую аватарку и добавляет её к профилю
 func (r *AvatarRepository) Create(
 	ctx context.Context,
 	profileID int64,
@@ -180,7 +193,7 @@ func (r *AvatarRepository) Create(
 	return avatar, nil
 }
 
-// List возвращает активные аватарки от самой новой к самой старой.
+// List возвращает активные аватарки от самой новой к самой старой
 func (r *AvatarRepository) List(ctx context.Context, profileID int64) (domain.AvatarsResponse, error) {
 	if profileID <= 0 {
 		return domain.AvatarsResponse{}, ErrProfileNotFound
@@ -211,7 +224,7 @@ func (r *AvatarRepository) List(ctx context.Context, profileID int64) (domain.Av
 	return response, nil
 }
 
-// Delete удаляет аватарку только у владельца профиля.
+// Delete выполняет soft удаление аватарки
 func (r *AvatarRepository) Delete(ctx context.Context, profileID, avatarID int64) error {
 	if profileID <= 0 || avatarID <= 0 {
 		return ErrAvatarNotFound
@@ -223,8 +236,8 @@ func (r *AvatarRepository) Delete(ctx context.Context, profileID, avatarID int64
 	}
 	defer tx.Rollback(ctx)
 
-	var mediaPath string
-	if err := tx.QueryRow(ctx, readAvatarForDeleteQuery, profileID, avatarID).Scan(&mediaPath); err != nil {
+	var mediaID int64
+	if err := tx.QueryRow(ctx, readAvatarForDeleteQuery, profileID, avatarID).Scan(&mediaID); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrAvatarNotFound
 		}
@@ -233,12 +246,11 @@ func (r *AvatarRepository) Delete(ctx context.Context, profileID, avatarID int64
 	if _, err := tx.Exec(ctx, deleteProfileAvatarQuery, profileID, avatarID); err != nil {
 		return err
 	}
-	if err := tx.Commit(ctx); err != nil {
+	if _, err := tx.Exec(ctx, deleteMediaQuery, mediaID); err != nil {
 		return err
 	}
-
-	if err := r.removeStoredFile(mediaPath); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("remove avatar file: %w", err)
+	if err := tx.Commit(ctx); err != nil {
+		return err
 	}
 	return nil
 }
@@ -264,18 +276,6 @@ func randomAvatarName(extension string) (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(value) + extension, nil
-}
-
-func (r *AvatarRepository) removeStoredFile(mediaPath string) error {
-	prefix := r.mediaURL + "/"
-	if !strings.HasPrefix(mediaPath, prefix) {
-		return nil
-	}
-	relativePath := strings.TrimPrefix(mediaPath, prefix)
-	if relativePath == "" || strings.Contains(relativePath, "..") {
-		return nil
-	}
-	return os.Remove(filepath.Join(r.mediaDir, filepath.FromSlash(relativePath)))
 }
 
 func normalizeAvatarError(err error) error {

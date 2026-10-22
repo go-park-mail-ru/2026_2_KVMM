@@ -11,7 +11,6 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 var (
@@ -81,11 +80,11 @@ const deleteProfileQuery = `
 
 // ProfileRepository выполняет sql-операции с таблицей profile
 type ProfileRepository struct {
-	pool *pgxpool.Pool
+	pool dbPool
 }
 
 // NewProfileRepository создаёт репозиторий пользователей
-func NewProfileRepository(pool *pgxpool.Pool) *ProfileRepository {
+func NewProfileRepository(pool dbPool) *ProfileRepository {
 	return &ProfileRepository{pool: pool}
 }
 

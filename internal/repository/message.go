@@ -8,7 +8,6 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 var (
@@ -19,10 +18,10 @@ var (
 )
 
 type MessageRepository struct {
-	pool *pgxpool.Pool
+	pool dbPool
 }
 
-func NewMessageRepository(pool *pgxpool.Pool) *MessageRepository {
+func NewMessageRepository(pool dbPool) *MessageRepository {
 	return &MessageRepository{pool: pool}
 }
 
@@ -65,12 +64,13 @@ const parentMessagesQuery = `
 		AND deleted_at IS NULL
 	ORDER BY id`
 
+// CreateMessageParams содержит данные для создания сообщения.
 type CreateMessageParams struct {
-	ChatID      int64   `json:"chat_id" example:"1"`
-	AuthorID    int64   `json:"author_id" example:"1"`
-	MessageText *string `json:"message_text" example:"Привет!"`
-	RepostFrom  *int64  `json:"repost_from,omitempty" example:"5"`
-	ReplyFrom   *int64  `json:"reply_from,omitempty" example:"7"`
+	ChatID      int64
+	AuthorID    int64
+	MessageText *string
+	RepostFrom  *int64
+	ReplyFrom   *int64
 }
 
 func scanMessage(row rowScanner) (domain.Message, error) {

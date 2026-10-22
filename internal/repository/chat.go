@@ -8,14 +8,13 @@ import (
 	"kvmm/internal/domain"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type ChatRepository struct {
-	pool *pgxpool.Pool
+	pool dbPool
 }
 
-func NewChatRepository(pool *pgxpool.Pool) *ChatRepository {
+func NewChatRepository(pool dbPool) *ChatRepository {
 	return &ChatRepository{pool: pool}
 }
 

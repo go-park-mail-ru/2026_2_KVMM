@@ -10,7 +10,6 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 var (
@@ -21,11 +20,11 @@ var (
 
 // RelationshipRepository выполняет SQL-операции со связями профилей
 type RelationshipRepository struct {
-	pool *pgxpool.Pool
+	pool dbPool
 }
 
 // NewRelationshipRepository создаёт репозиторий связей
-func NewRelationshipRepository(pool *pgxpool.Pool) *RelationshipRepository {
+func NewRelationshipRepository(pool dbPool) *RelationshipRepository {
 	return &RelationshipRepository{pool: pool}
 }
 
@@ -402,7 +401,7 @@ func (r *RelationshipRepository) Suggestions(
 	return response, nil
 }
 
-// findMyConnectionIDs возвращает идентификаторы подтверждённых связей пользователя
+// findMyConnectionIDs возвращает id подтверждённых связей пользователя
 func (r *RelationshipRepository) findMyConnectionIDs(ctx context.Context, profileID int64) ([]int64, error) {
 	rows, err := r.pool.Query(ctx, myConnectionsQuery, profileID)
 	if err != nil {

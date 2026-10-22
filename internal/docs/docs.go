@@ -15,6 +15,7 @@ const docTemplate = `{
                     },
                     "relationships_type": {
                         "example": "friendship",
+                        "maxLength": 32,
                         "type": "string"
                     }
                 },
@@ -61,6 +62,7 @@ const docTemplate = `{
                     },
                     "relationships_type": {
                         "example": "friendship",
+                        "maxLength": 32,
                         "type": "string"
                     }
                 },
@@ -89,6 +91,10 @@ const docTemplate = `{
                         },
                         "type": "array",
                         "uniqueItems": false
+                    },
+                    "streak_days": {
+                        "example": 5,
+                        "type": "integer"
                     }
                 },
                 "type": "object"
@@ -135,6 +141,13 @@ const docTemplate = `{
             },
             "domain.CreatePostRequest": {
                 "properties": {
+                    "media_urls": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
                     "post_text": {
                         "example": "Привет, мир!",
                         "maxLength": 256,
@@ -151,6 +164,7 @@ const docTemplate = `{
                     },
                     "relationships_type": {
                         "example": "friendship",
+                        "maxLength": 32,
                         "type": "string"
                     }
                 },
@@ -468,6 +482,9 @@ const docTemplate = `{
                     "deleted_at": {
                         "type": "string"
                     },
+                    "profile": {
+                        "$ref": "#/components/schemas/domain.ShortProfile"
+                    },
                     "profile_id_master": {
                         "example": 1,
                         "type": "integer"
@@ -478,11 +495,6 @@ const docTemplate = `{
                     },
                     "relationships_status": {
                         "$ref": "#/components/schemas/domain.RelationshipStatus",
-                        "enum": [
-                            "request",
-                            "approved",
-                            "canceled"
-                        ],
                         "example": "request"
                     },
                     "relationships_type": {
@@ -542,11 +554,12 @@ const docTemplate = `{
             },
             "domain.RelationshipSuggestion": {
                 "properties": {
-                    "nickname": {
-                        "type": "string"
-                    },
-                    "profile_id": {
+                    "common_count": {
+                        "example": 5,
                         "type": "integer"
+                    },
+                    "profile": {
+                        "$ref": "#/components/schemas/domain.ShortProfile"
                     }
                 },
                 "type": "object"
@@ -582,8 +595,12 @@ const docTemplate = `{
             "domain.RelationshipTypes": {
                 "properties": {
                     "relationships_types": {
+                        "example": [
+                            "friendship",
+                            "family"
+                        ],
                         "items": {
-                            "$ref": "#/components/schemas/domain.RelationshipSuggestion"
+                            "type": "string"
                         },
                         "type": "array",
                         "uniqueItems": false
@@ -646,6 +663,35 @@ const docTemplate = `{
                     "chat_id",
                     "message_text"
                 ],
+                "type": "object"
+            },
+            "domain.ShortProfile": {
+                "properties": {
+                    "avatar_urls": {
+                        "example": "/api/media/avatar1.png",
+                        "type": "string"
+                    },
+                    "id": {
+                        "example": 1,
+                        "type": "integer"
+                    },
+                    "nickname": {
+                        "example": "ivan_petrov",
+                        "type": "string"
+                    },
+                    "patronymic": {
+                        "example": "Иванович",
+                        "type": "string"
+                    },
+                    "profile_name": {
+                        "example": "Иван",
+                        "type": "string"
+                    },
+                    "surname": {
+                        "example": "Иванов",
+                        "type": "string"
+                    }
+                },
                 "type": "object"
             },
             "domain.UpdatePostRequest": {
@@ -1070,6 +1116,15 @@ const docTemplate = `{
                 "description": "Возвращает чаты, в которых состоит текущий пользователь",
                 "parameters": [
                     {
+                        "description": "CSRF-токен",
+                        "in": "header",
+                        "name": "X-CSRF-Token",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
                         "description": "Указатель на начальный элемент для чатов",
                         "in": "query",
                         "name": "cursor",
@@ -1137,7 +1192,16 @@ const docTemplate = `{
                 "description": "Возвращает сообщения указанного чата в хронологическом порядке",
                 "parameters": [
                     {
-                        "description": "Идентификатор чата",
+                        "description": "CSRF-токен",
+                        "in": "header",
+                        "name": "X-CSRF-Token",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "ID чата",
                         "in": "query",
                         "name": "chat_id",
                         "required": true,
@@ -1549,7 +1613,7 @@ const docTemplate = `{
                     {
                         "description": "ID публикации",
                         "in": "query",
-                        "name": "request",
+                        "name": "post_id",
                         "required": true,
                         "schema": {
                             "type": "integer"
