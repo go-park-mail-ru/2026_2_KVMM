@@ -1,11 +1,13 @@
 package repository
 
 import (
+	"errors"
 	"strings"
 	"time"
 
 	"kvmm/internal/domain"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -102,4 +104,10 @@ func normalizeCursor(cursor int64) int64 {
 		return 0
 	}
 	return cursor
+}
+
+// isUniqueViolation проверяет, что база отклониа значение из-за UNIQUE-ограничения
+func isUniqueViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "23505"
 }

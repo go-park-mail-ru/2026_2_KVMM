@@ -14,7 +14,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-var ErrProfileNotFound = errors.New("profile not found")
+var (
+	ErrProfileNotFound = errors.New("profile not found")
+	ErrProfileConflict = errors.New("profile unique value conflict")
+)
 
 const profileColumns = `
     id,
@@ -326,6 +329,9 @@ func scanProfile(row rowScanner, withCredentials bool) (domain.Profile, string, 
 func normalizeProfileError(err error) error {
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ErrProfileNotFound
+	}
+	if isUniqueViolation(err) {
+		return ErrProfileConflict
 	}
 	return err
 }

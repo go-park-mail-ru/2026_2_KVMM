@@ -15,6 +15,7 @@ import (
 	"kvmm/internal/handler/feed"
 	"kvmm/internal/handler/posts"
 	"kvmm/internal/handler/profile"
+
 	"kvmm/internal/handler/relationship"
 	"kvmm/internal/httpapi"
 	"kvmm/internal/repository"
@@ -23,6 +24,7 @@ import (
 	feedusecase "kvmm/internal/usecase/feed"
 	postusecase "kvmm/internal/usecase/post"
 	profileusecase "kvmm/internal/usecase/profile"
+
 	relationshipusecase "kvmm/internal/usecase/relationship"
 	sessionusecase "kvmm/internal/usecase/session"
 )
@@ -51,13 +53,14 @@ func main() {
 	postsRepository := repository.NewPostRepository(database)
 	chats := repository.NewChatRepository(database)
 	messages := repository.NewMessageRepository(database)
+	relationships := repository.NewRelationshipRepository(database)
 
 	authUseCase := authusecase.New(profiles, sessions)
 	profileUseCase := profileusecase.New(profiles, sessionReader)
 	feedUseCase := feedusecase.New(postsRepository)
 	postUseCase := postusecase.New(postsRepository, sessionReader)
 	chatUseCase := chatusecase.New(chats, messages, sessionReader)
-	relationshipUseCase := relationshipusecase.New(sessionReader)
+	relationshipUseCase := relationshipusecase.New(relationships, sessionReader)
 
 	log.Printf("server listening on %s", addr)
 
