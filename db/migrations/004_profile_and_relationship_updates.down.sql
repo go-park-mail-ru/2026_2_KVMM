@@ -23,7 +23,9 @@ ALTER TABLE profile
     ADD COLUMN password_salt TEXT NOT NULL DEFAULT '',
     ALTER COLUMN profile_name SET NOT NULL,
     ALTER COLUMN surname SET NOT NULL,
-    ALTER COLUMN gender SET NOT NULL;
+    ALTER COLUMN gender SET NOT NULL,
+    ADD CONSTRAINT profile_email_or_phone_check
+        CHECK (email IS NOT NULL OR phone_number IS NOT NULL);
 
 ALTER TABLE profile
     ALTER COLUMN password_salt DROP DEFAULT;

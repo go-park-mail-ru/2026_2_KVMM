@@ -49,6 +49,7 @@ CREATE TABLE profile (
 
     PRIMARY KEY (id),
 
+    CONSTRAINT profile_email_or_phone_check
     CHECK 
         (email IS NOT NULL OR phone_number IS NOT NULL),
 

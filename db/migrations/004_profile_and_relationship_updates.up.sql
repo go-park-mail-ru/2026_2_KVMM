@@ -3,7 +3,8 @@ ALTER TABLE profile
     ALTER COLUMN profile_name DROP NOT NULL,
     ALTER COLUMN surname DROP NOT NULL,
     ALTER COLUMN gender DROP NOT NULL,
-    DROP COLUMN password_salt;
+    DROP COLUMN password_salt,
+    DROP CONSTRAINT profile_email_or_phone_check;
 
 -- Аватары сообществ
 CREATE TABLE community_avatar (
