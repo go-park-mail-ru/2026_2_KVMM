@@ -45,6 +45,15 @@ WHERE profile_name IS NULL
    OR (email IS NULL AND phone_number IS NULL);
 
 ALTER TABLE profile
+    DROP CONSTRAINT IF EXISTS profile_nickname_unique,
+    DROP CONSTRAINT IF EXISTS profile_email_unique,
+    DROP CONSTRAINT IF EXISTS profile_phone_unique;
+
+DROP INDEX IF EXISTS profile_nickname_unique;
+DROP INDEX IF EXISTS profile_email_unique;
+DROP INDEX IF EXISTS profile_phone_unique;
+
+ALTER TABLE profile
     ADD COLUMN password_salt TEXT NOT NULL DEFAULT '',
     ALTER COLUMN profile_name SET NOT NULL,
     ALTER COLUMN surname SET NOT NULL,
@@ -55,12 +64,6 @@ ALTER TABLE profile
     ADD CONSTRAINT profile_nickname_unique UNIQUE (nickname),
     ADD CONSTRAINT profile_email_unique UNIQUE (email),
     ADD CONSTRAINT profile_phone_unique UNIQUE (phone_number);
-
-
-DROP INDEX profile_nickname_unique;
-DROP INDEX profile_email_unique;
-DROP INDEX profile_phone_unique;
-
 
 ALTER TABLE profile
     ALTER COLUMN password_salt DROP DEFAULT;
