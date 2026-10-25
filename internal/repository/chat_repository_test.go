@@ -20,6 +20,45 @@ func chatRows(ids ...int64) *pgxmock.Rows {
 	return rows
 }
 
+func chatParticipantRows(chatID, profileID int64, nickname string) *pgxmock.Rows {
+	return pgxmock.NewRows([]string{
+		"chat_id", "id", "nickname", "email", "phone_number", "profile_name", "surname",
+		"patronymic", "gender", "birthday", "bio", "created_at", "updated_at", "deleted_at",
+	}).AddRow(
+		chatID,
+		profileID,
+		nickname,
+		"user@example.com",
+		nil,
+		"User",
+		"Example",
+		nil,
+		"male",
+		nil,
+		"bio",
+		time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC),
+		nil,
+		nil,
+	)
+}
+
+func chatMessageRows(chatID, messageID int64) *pgxmock.Rows {
+	return pgxmock.NewRows([]string{
+		"id", "chat_id", "author_id", "message_text", "repost_from", "reply_from",
+		"created_at", "updated_at", "deleted_at",
+	}).AddRow(
+		messageID,
+		chatID,
+		2,
+		"message",
+		nil,
+		nil,
+		time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC),
+		nil,
+		nil,
+	)
+}
+
 func TestChatRepositoryCreate(t *testing.T) {
 	ctx := context.Background()
 	mock := newMockPool(t)
@@ -39,11 +78,8 @@ func TestChatRepositoryCreate(t *testing.T) {
 	mock.ExpectQuery(queryPattern(findPrivateChatQuery)).
 		WithArgs(int64(1), int64(2)).
 		WillReturnRows(pgxmock.NewRows([]string{"chat_id"}).AddRow(7))
-	mock.ExpectExec(queryPattern(upsertParticipantQuery)).
-		WithArgs(int64(1), int64(7)).
-		WillReturnResult(pgxmock.NewResult("INSERT", 1))
-	mock.ExpectExec(queryPattern(upsertParticipantQuery)).
-		WithArgs(int64(2), int64(7)).
+	mock.ExpectExec(queryPattern(upsertParticipantsQuery)).
+		WithArgs(pgxmock.AnyArg(), int64(7)).
 		WillReturnResult(pgxmock.NewResult("INSERT", 1))
 	mock.ExpectCommit()
 	mock.ExpectQuery(queryPattern(readChatQuery)).
@@ -69,12 +105,12 @@ func TestChatRepositoryListAndParticipant(t *testing.T) {
 	mock.ExpectQuery(queryPattern(listChatsQuery)).
 		WithArgs(int64(1), int64(0), 2).
 		WillReturnRows(chatRows(7, 6))
-	mock.ExpectQuery(queryPattern(readParticipantsQuery)).
-		WithArgs(int64(7)).
-		WillReturnRows(profileRows(2, "bob"))
-	mock.ExpectQuery(queryPattern(readLastMessageQuery)).
-		WithArgs(int64(7)).
-		WillReturnRows(messageRows(9))
+	mock.ExpectQuery(queryPattern(readParticipantsBatchQuery)).
+		WithArgs(pgxmock.AnyArg()).
+		WillReturnRows(chatParticipantRows(7, 2, "bob"))
+	mock.ExpectQuery(queryPattern(readLastMessagesBatchQuery)).
+		WithArgs(pgxmock.AnyArg()).
+		WillReturnRows(chatMessageRows(7, 9))
 	response, err := repository.ListChats(ctx, 1, -1, 1)
 	if err != nil || len(response.Chats) != 1 || response.NextCursor != 7 || !response.HasMore || response.Chats[0].LastMessage == nil {
 		t.Fatalf("ListChats() = %+v, %v", response, err)

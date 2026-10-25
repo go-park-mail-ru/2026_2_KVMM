@@ -261,6 +261,14 @@ func (r *ProfileRepository) Delete(
 // scanProfile сериализует ответ базы в domain.Profile
 // withCredentials - добавлять ли приватные поля (хэш пароля)
 func scanProfile(row rowScanner, withCredentials bool) (domain.Profile, string, error) {
+	return scanProfileWithLeading(row, nil, withCredentials)
+}
+
+func scanProfileWithLeading(
+	row rowScanner,
+	leading any,
+	withCredentials bool,
+) (domain.Profile, string, error) {
 	var (
 		id           int64
 		nickname     pgtype.Text
@@ -278,7 +286,11 @@ func scanProfile(row rowScanner, withCredentials bool) (domain.Profile, string, 
 		passwordHash pgtype.Text
 	)
 
-	dest := []any{
+	dest := make([]any, 0, 15)
+	if leading != nil {
+		dest = append(dest, leading)
+	}
+	dest = append(dest,
 		&id,
 		&nickname,
 		&email,
@@ -292,7 +304,7 @@ func scanProfile(row rowScanner, withCredentials bool) (domain.Profile, string, 
 		&createdAt,
 		&updatedAt,
 		&deletedAt,
-	}
+	)
 	if withCredentials {
 		dest = append(dest, &passwordHash)
 	}

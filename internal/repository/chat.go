@@ -42,9 +42,10 @@ const findPrivateChatQuery = `
 	ORDER BY cp1.chat_id
 	LIMIT 1`
 
-const upsertParticipantQuery = `
+const upsertParticipantsQuery = `
 	INSERT INTO chat_profile (profile_id, chat_id, deleted_at)
-	VALUES ($1, $2, NULL)
+	SELECT participant.profile_id, $2, NULL
+	FROM unnest($1::BIGINT[]) AS participant(profile_id)
 	ON CONFLICT (profile_id, chat_id)
 	DO UPDATE SET deleted_at = NULL`
 
@@ -120,13 +121,35 @@ const readParticipantsQuery = `
 	AND deleted_at IS NULL
 	ORDER BY id`
 
-const readLastMessageQuery = `
-	SELECT ` + messageColumns + `
-	FROM message
-	WHERE chat_id = $1
-		AND deleted_at IS NULL
-	ORDER BY id DESC
-	LIMIT 1`
+const readParticipantsBatchQuery = `
+	SELECT
+		cp.chat_id,
+		p.id,
+		p.nickname,
+		p.email,
+		p.phone_number,
+		p.profile_name,
+		p.surname,
+		p.patronymic,
+		p.gender,
+		p.birthday,
+		p.bio,
+		p.created_at,
+		p.updated_at,
+		p.deleted_at
+	FROM chat_profile cp
+	JOIN profile p ON p.id = cp.profile_id
+	WHERE cp.chat_id = ANY($1::BIGINT[])
+		AND cp.deleted_at IS NULL
+		AND p.deleted_at IS NULL
+	ORDER BY cp.chat_id, p.id`
+
+const readLastMessagesBatchQuery = `
+	SELECT DISTINCT ON (m.chat_id) ` + messageColumns + `
+	FROM message m
+	WHERE m.chat_id = ANY($1::BIGINT[])
+		AND m.deleted_at IS NULL
+	ORDER BY m.chat_id, m.id DESC`
 
 // Create создаёт личный чат или возвращает существующий
 // чат пользователя с самим собой тоже поддерживается
@@ -192,24 +215,12 @@ func (r *ChatRepository) Create(
 		}
 	}
 
-	if _, err = tx.Exec(
-		ctx,
-		upsertParticipantQuery,
-		firstID,
-		chatID,
-	); err != nil {
-		return domain.Chat{}, err
-	}
-
+	participantIDs := []int64{firstID}
 	if firstID != secondID {
-		if _, err = tx.Exec(
-			ctx,
-			upsertParticipantQuery,
-			secondID,
-			chatID,
-		); err != nil {
-			return domain.Chat{}, err
-		}
+		participantIDs = append(participantIDs, secondID)
+	}
+	if _, err = tx.Exec(ctx, upsertParticipantsQuery, participantIDs, chatID); err != nil {
+		return domain.Chat{}, err
 	}
 
 	if err = tx.Commit(ctx); err != nil {
@@ -282,18 +293,24 @@ func (r *ChatRepository) ListChats(
 	response.Chats, response.NextCursor, response.HasMore =
 		paginateChats(response.Chats, limit)
 
+	chatIDs := make([]int64, 0, len(response.Chats))
+	for _, chat := range response.Chats {
+		chatIDs = append(chatIDs, chat.ID)
+	}
+
+	participants, err := r.readParticipantsBatch(ctx, chatIDs)
+	if err != nil {
+		return response, err
+	}
+	lastMessages, err := r.readLastMessagesBatch(ctx, chatIDs)
+	if err != nil {
+		return response, err
+	}
+
 	for i := range response.Chats {
 		chat := &response.Chats[i]
-
-		chat.Participants, err = r.readParticipants(ctx, chat.ID)
-		if err != nil {
-			return response, err
-		}
-
-		chat.LastMessage, err = r.readLastMessage(ctx, chat.ID)
-		if err != nil {
-			return response, err
-		}
+		chat.Participants = participants[chat.ID]
+		chat.LastMessage = lastMessages[chat.ID]
 	}
 
 	return response, nil
@@ -321,7 +338,8 @@ func (r *ChatRepository) IsParticipant(
 	return err
 }
 
-// ValidateMessageReferences проверяет доступ пользователя к чату
+// ValidateMessageReferences проверяет доступ пользователя к чату,
+// исходному чату пересылаемого сообщения и соответствие сообщения для ответа
 func (r *ChatRepository) ValidateMessageReferences(
 	ctx context.Context,
 	userID int64,
@@ -394,23 +412,65 @@ func (r *ChatRepository) readParticipants(
 	return profiles, nil
 }
 
-// readLastMessage возвращает последнее неудалённое сообщение чата
-func (r *ChatRepository) readLastMessage(
+// readParticipantsBatch загружает участников всех чатов одним запросом
+func (r *ChatRepository) readParticipantsBatch(
 	ctx context.Context,
-	chatID int64,
-) (*domain.Message, error) {
-	message, err := scanMessage(
-		r.pool.QueryRow(ctx, readLastMessageQuery, chatID),
-	)
-
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, nil
+	chatIDs []int64,
+) (map[int64][]domain.Profile, error) {
+	participants := make(map[int64][]domain.Profile, len(chatIDs))
+	if len(chatIDs) == 0 {
+		return participants, nil
 	}
+
+	rows, err := r.pool.Query(ctx, readParticipantsBatchQuery, chatIDs)
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
-	return &message, nil
+	for rows.Next() {
+		var chatID int64
+		profile, _, scanErr := scanProfileWithLeading(rows, &chatID, false)
+		if scanErr != nil {
+			return nil, scanErr
+		}
+		participants[chatID] = append(participants[chatID], profile)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return participants, nil
+}
+
+// readLastMessagesBatch загружает последние неудалённые сообщения всех чатов одним запросом
+func (r *ChatRepository) readLastMessagesBatch(
+	ctx context.Context,
+	chatIDs []int64,
+) (map[int64]*domain.Message, error) {
+	lastMessages := make(map[int64]*domain.Message, len(chatIDs))
+	if len(chatIDs) == 0 {
+		return lastMessages, nil
+	}
+
+	rows, err := r.pool.Query(ctx, readLastMessagesBatchQuery, chatIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		message, scanErr := scanMessage(rows)
+		if scanErr != nil {
+			return nil, scanErr
+		}
+		lastMessages[message.ChatID] = &message
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return lastMessages, nil
 }
 
 // paginateChats обрабатывает результат курсорной пагинации
