@@ -18,7 +18,11 @@ func NewChatRepository(pool dbPool) *ChatRepository {
 	return &ChatRepository{pool: pool}
 }
 
-var ErrChatNotFound = errors.New("chat not found")
+var (
+	ErrChatNotFound    = errors.New("chat not found")
+	ErrRepostForbidden = errors.New("repost source message is not accessible")
+	ErrReplyForbidden  = errors.New("reply message does not belong to target chat")
+)
 
 const createChatQuery = `
 	INSERT INTO chat DEFAULT VALUES
@@ -71,6 +75,26 @@ const checkParticipantQuery = `
 		FROM chat_profile
 		WHERE chat_id = $1
 			AND profile_id = $2
+			AND deleted_at IS NULL
+	)`
+
+const checkRepostAccessQuery = `
+	SELECT EXISTS (
+		SELECT 1
+		FROM message m
+		JOIN chat_profile cp ON cp.chat_id = m.chat_id
+		WHERE m.id = $1
+			AND m.deleted_at IS NULL
+			AND cp.profile_id = $2
+			AND cp.deleted_at IS NULL
+	)`
+
+const checkReplyChatQuery = `
+	SELECT EXISTS (
+		SELECT 1
+		FROM message
+		WHERE id = $1
+			AND chat_id = $2
 			AND deleted_at IS NULL
 	)`
 
@@ -295,6 +319,51 @@ func (r *ChatRepository) IsParticipant(
 	}
 
 	return err
+}
+
+// ValidateMessageReferences проверяет доступ пользователя к чату
+func (r *ChatRepository) ValidateMessageReferences(
+	ctx context.Context,
+	userID int64,
+	targetChatID int64,
+	repostFrom *int64,
+	replyFrom *int64,
+) error {
+	if err := r.IsParticipant(ctx, targetChatID, userID); err != nil {
+		return err
+	}
+
+	if repostFrom != nil {
+		var allowed bool
+		if err := r.pool.QueryRow(
+			ctx,
+			checkRepostAccessQuery,
+			*repostFrom,
+			userID,
+		).Scan(&allowed); err != nil {
+			return err
+		}
+		if !allowed {
+			return ErrRepostForbidden
+		}
+	}
+
+	if replyFrom != nil {
+		var belongsToChat bool
+		if err := r.pool.QueryRow(
+			ctx,
+			checkReplyChatQuery,
+			*replyFrom,
+			targetChatID,
+		).Scan(&belongsToChat); err != nil {
+			return err
+		}
+		if !belongsToChat {
+			return ErrReplyForbidden
+		}
+	}
+
+	return nil
 }
 
 // readParticipants загружает активных участников чата

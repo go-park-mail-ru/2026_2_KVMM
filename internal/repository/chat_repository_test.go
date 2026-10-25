@@ -94,6 +94,47 @@ func TestChatRepositoryListAndParticipant(t *testing.T) {
 	}
 }
 
+func TestChatRepositoryValidateMessageReferences(t *testing.T) {
+	ctx := context.Background()
+	mock := newMockPool(t)
+	repository := NewChatRepository(mock)
+	repostID := int64(11)
+	replyID := int64(12)
+
+	mock.ExpectQuery(queryPattern(requireParticipantQuery)).
+		WithArgs(int64(7), int64(2)).
+		WillReturnRows(pgxmock.NewRows([]string{"profile_id"}).AddRow(2))
+	mock.ExpectQuery(queryPattern(checkRepostAccessQuery)).
+		WithArgs(repostID, int64(2)).
+		WillReturnRows(pgxmock.NewRows([]string{"exists"}).AddRow(true))
+	mock.ExpectQuery(queryPattern(checkReplyChatQuery)).
+		WithArgs(replyID, int64(7)).
+		WillReturnRows(pgxmock.NewRows([]string{"exists"}).AddRow(true))
+	if err := repository.ValidateMessageReferences(ctx, 2, 7, &repostID, &replyID); err != nil {
+		t.Fatalf("ValidateMessageReferences() error = %v", err)
+	}
+
+	mock.ExpectQuery(queryPattern(requireParticipantQuery)).
+		WithArgs(int64(7), int64(2)).
+		WillReturnRows(pgxmock.NewRows([]string{"profile_id"}).AddRow(2))
+	mock.ExpectQuery(queryPattern(checkRepostAccessQuery)).
+		WithArgs(repostID, int64(2)).
+		WillReturnRows(pgxmock.NewRows([]string{"exists"}).AddRow(false))
+	if err := repository.ValidateMessageReferences(ctx, 2, 7, &repostID, nil); !errors.Is(err, ErrRepostForbidden) {
+		t.Fatalf("ValidateMessageReferences(repost) error = %v", err)
+	}
+
+	mock.ExpectQuery(queryPattern(requireParticipantQuery)).
+		WithArgs(int64(7), int64(2)).
+		WillReturnRows(pgxmock.NewRows([]string{"profile_id"}).AddRow(2))
+	mock.ExpectQuery(queryPattern(checkReplyChatQuery)).
+		WithArgs(replyID, int64(7)).
+		WillReturnRows(pgxmock.NewRows([]string{"exists"}).AddRow(false))
+	if err := repository.ValidateMessageReferences(ctx, 2, 7, nil, &replyID); !errors.Is(err, ErrReplyForbidden) {
+		t.Fatalf("ValidateMessageReferences(reply) error = %v", err)
+	}
+}
+
 func TestChatHelpers(t *testing.T) {
 	page, next, more := paginateChats([]domain.Chat{{ID: 1}, {ID: 2}}, 1)
 	if len(page) != 1 || next != 1 || !more {
