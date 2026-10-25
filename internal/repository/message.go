@@ -59,8 +59,7 @@ const listMessagesQuery = `
 const parentMessagesQuery = `
 	SELECT ` + messageColumns + `
 	FROM message
-	WHERE chat_id = $1
-		AND id = ANY($2::BIGINT[])
+	WHERE id = ANY($1::BIGINT[])
 		AND deleted_at IS NULL
 	ORDER BY id`
 
@@ -181,7 +180,7 @@ func (r *MessageRepository) ListMessages(
 
 	parentIDs := collectParentIDs(response.Messages)
 	if len(parentIDs) > 0 {
-		response.Parents, err = r.readParentMessages(ctx, chatID, parentIDs)
+		response.Parents, err = r.readParentMessages(ctx, parentIDs)
 		if err != nil {
 			return response, err
 		}
@@ -212,13 +211,11 @@ func paginateMessages(
 // readParentMessages загружает родительские сообщения
 func (r *MessageRepository) readParentMessages(
 	ctx context.Context,
-	chatID int64,
 	parentIDs []int64,
 ) ([]domain.Message, error) {
 	rows, err := r.pool.Query(
 		ctx,
 		parentMessagesQuery,
-		chatID,
 		parentIDs,
 	)
 	if err != nil {

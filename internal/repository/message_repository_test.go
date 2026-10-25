@@ -64,7 +64,7 @@ func TestMessageRepositoryCreateAndList(t *testing.T) {
 		WithArgs(int64(1), int64(0), 3).
 		WillReturnRows(messageRows(12, 11, 10))
 	mock.ExpectQuery(queryPattern(parentMessagesQuery)).
-		WithArgs(int64(1), pgxmock.AnyArg()).
+		WithArgs(pgxmock.AnyArg()).
 		WillReturnRows(messageRows(10, 11))
 	response, err := repository.ListMessages(ctx, 1, -1, 2)
 	if err != nil || len(response.Messages) != 2 || !response.HasMore || response.NextCursor != 11 || len(response.Parents) != 2 {
