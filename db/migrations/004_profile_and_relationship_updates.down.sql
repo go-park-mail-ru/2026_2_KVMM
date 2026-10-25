@@ -50,7 +50,17 @@ ALTER TABLE profile
     ALTER COLUMN surname SET NOT NULL,
     ALTER COLUMN gender SET NOT NULL,
     ADD CONSTRAINT profile_email_or_phone_check
-        CHECK (email IS NOT NULL OR phone_number IS NOT NULL);
+        CHECK (email IS NOT NULL OR phone_number IS NOT NULL),
+
+    ADD CONSTRAINT profile_nickname_unique UNIQUE (nickname),
+    ADD CONSTRAINT profile_email_unique UNIQUE (email),
+    ADD CONSTRAINT profile_phone_unique UNIQUE (phone_number);
+
+
+DROP INDEX profile_nickname_unique;
+DROP INDEX profile_email_unique;
+DROP INDEX profile_phone_unique;
+
 
 ALTER TABLE profile
     ALTER COLUMN password_salt DROP DEFAULT;

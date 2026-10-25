@@ -4,7 +4,20 @@ ALTER TABLE profile
     ALTER COLUMN surname DROP NOT NULL,
     ALTER COLUMN gender DROP NOT NULL,
     DROP COLUMN password_salt,
-    DROP CONSTRAINT profile_email_or_phone_check;
+    DROP CONSTRAINT profile_email_or_phone_check,
+
+    DROP CONSTRAINT profile_nickname_unique,
+    DROP CONSTRAINT profile_email_unique,
+    DROP CONSTRAINT profile_phone_unique;
+
+CREATE UNIQUE INDEX profile_nickname_unique
+    ON profile (LOWER(nickname));
+
+CREATE UNIQUE INDEX profile_email_unique
+    ON profile (LOWER(email));
+
+CREATE UNIQUE INDEX profile_phone_unique
+    ON profile (LOWER(phone_number));
 
 -- Аватары сообществ
 CREATE TABLE community_avatar (
