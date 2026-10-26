@@ -13,6 +13,8 @@ import (
 var (
 	ErrMessageNotFound    = errors.New("message not found")
 	ErrNotChatParticipant = errors.New("user is not a chat participant")
+	ErrRepostForbidden    = errors.New("repost source message is not accessible")
+	ErrReplyForbidden     = errors.New("reply message does not belong to target chat")
 	ErrEmptyMessage       = errors.New("message text is empty")
 	ErrMessageTooLong     = errors.New("message text exceeds 256 characters")
 )
@@ -46,6 +48,32 @@ const createMessageQuery = `
 	)
 	VALUES ($1, $2, $3, $4, $5)
 	RETURNING ` + messageColumns
+
+const requireParticipantQuery = `
+	SELECT profile_id
+	FROM chat_profile
+	WHERE chat_id = $1
+		AND profile_id = $2
+		AND deleted_at IS NULL
+	FOR UPDATE`
+
+const checkRepostAccessQuery = `
+	SELECT m.id
+	FROM message m
+	JOIN chat_profile cp ON cp.chat_id = m.chat_id
+	WHERE m.id = $1
+		AND m.deleted_at IS NULL
+		AND cp.profile_id = $2
+		AND cp.deleted_at IS NULL
+	FOR UPDATE OF m, cp`
+
+const checkReplyChatQuery = `
+	SELECT id
+	FROM message
+	WHERE id = $1
+		AND chat_id = $2
+		AND deleted_at IS NULL
+	FOR UPDATE`
 
 const listMessagesQuery = `
 	SELECT ` + messageColumns + `
@@ -108,11 +136,46 @@ func scanMessage(row rowScanner) (domain.Message, error) {
 	return message, nil
 }
 
+// Create проверяет родителей сообщения и создаёт его в одной транзакции
 func (r *MessageRepository) Create(
 	ctx context.Context,
 	createParam CreateMessageParams,
 ) (domain.Message, error) {
-	row := r.pool.QueryRow(
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return domain.Message{}, err
+	}
+	defer tx.Rollback(ctx)
+
+	var participantID int64
+	if err := tx.QueryRow(ctx, requireParticipantQuery, createParam.ChatID, createParam.AuthorID).Scan(&participantID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.Message{}, ErrNotChatParticipant
+		}
+		return domain.Message{}, err
+	}
+
+	if createParam.RepostFrom != nil {
+		var sourceMessageID int64
+		if err := tx.QueryRow(ctx, checkRepostAccessQuery, *createParam.RepostFrom, createParam.AuthorID).Scan(&sourceMessageID); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return domain.Message{}, ErrRepostForbidden
+			}
+			return domain.Message{}, err
+		}
+	}
+
+	if createParam.ReplyFrom != nil {
+		var replyMessageID int64
+		if err := tx.QueryRow(ctx, checkReplyChatQuery, *createParam.ReplyFrom, createParam.ChatID).Scan(&replyMessageID); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return domain.Message{}, ErrReplyForbidden
+			}
+			return domain.Message{}, err
+		}
+	}
+
+	row := tx.QueryRow(
 		ctx,
 		createMessageQuery,
 
@@ -124,7 +187,13 @@ func (r *MessageRepository) Create(
 	)
 
 	message, err := scanMessage(row)
-	return message, normalizeMessageError(err)
+	if err != nil {
+		return domain.Message{}, normalizeMessageError(err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return domain.Message{}, err
+	}
+	return message, nil
 }
 
 // ListMessages возвращает страницу сообщений и их родительские сообщения

@@ -47,16 +47,26 @@ func TestMessageRepositoryCreateAndList(t *testing.T) {
 	text := "hello"
 	repost := int64(10)
 	reply := int64(11)
+	mock.ExpectBegin()
+	mock.ExpectQuery(queryPattern(requireParticipantQuery)).
+		WithArgs(int64(1), int64(2)).
+		WillReturnRows(pgxmock.NewRows([]string{"profile_id"}).AddRow(2))
+	mock.ExpectQuery(queryPattern(checkRepostAccessQuery)).
+		WithArgs(repost, int64(2)).
+		WillReturnRows(pgxmock.NewRows([]string{"id"}).AddRow(repost))
+	mock.ExpectQuery(queryPattern(checkReplyChatQuery)).
+		WithArgs(reply, int64(1)).
+		WillReturnRows(pgxmock.NewRows([]string{"id"}).AddRow(reply))
 	mock.ExpectQuery(queryPattern(createMessageQuery)).
 		WithArgs(int64(1), int64(2), text, repost, reply).
 		WillReturnRows(messageRows(12))
+	mock.ExpectCommit()
 	message, err := repository.Create(ctx, CreateMessageParams{
 		ChatID: 1, AuthorID: 2, MessageText: &text, RepostFrom: &repost, ReplyFrom: &reply,
 	})
 	if err != nil || message.ID != 12 || message.RepostFrom == nil || *message.RepostFrom != 10 {
 		t.Fatalf("Create() = %+v, %v", message, err)
 	}
-
 	if _, err := repository.ListMessages(ctx, 0, 0, 10); !errors.Is(err, ErrChatNotFound) {
 		t.Fatalf("ListMessages(invalid) error = %v", err)
 	}
@@ -71,9 +81,14 @@ func TestMessageRepositoryCreateAndList(t *testing.T) {
 		t.Fatalf("ListMessages() = %+v, %v", response, err)
 	}
 
+	mock.ExpectBegin()
+	mock.ExpectQuery(queryPattern(requireParticipantQuery)).
+		WithArgs(int64(1), int64(2)).
+		WillReturnRows(pgxmock.NewRows([]string{"profile_id"}).AddRow(2))
 	mock.ExpectQuery(queryPattern(createMessageQuery)).
 		WithArgs(int64(1), int64(2), nil, nil, nil).
 		WillReturnError(pgx.ErrNoRows)
+	mock.ExpectRollback()
 	if _, err := repository.Create(ctx, CreateMessageParams{ChatID: 1, AuthorID: 2}); !errors.Is(err, ErrMessageNotFound) {
 		t.Fatalf("Create(missing) error = %v", err)
 	}

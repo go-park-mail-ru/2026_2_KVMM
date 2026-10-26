@@ -18,7 +18,6 @@ type chatRepository interface {
 	Create(context.Context, int64, int64) (domain.Chat, error)
 	ListChats(context.Context, int64, int64, int) (domain.ChatsResponse, error)
 	IsParticipant(context.Context, int64, int64) error
-	ValidateMessageReferences(context.Context, int64, int64, *int64, *int64) error
 }
 
 type messageRepository interface {
@@ -102,15 +101,6 @@ func (u *UseCase) Send(
 	}
 	if len([]rune(*req.MessageText)) > 256 {
 		return domain.Message{}, repository.ErrMessageTooLong
-	}
-	if err := u.chats.ValidateMessageReferences(
-		ctx,
-		userID,
-		req.ChatID,
-		req.RepostFrom,
-		req.ReplyFrom,
-	); err != nil {
-		return domain.Message{}, err
 	}
 	return u.messages.Create(ctx, repository.CreateMessageParams{
 		ChatID:      req.ChatID,
