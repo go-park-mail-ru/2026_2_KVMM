@@ -6,6 +6,12 @@ CREATE TYPE relationships_enum AS ENUM (
 
 DROP INDEX IF EXISTS profile_relationship_active_pair_unique;
 
+UPDATE profile_relationship
+SET deleted_at = CURRENT_TIMESTAMP,
+    updated_at = CURRENT_TIMESTAMP
+WHERE relationships_status = 'canceled'
+  AND deleted_at IS NULL;
+
 ALTER TABLE profile_relationship
     ALTER COLUMN relationships_status TYPE relationships_enum
     USING CASE
@@ -15,6 +21,8 @@ ALTER TABLE profile_relationship
              AND relationships_type = 'blocked'
             THEN 'blocked'::relationships_enum
         WHEN relationships_status = 'accepted'
+            THEN 'friendship'::relationships_enum
+        WHEN relationships_status = 'canceled'
             THEN 'friendship'::relationships_enum
         ELSE 'friendship'::relationships_enum
     END;
