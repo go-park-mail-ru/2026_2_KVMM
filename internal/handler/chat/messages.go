@@ -14,7 +14,7 @@ import (
 // @Security SessionCookie
 // @Param X-CSRF-Token header string true "CSRF-токен"
 // @Produce json
-// @Param chat_id query int true "Идентификатор чата"
+// @Param chat_id query int true "ID чата"
 // @Param cursor query int false "Указатель на начальный элемент для сообщений" default(0)
 // @Param limit query int false "Размер страницы (максимум 10)" default(10) maximum(10)
 // @Success 200 {object} domain.MessagesResponse

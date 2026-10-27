@@ -8,8 +8,7 @@ INSERT INTO profile (
     gender,
     birthday,
     bio,
-    password_hash,
-    password_salt
+    password_hash
 )
 VALUES
     (
@@ -22,6 +21,5 @@ VALUES
         'male',
         '2000-01-01',
         'hi',
-        'seed_hash_admin',
-        'seed_salt_admin'
+        'seed_hash_admin'
     );

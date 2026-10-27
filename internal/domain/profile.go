@@ -2,6 +2,8 @@ package domain
 
 import "time"
 
+const MaxAvatarSize = 10 << 20
+
 type Gender string
 
 const (
@@ -44,4 +46,22 @@ type UpdateProfileRequest struct {
 	Gender   *Gender `json:"gender,omitempty" example:"male" validate:"omitempty,oneof=male female"`
 	Birthday *string `json:"birthday,omitempty" example:"2000-05-14" validate:"omitempty"`
 	Bio      *string `json:"bio,omitempty" example:"hi!" validate:"omitempty,max=256"`
+}
+
+// UploadAvatarRequest содержит бинарник новой аватарки
+type UploadAvatarRequest struct {
+	Data        []byte
+	ContentType string
+}
+
+// Avatar описывает загруженную аватарку пользователя
+type Avatar struct {
+	ID        int64     `json:"id" example:"1"`
+	URL       string    `json:"url" example:"/api/media/avatars/abc.png"`
+	CreatedAt time.Time `json:"created_at" example:"2026-01-01T12:00:00Z"`
+}
+
+// AvatarsResponse содержит активные аватарки пользователя
+type AvatarsResponse struct {
+	Avatars []Avatar `json:"avatars"`
 }

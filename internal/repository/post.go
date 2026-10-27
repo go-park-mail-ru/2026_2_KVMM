@@ -10,7 +10,6 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 var (
@@ -27,63 +26,34 @@ const postColumns = `
 	post.updated_at,
 	post.deleted_at`
 
-const postAuthorColumns = `
-	author.author_name,
-	author.avatar_url,
-	author.author_type`
-
-const postAuthorJoin = `
-	LEFT JOIN LATERAL (
-		SELECT
-			COALESCE(
-				NULLIF(
-					CONCAT_WS(
-						' ',
-						NULLIF(BTRIM(p.surname), ''),
-						NULLIF(BTRIM(p.profile_name), '')
-					),
-					''
+const postAuthorsQuery = `
+	SELECT
+		p.id,
+		COALESCE(
+			NULLIF(
+				CONCAT_WS(
+					' ',
+					NULLIF(BTRIM(p.surname), ''),
+					NULLIF(BTRIM(p.profile_name), '')
 				),
-				p.nickname
-			) AS author_name,
-			avatar.media_path AS avatar_url,
-			'profile'::TEXT AS author_type
-		FROM profile p
-		LEFT JOIN LATERAL (
-			SELECT m.media_path
-			FROM profile_avatar pa
-			JOIN media m ON m.id = pa.media_id
-			WHERE pa.profile_id = p.id
-				AND pa.deleted_at IS NULL
-				AND m.deleted_at IS NULL
-			ORDER BY pa.created_at DESC, pa.media_id DESC
-			LIMIT 1
-		) avatar ON TRUE
-		WHERE p.id = post.author_profile_id
-			AND p.deleted_at IS NULL
+				''
+			),
+			p.nickname
+		) AS author_name
+	FROM profile p
+	WHERE p.id = ANY($1::BIGINT[])
+		AND p.deleted_at IS NULL`
 
-		/*
-		UNION ALL
-
-		SELECT
-			c.community_name AS author_name,
-			avatar.media_path AS avatar_url,
-			'community'::TEXT AS author_type
-		FROM community c
-		LEFT JOIN LATERAL (
-			SELECT m.media_path
-			FROM community_avatar ca
-			JOIN media m ON m.id = ca.media_id
-			WHERE ca.community_id = c.id
-				AND ca.deleted_at IS NULL
-				AND m.deleted_at IS NULL
-			ORDER BY ca.created_at DESC, ca.media_id DESC
-			LIMIT 1
-		) avatar ON TRUE
-		WHERE c.id = post.author_community_id
-			AND c.deleted_at IS NULL
-		*/
-	) author ON TRUE`
+const postAuthorAvatarsQuery = `
+	SELECT DISTINCT ON (pa.profile_id)
+		pa.profile_id,
+		m.media_path
+	FROM profile_avatar pa
+	JOIN media m ON m.id = pa.media_id
+	WHERE pa.profile_id = ANY($1::BIGINT[])
+		AND pa.deleted_at IS NULL
+		AND m.deleted_at IS NULL
+	ORDER BY pa.profile_id, pa.created_at DESC, pa.media_id DESC`
 
 const postReturningColumns = `
 	id,
@@ -96,11 +66,11 @@ const postReturningColumns = `
 
 // PostRepository выполняет sql-операции с таблицей profile
 type PostRepository struct {
-	pool *pgxpool.Pool
+	pool dbPool
 }
 
 // NewProfileRepository создаёт репозиторий пользователей
-func NewPostRepository(pool *pgxpool.Pool) *PostRepository {
+func NewPostRepository(pool dbPool) *PostRepository {
 	return &PostRepository{pool: pool}
 }
 
@@ -126,20 +96,13 @@ func (r *PostRepository) Create(
 	}
 
 	const createPostQuery = `
-		WITH created_post AS (
-			INSERT INTO post (
-				post_text,
-				author_profile_id,
-				author_community_id
-			)
-			VALUES ($1, $2, $3)
-			RETURNING ` + postReturningColumns + `
+		INSERT INTO post (
+			post_text,
+			author_profile_id,
+			author_community_id
 		)
-		SELECT
-			` + postColumns + `,
-			` + postAuthorColumns + `
-		FROM created_post AS post
-		` + postAuthorJoin
+		VALUES ($1, $2, $3)
+		RETURNING ` + postReturningColumns
 
 	row := r.pool.QueryRow(
 		ctx,
@@ -153,8 +116,12 @@ func (r *PostRepository) Create(
 	if err != nil {
 		return domain.Post{}, normalizePostError(err)
 	}
+	posts := []domain.Post{post}
+	if err := r.attachPostAuthors(ctx, posts); err != nil {
+		return domain.Post{}, err
+	}
 
-	return post, nil
+	return posts[0], nil
 }
 
 // ReadByID возвращает активный пост по ID
@@ -163,16 +130,20 @@ func (r *PostRepository) ReadByID(
 	id int64) (domain.Post, error) {
 
 	const readPostByIDQuery = `
-		SELECT
-			` + postColumns + `,
-			` + postAuthorColumns + `
+		SELECT ` + postColumns + `
 		FROM post
-		` + postAuthorJoin + `
 		WHERE post.id = $1
 			AND post.deleted_at IS NULL`
 
 	post, err := scanPost(r.pool.QueryRow(ctx, readPostByIDQuery, id))
-	return post, normalizePostError(err)
+	if err != nil {
+		return domain.Post{}, normalizePostError(err)
+	}
+	posts := []domain.Post{post}
+	if err := r.attachPostAuthors(ctx, posts); err != nil {
+		return domain.Post{}, err
+	}
+	return posts[0], nil
 }
 
 // ReadProfilePosts возвращает посты профиля с курсорной пагинацией
@@ -190,11 +161,8 @@ func (r *PostRepository) ReadProfilePosts(
 	}
 
 	const readPostQuery = `
-		SELECT
-			` + postColumns + `,
-			` + postAuthorColumns + `
+		SELECT ` + postColumns + `
 		FROM post
-		` + postAuthorJoin + `
 		WHERE post.author_profile_id = $1
 			AND post.deleted_at IS NULL
 			AND ($2 = 0 OR post.id < $2)
@@ -234,6 +202,9 @@ func (r *PostRepository) ReadProfilePosts(
 	}
 
 	result, nextCursor, hasMore := paginatePosts(result, limit)
+	if err := r.attachPostAuthors(ctx, result); err != nil {
+		return nil, 0, false, err
+	}
 
 	return result, nextCursor, hasMore, nil
 }
@@ -257,11 +228,8 @@ func (r *PostRepository) ReadRelationshipPosts(
 	}
 
 	const readRelationshipPostsQuery = `
-		SELECT
-			` + postColumns + `,
-			` + postAuthorColumns + `
+		SELECT ` + postColumns + `
 		FROM post
-		` + postAuthorJoin + `
 		WHERE post.deleted_at IS NULL
 			AND ($2 = 0 OR post.id < $2)
 			AND post.author_profile_id IS NOT NULL
@@ -331,12 +299,14 @@ func (r *PostRepository) ReadRelationshipPosts(
 	}
 
 	result, nextCursor, hasMore := paginatePosts(result, limit)
+	if err := r.attachPostAuthors(ctx, result); err != nil {
+		return nil, 0, false, err
+	}
 
 	return result, nextCursor, hasMore, nil
 }
 
 // ReadFeedPosts возвращает посты в хронологическом порядке
-// Пустой список означает любой тип связи
 // limit - количесво постов
 // cursor — ID последнего отданного поста
 // cursor = 0 — первая страница cursor станет самым новым постом
@@ -349,11 +319,8 @@ func (r *PostRepository) ReadFeedPosts(
 	limit = normalizeLimit(limit, 100)
 
 	const readFeedPostsQuery = `
-		SELECT
-			` + postColumns + `,
-			` + postAuthorColumns + `
+		SELECT ` + postColumns + `
 		FROM post
-		` + postAuthorJoin + `
 		WHERE post.deleted_at IS NULL
 			AND ($1 = 0 OR post.id < $1)
 			AND post.author_profile_id IS NOT NULL
@@ -389,6 +356,9 @@ func (r *PostRepository) ReadFeedPosts(
 	}
 
 	result, nextCursor, hasMore := paginatePosts(result, limit)
+	if err := r.attachPostAuthors(ctx, result); err != nil {
+		return nil, 0, false, err
+	}
 
 	return result, nextCursor, hasMore, nil
 }
@@ -404,17 +374,10 @@ func (r *PostRepository) Update(
 	args := make([]any, 0, 2)
 
 	const updatePostQuery = `
-		WITH updated_post AS (
-			UPDATE post SET %s
-			WHERE id = $%d
-				AND deleted_at IS NULL
-			RETURNING ` + postReturningColumns + `
-		)
-		SELECT
-			` + postColumns + `,
-			` + postAuthorColumns + `
-		FROM updated_post AS post
-		` + postAuthorJoin
+		UPDATE post SET %s
+		WHERE id = $%d
+			AND deleted_at IS NULL
+		RETURNING ` + postReturningColumns
 
 	add := func(column string, value any) {
 		args = append(args, value)
@@ -443,7 +406,14 @@ func (r *PostRepository) Update(
 	)
 
 	post, err := scanPost(r.pool.QueryRow(ctx, query, args...))
-	return post, normalizePostError(err)
+	if err != nil {
+		return domain.Post{}, normalizePostError(err)
+	}
+	posts := []domain.Post{post}
+	if err := r.attachPostAuthors(ctx, posts); err != nil {
+		return domain.Post{}, err
+	}
+	return posts[0], nil
 }
 
 // Delete помечает пост удалённым (soft delete)
@@ -484,10 +454,6 @@ func scanPost(row rowScanner) (domain.Post, error) {
 		createdAt           pgtype.Timestamptz
 		updatedAt           pgtype.Timestamptz
 		deletedAt           pgtype.Timestamptz
-
-		authorName pgtype.Text
-		avatarURL  pgtype.Text
-		authorType pgtype.Text
 	)
 
 	dest := []any{
@@ -498,9 +464,6 @@ func scanPost(row rowScanner) (domain.Post, error) {
 		&createdAt,
 		&updatedAt,
 		&deletedAt,
-		&authorName,
-		&avatarURL,
-		&authorType,
 	}
 
 	if err := row.Scan(dest...); err != nil {
@@ -517,16 +480,84 @@ func scanPost(row rowScanner) (domain.Post, error) {
 		DeletedAt:         timestampPointer(deletedAt),
 	}
 
-	post.Author = domain.Author{
-		Name: authorName.String,
-		Type: domain.PostAuthorType(authorType.String),
-	}
-
-	if avatarURL.Valid {
-		post.Author.AvatarURL = avatarURL.String
-	}
-
 	return post, nil
+}
+
+// attachPostAuthors добавляет авторов к постам двумя batch-запросами.
+func (r *PostRepository) attachPostAuthors(ctx context.Context, posts []domain.Post) error {
+	profileIDs := make([]int64, 0, len(posts))
+	seen := make(map[int64]struct{}, len(posts))
+	for _, post := range posts {
+		if post.AuthorProfileID == nil {
+			continue
+		}
+		if _, ok := seen[*post.AuthorProfileID]; ok {
+			continue
+		}
+		seen[*post.AuthorProfileID] = struct{}{}
+		profileIDs = append(profileIDs, *post.AuthorProfileID)
+	}
+	if len(profileIDs) == 0 {
+		return nil
+	}
+
+	authors := make(map[int64]domain.Author, len(profileIDs))
+	rows, err := r.pool.Query(ctx, postAuthorsQuery, profileIDs)
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		var (
+			profileID int64
+			name      string
+		)
+		if err := rows.Scan(&profileID, &name); err != nil {
+			rows.Close()
+			return err
+		}
+		authors[profileID] = domain.Author{
+			Name: name,
+			Type: domain.AuthorProfile,
+		}
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return err
+	}
+	rows.Close()
+
+	rows, err = r.pool.Query(ctx, postAuthorAvatarsQuery, profileIDs)
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		var (
+			profileID int64
+			avatarURL string
+		)
+		if err := rows.Scan(&profileID, &avatarURL); err != nil {
+			rows.Close()
+			return err
+		}
+		author := authors[profileID]
+		author.AvatarURL = avatarURL
+		authors[profileID] = author
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return err
+	}
+	rows.Close()
+
+	for index := range posts {
+		if posts[index].AuthorProfileID == nil {
+			continue
+		}
+		if author, ok := authors[*posts[index].AuthorProfileID]; ok {
+			posts[index].Author = author
+		}
+	}
+	return nil
 }
 
 func normalizePostError(err error) error {

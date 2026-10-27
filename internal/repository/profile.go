@@ -11,10 +11,12 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-var ErrProfileNotFound = errors.New("profile not found")
+var (
+	ErrProfileNotFound = errors.New("profile not found")
+	ErrProfileConflict = errors.New("profile unique value conflict")
+)
 
 const profileColumns = `
     id,
@@ -78,11 +80,11 @@ const deleteProfileQuery = `
 
 // ProfileRepository выполняет sql-операции с таблицей profile
 type ProfileRepository struct {
-	pool *pgxpool.Pool
+	pool dbPool
 }
 
 // NewProfileRepository создаёт репозиторий пользователей
-func NewProfileRepository(pool *pgxpool.Pool) *ProfileRepository {
+func NewProfileRepository(pool dbPool) *ProfileRepository {
 	return &ProfileRepository{pool: pool}
 }
 
@@ -259,6 +261,14 @@ func (r *ProfileRepository) Delete(
 // scanProfile сериализует ответ базы в domain.Profile
 // withCredentials - добавлять ли приватные поля (хэш пароля)
 func scanProfile(row rowScanner, withCredentials bool) (domain.Profile, string, error) {
+	return scanProfileWithLeading(row, nil, withCredentials)
+}
+
+func scanProfileWithLeading(
+	row rowScanner,
+	leading any,
+	withCredentials bool,
+) (domain.Profile, string, error) {
 	var (
 		id           int64
 		nickname     pgtype.Text
@@ -276,7 +286,11 @@ func scanProfile(row rowScanner, withCredentials bool) (domain.Profile, string, 
 		passwordHash pgtype.Text
 	)
 
-	dest := []any{
+	dest := make([]any, 0, 15)
+	if leading != nil {
+		dest = append(dest, leading)
+	}
+	dest = append(dest,
 		&id,
 		&nickname,
 		&email,
@@ -290,7 +304,7 @@ func scanProfile(row rowScanner, withCredentials bool) (domain.Profile, string, 
 		&createdAt,
 		&updatedAt,
 		&deletedAt,
-	}
+	)
 	if withCredentials {
 		dest = append(dest, &passwordHash)
 	}
@@ -326,6 +340,9 @@ func scanProfile(row rowScanner, withCredentials bool) (domain.Profile, string, 
 func normalizeProfileError(err error) error {
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ErrProfileNotFound
+	}
+	if isUniqueViolation(err) {
+		return ErrProfileConflict
 	}
 	return err
 }

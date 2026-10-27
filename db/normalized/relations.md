@@ -9,6 +9,7 @@
 
 ## Сообщества
 **community** - Сообщества пользователей\
+**community_avatar** - Аватары сообществ\
 **community_member** - Участники сообществ
 
 ## Публикации
@@ -27,7 +28,7 @@
 **message_like** - Реакции на сообщения\
 **message_sticker** - Стикеры сообщений
 
-## Пути к медиафайлам в S3
+## Пути к медиафайлам
 **media** - Медиафайлы\
 **sticker** - Стикеры\
 **emoji_reaction** - Эмодзи реакций
@@ -82,11 +83,11 @@
 
 ### profile
 ```
-{ id } -> { nickname, email, phone_number, profile_name, surname, patronymic,gender, birthday, created_at, deleted_at, updated_at, password_hash, password_salt, bio }
+{ id } -> { nickname, email, phone_number, profile_name, surname, patronymic,gender, birthday, created_at, deleted_at, updated_at, password_hash, bio }
 
 { nickname } -> { id, email, phone_number, profile_name, surname, patronymic,
 gender, birthday, created_at, deleted_at, updated_at,
-password_hash, password_salt, bio }
+password_hash, bio }
 ```
 ### community
 ```
@@ -132,7 +133,7 @@ updated_at, repost_from, reply_from }
 ```
 ### profile_relationship
 ```
-{ profile_id_master, profile_id_slave } -> { status, created_at, updated_at, deleted_at }
+{ profile_id_master, profile_id_slave } -> { relationships_status, relationships_type, created_at, updated_at, deleted_at }
 ```
 ### community_member
 ```

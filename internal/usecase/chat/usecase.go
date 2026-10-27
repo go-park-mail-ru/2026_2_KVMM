@@ -102,9 +102,6 @@ func (u *UseCase) Send(
 	if len([]rune(*req.MessageText)) > 256 {
 		return domain.Message{}, repository.ErrMessageTooLong
 	}
-	if err := u.chats.IsParticipant(ctx, req.ChatID, userID); err != nil {
-		return domain.Message{}, err
-	}
 	return u.messages.Create(ctx, repository.CreateMessageParams{
 		ChatID:      req.ChatID,
 		AuthorID:    userID,
