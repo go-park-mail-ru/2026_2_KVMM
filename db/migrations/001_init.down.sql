@@ -5,6 +5,7 @@ DROP TABLE IF EXISTS message_sticker;
 DROP TABLE IF EXISTS message_media;
 DROP TABLE IF EXISTS message_like;
 DROP TABLE IF EXISTS post_media;
+DROP TABLE IF EXISTS community_avatar;
 DROP TABLE IF EXISTS profile_avatar;
 DROP TABLE IF EXISTS profile_like;
 DROP TABLE IF EXISTS profile_repost;
@@ -24,5 +25,5 @@ DROP TABLE IF EXISTS sticker;
 DROP TABLE IF EXISTS emoji_reaction;
 
 DROP TYPE IF EXISTS role_enum;
-DROP TYPE IF EXISTS relationships_enum;
+DROP TYPE IF EXISTS relationships_status_enum;
 DROP TYPE IF EXISTS gender_enum;

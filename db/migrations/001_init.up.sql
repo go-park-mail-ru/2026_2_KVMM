@@ -5,10 +5,10 @@ CREATE TYPE role_enum AS ENUM (
     'member'
 );
 
-CREATE TYPE relationships_enum AS ENUM (
-    'friendship',
-    'blocked',
-    'friend_request'
+CREATE TYPE relationships_status_enum AS ENUM (
+	'request',
+	'accepted',
+	'canceled'
 );
 
 CREATE TYPE gender_enum AS ENUM (
@@ -27,13 +27,13 @@ CREATE TABLE profile (
     email TEXT NULL,
     phone_number TEXT NULL,
 
-    profile_name TEXT NOT NULL
+    profile_name TEXT NULL
         CHECK (LENGTH(profile_name) BETWEEN 2 AND 32),
-    surname TEXT NOT NULL
+    surname TEXT NULL
         CHECK (LENGTH(surname) BETWEEN 2 AND 32),
     patronymic TEXT NULL
         CHECK (LENGTH(patronymic) BETWEEN 2 AND 32),
-    gender gender_enum NOT NULL,
+    gender gender_enum NULL,
     birthday DATE NULL,
     bio TEXT NULL
         CHECK (LENGTH(bio) <= 256),
@@ -44,23 +44,17 @@ CREATE TABLE profile (
 
     password_hash TEXT NOT NULL
         CHECK (LENGTH(password_hash) <= 512),
-    password_salt TEXT NOT NULL,
-
-
-    PRIMARY KEY (id),
-
-    CONSTRAINT profile_email_or_phone_check
-    CHECK 
-        (email IS NOT NULL OR phone_number IS NOT NULL),
-
-    CONSTRAINT profile_nickname_unique
-        UNIQUE (nickname),
-    CONSTRAINT profile_email_unique
-        UNIQUE (email),
-    CONSTRAINT profile_phone_unique
-        UNIQUE (phone_number)
-
+    PRIMARY KEY (id)
 );
+
+CREATE UNIQUE INDEX profile_nickname_unique
+    ON profile (LOWER(nickname));
+
+CREATE UNIQUE INDEX profile_email_unique
+    ON profile (LOWER(email));
+
+CREATE UNIQUE INDEX profile_phone_unique
+    ON profile (LOWER(phone_number));
 -- CREATE INDEX profile_name ON profile(profile_name);
 -- CREATE INDEX profile_surname ON profile(surname);
 -- CREATE INDEX profile_patronymic ON profile(patronymic);
@@ -136,6 +130,28 @@ CREATE TABLE media (
     deleted_at TIMESTAMPTZ NULL,
 
     PRIMARY KEY (id)
+);
+
+
+-- Аватары сообществ
+CREATE TABLE community_avatar (
+    community_id BIGINT NOT NULL,
+    media_id BIGINT NOT NULL,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMPTZ NULL,
+
+    PRIMARY KEY (community_id, media_id),
+
+    FOREIGN KEY (community_id)
+        REFERENCES community (id)
+        ON UPDATE NO ACTION
+        ON DELETE NO ACTION,
+
+    FOREIGN KEY (media_id)
+        REFERENCES media (id)
+        ON UPDATE NO ACTION
+        ON DELETE NO ACTION
 );
 
 
@@ -303,7 +319,9 @@ CREATE TABLE profile_relationship (
     profile_id_master BIGINT NOT NULL,
     profile_id_slave BIGINT NOT NULL,
 
-    status relationships_enum NOT NULL,
+    relationships_status relationships_status_enum NOT NULL,
+    relationships_type TEXT NOT NULL
+        CHECK (LENGTH(relationships_type) BETWEEN 1 AND 32),
 
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NULL,
@@ -322,6 +340,14 @@ CREATE TABLE profile_relationship (
 
     CHECK (profile_id_master <> profile_id_slave)
 );
+
+CREATE UNIQUE INDEX profile_relationship_active_pair_unique
+    ON profile_relationship (
+        LEAST(profile_id_master, profile_id_slave),
+        GREATEST(profile_id_master, profile_id_slave)
+    )
+    WHERE deleted_at IS NULL
+      AND relationships_status <> 'canceled';
 
 
 -- Участники сообществ
