@@ -15,7 +15,7 @@ import (
 var (
 	ErrInvalidCredentials = errors.New("invalid credentials")
 	ErrInvalidCSRF        = sessionusecase.ErrInvalidCSRF
-	ErrConflict           = errors.New("profile already exists")
+	ErrConflict           = repository.ErrProfileConflict
 )
 
 type profileRepository interface {

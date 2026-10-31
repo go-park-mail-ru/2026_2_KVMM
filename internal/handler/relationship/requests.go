@@ -25,10 +25,21 @@ func (h *FriendsHandler) Requests(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// cursor, limit, err := helpers.Pagination(r, 10)
-	// if err != nil {
-	// 	helpers.WriteError(w, http.StatusBadRequest, "invalid_pagination", err.Error())
-	// 	return
-	// }
-
+	cursor, limit, err := helpers.Pagination(r, 10)
+	if err != nil {
+		helpers.WriteError(w, http.StatusBadRequest, "invalid_pagination", err.Error())
+		return
+	}
+	response, err := h.useCase.Requests(
+		r.Context(),
+		helpers.SessionCookie(r),
+		r.URL.Query().Get("relationships_type"),
+		int64(cursor),
+		limit,
+	)
+	if err != nil {
+		h.writeError(w, err)
+		return
+	}
+	helpers.WriteJSON(w, http.StatusOK, response)
 }

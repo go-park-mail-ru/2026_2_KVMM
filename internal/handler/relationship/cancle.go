@@ -13,7 +13,7 @@ import (
 // @Description Отменяет входящую связь или удаляет созданую
 // @Tags relationships
 // @Security SessionCookie
-// @Cancle json
+// @Accept json
 // @Produce json
 // @Param X-CSRF-Token header string true "CSRF-токен"
 // @Param request body domain.CancleRelationshipRequest true "Данные для отправки запроса в друзья"
@@ -33,4 +33,15 @@ func (h *FriendsHandler) Cancle(w http.ResponseWriter, r *http.Request) {
 		helpers.WriteError(w, http.StatusBadRequest, "validation_error", err.Error())
 		return
 	}
+	relationship, err := h.useCase.Cancel(
+		r.Context(),
+		helpers.SessionCookie(r),
+		r.Header.Get("X-CSRF-Token"),
+		req,
+	)
+	if err != nil {
+		h.writeError(w, err)
+		return
+	}
+	helpers.WriteJSON(w, http.StatusOK, relationship)
 }

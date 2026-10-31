@@ -69,7 +69,7 @@ func NewRouter(deps Dependencies) http.Handler {
 	mux.HandleFunc("/api/relationships/accept", relationshipHandler.Accept)
 	mux.HandleFunc("/api/relationships/requests", relationshipHandler.Requests)
 	mux.HandleFunc("/api/relationships/suggestions", relationshipHandler.Suggestions)
-	mux.HandleFunc("/api/relationships/suggestionstypes", relationshipHandler.SuggestionsTypes)
+	mux.HandleFunc("/api/relationships/suggestions", relationshipHandler.Suggestions)
 
 	mux.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

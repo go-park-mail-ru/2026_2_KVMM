@@ -1453,99 +1453,6 @@ const docTemplate = `{
                 ]
             }
         },
-        "/api/friends/accept": {
-            "patch": {
-                "description": "Принимает запрос на связь указанному пользователю",
-                "parameters": [
-                    {
-                        "description": "CSRF-токен",
-                        "in": "header",
-                        "name": "X-CSRF-Token",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/domain.AcceptRelationshipRequest",
-                                "summary": "request",
-                                "description": "Данные для принятия запроса в друзья"
-                            }
-                        }
-                    },
-                    "description": "Данные для принятия запроса в друзья",
-                    "required": true
-                },
-                "responses": {
-                    "204": {
-                        "description": "Запрос в друзья отправлен"
-                    },
-                    "400": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/domain.ErrorResponse"
-                                }
-                            }
-                        },
-                        "description": "Bad Request"
-                    },
-                    "401": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/domain.ErrorResponse"
-                                }
-                            }
-                        },
-                        "description": "Unauthorized"
-                    },
-                    "403": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/domain.ErrorResponse"
-                                }
-                            }
-                        },
-                        "description": "Forbidden"
-                    },
-                    "404": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/domain.ErrorResponse"
-                                }
-                            }
-                        },
-                        "description": "Not Found"
-                    },
-                    "409": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/domain.ErrorResponse"
-                                }
-                            }
-                        },
-                        "description": "Conflict"
-                    }
-                },
-                "security": [
-                    {
-                        "SessionCookie": []
-                    }
-                ],
-                "summary": "Принять запрос на связь",
-                "tags": [
-                    "relationships"
-                ]
-            }
-        },
         "/api/posts/create": {
             "post": {
                 "description": "Создаёт публикацию текущего пользователя. Автор определяется по сессии",
@@ -2187,6 +2094,106 @@ const docTemplate = `{
                 ]
             }
         },
+        "/api/relationships/accept": {
+            "patch": {
+                "description": "Принимает запрос на связь указанному пользователю",
+                "parameters": [
+                    {
+                        "description": "CSRF-токен",
+                        "in": "header",
+                        "name": "X-CSRF-Token",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/domain.AcceptRelationshipRequest",
+                                "summary": "request",
+                                "description": "Данные для принятия запроса в друзья"
+                            }
+                        }
+                    },
+                    "description": "Данные для принятия запроса в друзья",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ProfileRelationship"
+                                }
+                            }
+                        },
+                        "description": "Принятая связь"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Forbidden"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Conflict"
+                    }
+                },
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "summary": "Принять запрос на связь",
+                "tags": [
+                    "relationships"
+                ]
+            }
+        },
         "/api/relationships/cancle": {
             "delete": {
                 "description": "Отменяет входящую связь или удаляет созданую",
@@ -2396,7 +2403,7 @@ const docTemplate = `{
                         "schema": {
                             "enum": [
                                 "request",
-                                "approved",
+                                "accepted",
                                 "canceled"
                             ],
                             "type": "string"
@@ -2626,55 +2633,9 @@ const docTemplate = `{
                 ]
             }
         },
-        "/api/relationships/suggestionstypes": {
-            "get": {
-                "description": "Возвращает список профилей, которым текущий пользователь может имень связь.",
-                "responses": {
-                    "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/domain.RelationshipTypes"
-                                }
-                            }
-                        },
-                        "description": "OK"
-                    },
-                    "400": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/domain.ErrorResponse"
-                                }
-                            }
-                        },
-                        "description": "Bad Request"
-                    },
-                    "401": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/domain.ErrorResponse"
-                                }
-                            }
-                        },
-                        "description": "Unauthorized"
-                    }
-                },
-                "security": [
-                    {
-                        "SessionCookie": []
-                    }
-                ],
-                "summary": "Получить список возможных связей получателя",
-                "tags": [
-                    "relationships"
-                ]
-            }
-        },
         "/api/relationships/typeslist": {
             "get": {
-                "description": "Возвращает виды связий в которых участвует пользователь",
+                "description": "Возвращает виды связей, в которых участвует пользователь",
                 "parameters": [
                     {
                         "description": "CSRF-токен, если требуется политикой приложения",
@@ -2699,7 +2660,7 @@ const docTemplate = `{
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/domain.RelationshipsResponse"
+                                    "$ref": "#/components/schemas/domain.RelationshipTypes"
                                 }
                             }
                         },

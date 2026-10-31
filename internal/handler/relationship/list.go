@@ -3,6 +3,7 @@ package relationship
 import (
 	"net/http"
 
+	"kvmm/internal/domain"
 	"kvmm/internal/handler/helpers"
 )
 
@@ -15,7 +16,7 @@ import (
 // @Accept json
 // @Produce json
 // @Param X-CSRF-Token header string false "CSRF-токен, если требуется политикой приложения"
-// @Param relationships_status query string false "Статус связи" Enums(request,approved,canceled)
+// @Param relationships_status query string false "Статус связи" Enums(request,accepted,canceled)
 // @Param relationships_type query string false "Вид связи" example(friendship)
 // @Param cursor query int false "Указатель на начальный элемент для записей" default(0)
 // @Param limit query int false "Размер страницы (максимум 10)" default(10) maximum(10)
@@ -28,24 +29,34 @@ func (h *FriendsHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// cursor, limit, err := helpers.Pagination(r, 10)
-	// if err != nil {
-	// 	helpers.WriteError(w, http.StatusBadRequest, "invalid_pagination", err.Error())
-	// 	return
-	// }
-
+	cursor, limit, err := helpers.Pagination(r, 10)
+	if err != nil {
+		helpers.WriteError(w, http.StatusBadRequest, "invalid_pagination", err.Error())
+		return
+	}
+	response, err := h.useCase.List(r.Context(), helpers.SessionCookie(r), domain.ListRelationshipsRequest{
+		RelationshipsStatus: domain.RelationshipStatus(r.URL.Query().Get("relationships_status")),
+		RelationshipsType:   r.URL.Query().Get("relationships_type"),
+		Cursor:              int64(cursor),
+		Limit:               limit,
+	})
+	if err != nil {
+		h.writeError(w, err)
+		return
+	}
+	helpers.WriteJSON(w, http.StatusOK, response)
 }
 
-// TypesList возвращает список в связях какого виды учатсвыет пользователь
+// TypesList возвращает виды активных связей текущего пользователя
 // TypesList godoc
 // @Summary Получить список связей по типам
-// @Description Возвращает виды связий в которых участвует пользователь
+// @Description Возвращает виды связей, в которых участвует пользователь
 // @Tags relationships
 // @Security SessionCookie
 // @Accept json
 // @Produce json
 // @Param X-CSRF-Token header string false "CSRF-токен, если требуется политикой приложения"
-// @Success 200 {object} domain.RelationshipsResponse
+// @Success 200 {object} domain.RelationshipTypes
 // @Failure 400 {object} domain.ErrorResponse
 // @Failure 401 {object} domain.ErrorResponse
 // @Router /api/relationships/typeslist [get]
@@ -53,4 +64,10 @@ func (h *FriendsHandler) TypesList(w http.ResponseWriter, r *http.Request) {
 	if !helpers.MethodAllowed(w, r, http.MethodGet) {
 		return
 	}
+	response, err := h.useCase.Types(r.Context(), helpers.SessionCookie(r))
+	if err != nil {
+		h.writeError(w, err)
+		return
+	}
+	helpers.WriteJSON(w, http.StatusOK, response)
 }

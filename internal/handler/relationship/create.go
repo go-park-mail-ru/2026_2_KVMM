@@ -34,4 +34,15 @@ func (h *FriendsHandler) Create(w http.ResponseWriter, r *http.Request) {
 		helpers.WriteError(w, http.StatusBadRequest, "validation_error", err.Error())
 		return
 	}
+	relationship, err := h.useCase.Create(
+		r.Context(),
+		helpers.SessionCookie(r),
+		r.Header.Get("X-CSRF-Token"),
+		req,
+	)
+	if err != nil {
+		h.writeError(w, err)
+		return
+	}
+	helpers.WriteJSON(w, http.StatusCreated, relationship)
 }
