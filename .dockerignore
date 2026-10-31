@@ -1,0 +1,9 @@
+.git
+.gitignore
+.DS_Store
+*.log
+*.pem
+*.key
+*.ppk
+*.out
+deploy/.env

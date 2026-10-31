@@ -1,0 +1,25 @@
+INSERT INTO profile (
+    nickname,
+    email,
+    phone_number,
+    profile_name,
+    surname,
+    patronymic,
+    gender,
+    birthday,
+    bio,
+    password_hash
+)
+VALUES
+    (
+        'admin',
+        'admin@example.com',
+        '+79000000001',
+        'Admin',
+        'Adminov',
+        'Adminovich',
+        'male',
+        '2000-01-01',
+        'hi',
+        'seed_hash_admin'
+    );
