@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"errors"
 	"net/http"
 
 	"kvmm/internal/domain"
@@ -19,6 +20,7 @@ import (
 // @Success 201 {object} domain.AuthResponse
 // @Failure 400 {object} domain.ErrorResponse
 // @Failure 409 {object} domain.ErrorResponse
+// @Failure 500 {object} domain.ErrorResponse
 // @Router /api/auth/register [post]
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	if !helpers.MethodAllowed(w, r, http.MethodPost) {
@@ -35,7 +37,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 	response, session, err := h.useCase.Register(r.Context(), req)
 	if err != nil {
-		if err == authusecase.ErrConflict {
+		if errors.Is(err, authusecase.ErrConflict) {
 			helpers.WriteError(w, http.StatusConflict, "already_exists", "nickname, email or phone_number is already used")
 			return
 		}

@@ -1,6 +1,7 @@
 package profile
 
 import (
+	"errors"
 	"net/http"
 
 	"kvmm/internal/domain"
@@ -22,6 +23,7 @@ import (
 // @Failure 401 {object} domain.ErrorResponse
 // @Failure 403 {object} domain.ErrorResponse
 // @Failure 409 {object} domain.ErrorResponse
+// @Failure 500 {object} domain.ErrorResponse
 // @Router /api/profile/update [patch]
 func (h *ProfileHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if !helpers.MethodAllowed(w, r, http.MethodPatch) {
@@ -30,24 +32,24 @@ func (h *ProfileHandler) Update(w http.ResponseWriter, r *http.Request) {
 	session := helpers.SessionCookie(r)
 	var req domain.UpdateProfileRequest
 	if err := helpers.DecodeJSON(w, r, &req); err != nil {
-		helpers.WriteError(w, http.StatusBadRequest, "validation_error", "")
+		helpers.WriteError(w, http.StatusBadRequest, "validation_error", err.Error())
 		return
 	}
 	if err := helpers.ValidateUpdateProfileRequest(req); err != nil {
-		helpers.WriteError(w, http.StatusBadRequest, "validation_error", "")
+		helpers.WriteError(w, http.StatusBadRequest, "validation_error", err.Error())
 		return
 	}
 	updatedProfile, err := h.useCase.Update(r.Context(), session, r.Header.Get("X-CSRF-Token"), req)
 	if err != nil {
-		switch err {
-		case profileusecase.ErrInvalidCSRF:
+		switch {
+		case errors.Is(err, profileusecase.ErrInvalidCSRF):
 			helpers.WriteError(w, http.StatusForbidden, "csrf_failed", "valid X-CSRF-Token header is required")
-		case profileusecase.ErrUnauthorized:
+		case errors.Is(err, profileusecase.ErrUnauthorized):
 			helpers.WriteError(w, http.StatusUnauthorized, "unauthorized", "authentication required")
-		case profileusecase.ErrConflict:
+		case errors.Is(err, profileusecase.ErrConflict):
 			helpers.WriteError(w, http.StatusConflict, "already_exists", "nickname, email or phone_number is already used")
 		default:
-			helpers.WriteError(w, http.StatusBadRequest, "invalid_request", "")
+			helpers.WriteError(w, http.StatusInternalServerError, "invalid_request", err.Error())
 		}
 		return
 	}

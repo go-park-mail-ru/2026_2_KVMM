@@ -1,24 +1,16 @@
 package httpapi
 
 import (
-	// "bytes"
-	// "mime"
 	"net/http"
 	"os"
-
-	// "path/filepath"
-	// "strings"
-	// "time"
 
 	"kvmm/internal/handler/auth"
 	"kvmm/internal/handler/chat"
 	"kvmm/internal/handler/feed"
 
-	// "kvmm/internal/handler/helpers"
 	"kvmm/internal/handler/posts"
 	"kvmm/internal/handler/profile"
 	"kvmm/internal/handler/relationship"
-	// "kvmm/internal/store"
 )
 
 // обработчики приложения
@@ -54,9 +46,16 @@ func NewRouter(deps Dependencies) http.Handler {
 	mux.HandleFunc("/api/posts/update", postHandler.Update)
 	mux.HandleFunc("/api/posts/user", postHandler.UserPosts)
 
-	// mux.HandleFunc("/api/media/", serveMedia)
+	mediaDir := os.Getenv("MEDIA_DIR")
+	if mediaDir == "" {
+		mediaDir = "./internal/store/media"
+	}
+	mux.Handle("/api/media/", http.StripPrefix("/api/media/", http.FileServer(http.Dir(mediaDir))))
 
 	mux.HandleFunc("/api/profile/update", profileHandler.Update)
+	mux.HandleFunc("/api/profile/avatar", profileHandler.UploadAvatar)
+	mux.HandleFunc("/api/profile/avatars", profileHandler.ListAvatars)
+	mux.HandleFunc("/api/profile/avatars/{id}", profileHandler.DeleteAvatar)
 
 	mux.HandleFunc("/api/chats/list", chatHandler.List)
 	mux.HandleFunc("/api/chats/messages", chatHandler.Messages)
@@ -79,25 +78,6 @@ func NewRouter(deps Dependencies) http.Handler {
 	})
 	return cors(mux)
 }
-
-// serveMedia отдаёт встроенный файл публикации с Сontent-Type
-// func serveMedia(w http.ResponseWriter, r *http.Request) {
-// 	if !helpers.MethodAllowed(w, r, http.MethodGet) {
-// 		return
-// 	}
-// 	name := strings.TrimPrefix(r.URL.Path, "/api/media/")
-// 	data, err := readMediaFile(name)
-// 	if err != nil {
-// 		http.NotFound(w, r)
-// 		return
-// 	}
-// 	contentType := mime.TypeByExtension(strings.ToLower(filepath.Ext(name)))
-// 	if contentType == "" {
-// 		contentType = "application/octet-stream"
-// 	}
-// 	w.Header().Set("Content-Type", contentType)
-// 	http.ServeContent(w, r, name, time.Time{}, bytes.NewReader(data))
-// }
 
 // cors добавляет CORS-заголовки и обрабатывает preflight-запросы
 func cors(next http.Handler) http.Handler {
@@ -124,11 +104,3 @@ func cors(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
-
-// readMediaFile возвращает встроенный файл публикации по безопасному имени
-// func readMediaFile(name string) ([]byte, error) {
-// 	if name == "" || strings.Contains(name, "..") || strings.ContainsAny(name, `/\\`) {
-// 		return nil, store.ErrNotFound
-// 	}
-// 	return store.EmbeddedMediaFiles.ReadFile("media/" + name)
-// }

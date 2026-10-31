@@ -2,7 +2,6 @@ package profile
 
 import (
 	"context"
-	"errors"
 	"strings"
 	"time"
 
@@ -14,24 +13,38 @@ import (
 )
 
 var (
-	ErrUnauthorized = sessionusecase.ErrUnauthorized
-	ErrInvalidCSRF  = sessionusecase.ErrInvalidCSRF
-	ErrConflict     = errors.New("profile already exists")
+	ErrUnauthorized   = sessionusecase.ErrUnauthorized
+	ErrInvalidCSRF    = sessionusecase.ErrInvalidCSRF
+	ErrConflict       = repository.ErrProfileConflict
+	ErrAvatarLimit    = repository.ErrAvatarLimit
+	ErrAvatarNotFound = repository.ErrAvatarNotFound
+	ErrInvalidAvatar  = repository.ErrInvalidAvatar
 )
 
 type profileRepository interface {
 	Update(context.Context, int64, repository.UpdateProfileParams) (domain.Profile, error)
 }
 
+type avatarRepository interface {
+	Create(context.Context, int64, domain.UploadAvatarRequest) (domain.Avatar, error)
+	List(context.Context, int64) (domain.AvatarsResponse, error)
+	Delete(context.Context, int64, int64) error
+}
+
 // UseCase содержит бизнес-логику изменения профиля
 type UseCase struct {
 	profiles profileRepository
+	avatars  avatarRepository
 	sessions *sessionusecase.UseCase
 }
 
 // New создаёт usecase профиля
-func New(profiles profileRepository, sessions *sessionusecase.UseCase) *UseCase {
-	return &UseCase{profiles: profiles, sessions: sessions}
+func New(
+	profiles profileRepository,
+	avatars avatarRepository,
+	sessions *sessionusecase.UseCase,
+) *UseCase {
+	return &UseCase{profiles: profiles, avatars: avatars, sessions: sessions}
 }
 
 // Update проверяет сессию, хеширует новый пароль и изменяет переданные поля
@@ -78,4 +91,41 @@ func (u *UseCase) Update(
 	}
 
 	return u.profiles.Update(ctx, userID, params)
+}
+
+// UploadAvatar загружает новую аватарку текущего пользователя
+func (u *UseCase) UploadAvatar(
+	ctx context.Context,
+	sessionToken string,
+	csrfToken string,
+	req domain.UploadAvatarRequest,
+) (domain.Avatar, error) {
+	userID, err := u.sessions.Authorize(sessionToken, csrfToken)
+	if err != nil {
+		return domain.Avatar{}, err
+	}
+	return u.avatars.Create(ctx, userID, req)
+}
+
+// ListAvatars возвращает аватарки текущего пользователя от новой к старой
+func (u *UseCase) ListAvatars(ctx context.Context, sessionToken string) (domain.AvatarsResponse, error) {
+	userID, _, err := u.sessions.Read(sessionToken)
+	if err != nil {
+		return domain.AvatarsResponse{}, err
+	}
+	return u.avatars.List(ctx, userID)
+}
+
+// DeleteAvatar удаляет выбранную аватарку текущего пользователя
+func (u *UseCase) DeleteAvatar(
+	ctx context.Context,
+	sessionToken string,
+	csrfToken string,
+	avatarID int64,
+) error {
+	userID, err := u.sessions.Authorize(sessionToken, csrfToken)
+	if err != nil {
+		return err
+	}
+	return u.avatars.Delete(ctx, userID, avatarID)
 }

@@ -48,6 +48,35 @@
                 },
                 "type": "object"
             },
+            "domain.Avatar": {
+                "properties": {
+                    "created_at": {
+                        "example": "2026-01-01T12:00:00Z",
+                        "type": "string"
+                    },
+                    "id": {
+                        "example": 1,
+                        "type": "integer"
+                    },
+                    "url": {
+                        "example": "/api/media/avatars/abc.png",
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
+            "domain.AvatarsResponse": {
+                "properties": {
+                    "avatars": {
+                        "items": {
+                            "$ref": "#/components/schemas/domain.Avatar"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    }
+                },
+                "type": "object"
+            },
             "domain.CancleRelationshipRequest": {
                 "properties": {
                     "profile_id": {
@@ -996,6 +1025,16 @@
                             }
                         },
                         "description": "Conflict"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
                     }
                 },
                 "summary": "Регистрация пользователя",
@@ -1839,6 +1878,219 @@
                 ]
             }
         },
+        "/api/profile/avatar": {
+            "post": {
+                "description": "Загружает изображение аватарки. Максимум — 10 активных аватарок",
+                "parameters": [
+                    {
+                        "description": "CSRF-токен",
+                        "in": "header",
+                        "name": "X-CSRF-Token",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "properties": {
+                                    "avatar": {
+                                        "description": "Файл аватарки",
+                                        "format": "binary",
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "avatar"
+                                ],
+                                "type": "object"
+                            }
+                        }
+                    },
+                    "description": "Файл аватарки",
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.Avatar"
+                                }
+                            }
+                        },
+                        "description": "Created"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Forbidden"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Conflict"
+                    }
+                },
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "summary": "Загрузить аватарку",
+                "tags": [
+                    "profile"
+                ]
+            }
+        },
+        "/api/profile/avatars": {
+            "get": {
+                "description": "Возвращает аватарки от самой новой к самой старой",
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.AvatarsResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    }
+                },
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "summary": "Получить аватарки профиля",
+                "tags": [
+                    "profile"
+                ]
+            }
+        },
+        "/api/profile/avatars/{id}": {
+            "delete": {
+                "description": "Удаляет выбранную аватарку текущего пользователя",
+                "parameters": [
+                    {
+                        "description": "CSRF-токен",
+                        "in": "header",
+                        "name": "X-CSRF-Token",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "ID аватарки",
+                        "in": "path",
+                        "name": "id",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Аватарка удалена"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Forbidden"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    }
+                },
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "summary": "Удалить аватарку",
+                "tags": [
+                    "profile"
+                ]
+            }
+        },
         "/api/profile/update": {
             "patch": {
                 "description": "Изменяет профиль существующего пользователя",
@@ -1905,6 +2157,16 @@
                             }
                         },
                         "description": "Conflict"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
                     }
                 },
                 "security": [
