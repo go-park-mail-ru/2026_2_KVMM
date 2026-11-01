@@ -5,16 +5,19 @@ import (
 
 	"kvmm/internal/handler/helpers"
 	chusecase "kvmm/internal/usecase/chat"
+	sessionusecase "kvmm/internal/usecase/session"
 )
 
 // ChatHandler обрабатывает запросы к чатам и сообщениям
 type ChatHandler struct {
-	useCase *chusecase.UseCase
+	useCase  *chusecase.UseCase
+	sessions *sessionusecase.UseCase
+	hub      *chatHub
 }
 
 // NewChatHandler создаёт обработчик чатов
-func NewChatHandler(useCase *chusecase.UseCase) *ChatHandler {
-	return &ChatHandler{useCase: useCase}
+func NewChatHandler(useCase *chusecase.UseCase, sessions *sessionusecase.UseCase) *ChatHandler {
+	return &ChatHandler{useCase: useCase, sessions: sessions, hub: newChatHub()}
 }
 
 func (h *ChatHandler) writeError(w http.ResponseWriter, err error) {

@@ -32,6 +32,29 @@ type SendMessageRequest struct {
 	ReplyFrom   *int64  `json:"reply_from,omitempty" example:"7" validate:"omitempty,gt=0"`
 }
 
+// ChatWebSocketAuthRequest описывает первое WebSocket-сообщение авторизации
+type ChatWebSocketAuthRequest struct {
+	Type      string  `json:"type"`
+	CSRFToken string  `json:"csrf_token"`
+	ChatIDs   []int64 `json:"chat_ids,omitempty"`
+}
+
+// ChatWebSocketRequest описывает входящее WebSocket-событие чата
+type ChatWebSocketRequest struct {
+	Type    string   `json:"type"`
+	ChatID  int64    `json:"chat_id"`
+	Message *Message `json:"message,omitempty"`
+}
+
+// ChatWebSocketEvent описывает исходящее WebSocket-событие чата
+type ChatWebSocketEvent struct {
+	Type    string         `json:"type"`
+	ChatID  int64          `json:"chat_id,omitempty"`
+	ChatIDs []int64        `json:"chat_ids,omitempty"`
+	Message *Message       `json:"message,omitempty"`
+	Error   *ErrorResponse `json:"error,omitempty"`
+}
+
 // CreateChatRequest содержит id пользователя, с которым создаётся чат
 type CreateChatRequest struct {
 	ProfileID int64 `json:"profile_id" example:"2" validate:"required,gt=0"`

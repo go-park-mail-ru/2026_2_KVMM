@@ -77,7 +77,7 @@ func main() {
 		Addr: addr,
 		Handler: httpapi.NewRouter(httpapi.Dependencies{
 			Auth:         auth.NewAuthHandler(authUseCase),
-			Chat:         chat.NewChatHandler(chatUseCase),
+			Chat:         chat.NewChatHandler(chatUseCase, sessionReader),
 			Feed:         feed.NewFeedHandler(feedUseCase),
 			Posts:        posts.NewPostHandler(postUseCase),
 			Profile:      profile.NewProfileHandler(profileUseCase),

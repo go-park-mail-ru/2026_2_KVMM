@@ -7,10 +7,11 @@ import (
 	"kvmm/internal/handler/auth"
 	"kvmm/internal/handler/chat"
 	"kvmm/internal/handler/feed"
-
 	"kvmm/internal/handler/posts"
 	"kvmm/internal/handler/profile"
 	"kvmm/internal/handler/relationship"
+
+	"github.com/gorilla/mux"
 )
 
 // обработчики приложения
@@ -23,9 +24,9 @@ type Dependencies struct {
 	Relationship *relationship.FriendsHandler
 }
 
-// NewRouter создаёт маршрутизатор API на основе стандартного http.ServeMux
+// NewRouter создаёт маршрутизатор API на основе gorilla/mux
 func NewRouter(deps Dependencies) http.Handler {
-	mux := http.NewServeMux()
+	router := mux.NewRouter()
 
 	authHandler := deps.Auth
 	chatHandler := deps.Chat
@@ -34,49 +35,52 @@ func NewRouter(deps Dependencies) http.Handler {
 	profileHandler := deps.Profile
 	relationshipHandler := deps.Relationship
 
-	mux.HandleFunc("/api/auth/register", authHandler.Register)
-	mux.HandleFunc("/api/auth/login", authHandler.Login)
-	mux.HandleFunc("/api/auth/me", authHandler.Me)
-	mux.HandleFunc("/api/auth/logout", authHandler.Logout)
+	router.HandleFunc("/api/auth/register", authHandler.Register).Methods(http.MethodPost)
+	router.HandleFunc("/api/auth/login", authHandler.Login).Methods(http.MethodPost)
+	router.HandleFunc("/api/auth/me", authHandler.Me).Methods(http.MethodGet)
+	router.HandleFunc("/api/auth/logout", authHandler.Logout).Methods(http.MethodPost)
 
-	mux.HandleFunc("/api/feed", feedHandler.List)
+	router.HandleFunc("/api/feed", feedHandler.List).Methods(http.MethodGet)
 
-	mux.HandleFunc("/api/posts/create", postHandler.Create)
-	mux.HandleFunc("/api/posts/delete", postHandler.Delete)
-	mux.HandleFunc("/api/posts/update", postHandler.Update)
-	mux.HandleFunc("/api/posts/user", postHandler.UserPosts)
+	router.HandleFunc("/api/posts/create", postHandler.Create).Methods(http.MethodPost)
+	router.HandleFunc("/api/posts/delete", postHandler.Delete).Methods(http.MethodDelete)
+	router.HandleFunc("/api/posts/update", postHandler.Update).Methods(http.MethodPatch)
+	router.HandleFunc("/api/posts/user", postHandler.UserPosts).Methods(http.MethodGet)
 
 	mediaDir := os.Getenv("MEDIA_DIR")
 	if mediaDir == "" {
 		mediaDir = "./internal/store/media"
 	}
-	mux.Handle("/api/media/", http.StripPrefix("/api/media/", http.FileServer(http.Dir(mediaDir))))
+	router.PathPrefix("/api/media/").Handler(
+		http.StripPrefix("/api/media/", http.FileServer(http.Dir(mediaDir))),
+	)
 
-	mux.HandleFunc("/api/profile/update", profileHandler.Update)
-	mux.HandleFunc("/api/profile/avatar", profileHandler.UploadAvatar)
-	mux.HandleFunc("/api/profile/avatars", profileHandler.ListAvatars)
-	mux.HandleFunc("/api/profile/avatars/{id}", profileHandler.DeleteAvatar)
+	router.HandleFunc("/api/profile/update", profileHandler.Update).Methods(http.MethodPatch)
+	router.HandleFunc("/api/profile/avatar", profileHandler.UploadAvatar).Methods(http.MethodPost)
+	router.HandleFunc("/api/profile/avatars", profileHandler.ListAvatars).Methods(http.MethodGet)
+	router.HandleFunc("/api/profile/avatars/{id}", profileHandler.DeleteAvatar).Methods(http.MethodDelete)
 
-	mux.HandleFunc("/api/chats/list", chatHandler.List)
-	mux.HandleFunc("/api/chats/messages", chatHandler.Messages)
-	mux.HandleFunc("/api/chats/send", chatHandler.Send)
-	mux.HandleFunc("/api/chats/create", chatHandler.Create)
+	router.HandleFunc("/api/chats/list", chatHandler.List).Methods(http.MethodGet)
+	router.HandleFunc("/api/chats/messages", chatHandler.Messages).Methods(http.MethodGet)
+	router.HandleFunc("/api/chats/send", chatHandler.Send).Methods(http.MethodPost)
+	router.HandleFunc("/api/chats/create", chatHandler.Create).Methods(http.MethodPost)
+	router.HandleFunc("/api/chats/ws", chatHandler.WebSocket).Methods(http.MethodGet)
 
-	mux.HandleFunc("/api/relationships/list", relationshipHandler.List)
-	mux.HandleFunc("/api/relationships/typeslist", relationshipHandler.TypesList)
-	mux.HandleFunc("/api/relationships/create", relationshipHandler.Create)
-	mux.HandleFunc("/api/relationships/cancle", relationshipHandler.Cancle)
-	mux.HandleFunc("/api/relationships/accept", relationshipHandler.Accept)
-	mux.HandleFunc("/api/relationships/requests", relationshipHandler.Requests)
-	mux.HandleFunc("/api/relationships/suggestions", relationshipHandler.Suggestions)
-	mux.HandleFunc("/api/relationships/suggestions", relationshipHandler.Suggestions)
+	router.HandleFunc("/api/relationships/list", relationshipHandler.List).Methods(http.MethodGet)
+	router.HandleFunc("/api/relationships/typeslist", relationshipHandler.TypesList).Methods(http.MethodGet)
+	router.HandleFunc("/api/relationships/create", relationshipHandler.Create).Methods(http.MethodPost)
+	router.HandleFunc("/api/relationships/cancle", relationshipHandler.Cancle).Methods(http.MethodDelete)
+	router.HandleFunc("/api/relationships/accept", relationshipHandler.Accept).Methods(http.MethodPatch)
+	router.HandleFunc("/api/relationships/requests", relationshipHandler.Requests).Methods(http.MethodGet)
+	router.HandleFunc("/api/relationships/suggestions", relationshipHandler.Suggestions).Methods(http.MethodGet)
 
-	mux.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(`{"status":"ok"}`))
-	})
-	return cors(mux)
+	}).Methods(http.MethodGet)
+
+	return cors(router)
 }
 
 // cors добавляет CORS-заголовки и обрабатывает preflight-запросы

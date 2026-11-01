@@ -1411,6 +1411,52 @@ const docTemplate = `{
                 ]
             }
         },
+        "/api/chats/ws": {
+            "get": {
+                "description": "Выполняет WebSocket upgrade. Session cookie передаётся автоматически. Первым сообщением необходимо отправить ` + "`" + `{\"type\":\"auth\",\"csrf_token\":\"TOKEN\",\"chat_ids\":[1,2,3]}` + "`" + `. Поле ` + "`" + `chat_ids` + "`" + ` необязательно: оно сразу подписывает соединение на указанные чаты. После авторизации сообщение отправляется как ` + "`" + `{\"type\":\"message\",\"chat_id\":1,\"message\":{\"message_text\":\"Привет!\"}}` + "`" + `. Ошибки авторизации, CSRF и проверки доступа после Upgrade отправляются как WebSocket-события с ` + "`" + `type: \"error\"` + "`" + `.",
+                "responses": {
+                    "101": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "description": "WebSocket connection established"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "description": "Invalid WebSocket handshake"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "description": "WebSocket origin is not allowed"
+                    }
+                },
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "summary": "Подключение к чатам через WebSocket",
+                "tags": [
+                    "chats"
+                ]
+            }
+        },
         "/api/feed": {
             "get": {
                 "description": "Возвращает посты в обратном хронологическом порядке",
