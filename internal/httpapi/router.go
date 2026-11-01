@@ -1,17 +1,23 @@
 package httpapi
 
 import (
+	"bufio"
+	"net"
 	"net/http"
 	"os"
+	"time"
 
 	"kvmm/internal/handler/auth"
 	"kvmm/internal/handler/chat"
 	"kvmm/internal/handler/feed"
+	"kvmm/internal/handler/helpers"
 	"kvmm/internal/handler/posts"
 	"kvmm/internal/handler/profile"
 	"kvmm/internal/handler/relationship"
+	"kvmm/internal/logging"
 
 	"github.com/gorilla/mux"
+	"go.uber.org/zap"
 )
 
 // обработчики приложения
@@ -77,10 +83,98 @@ func NewRouter(deps Dependencies) http.Handler {
 	router.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`{"status":"ok"}`))
+		if _, err := w.Write([]byte(`{"status":"ok"}`)); err != nil {
+			logging.Logger().Error("health response write failed", zap.Error(err))
+		}
 	}).Methods(http.MethodGet)
 
-	return cors(router)
+	return requestLogger(cors(router))
+}
+
+type responseLogger struct {
+	http.ResponseWriter
+	status      int
+	wroteHeader bool
+}
+
+func (w *responseLogger) WriteHeader(status int) {
+	if w.wroteHeader {
+		return
+	}
+	w.status = status
+	w.wroteHeader = true
+	w.ResponseWriter.WriteHeader(status)
+}
+
+func (w *responseLogger) Write(data []byte) (int, error) {
+	if !w.wroteHeader {
+		w.WriteHeader(http.StatusOK)
+	}
+	return w.ResponseWriter.Write(data)
+}
+
+func (w *responseLogger) Flush() {
+	flusher, ok := w.ResponseWriter.(http.Flusher)
+	if !ok {
+		return
+	}
+	if !w.wroteHeader {
+		w.WriteHeader(http.StatusOK)
+	}
+	flusher.Flush()
+}
+
+func (w *responseLogger) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	hijacker, ok := w.ResponseWriter.(http.Hijacker)
+	if !ok {
+		return nil, nil, http.ErrNotSupported
+	}
+	w.status = http.StatusSwitchingProtocols
+	w.wroteHeader = true
+	return hijacker.Hijack()
+}
+
+func (w *responseLogger) Unwrap() http.ResponseWriter {
+	return w.ResponseWriter
+}
+
+// requestLogger записывает входящие HTTP-запросы, ответы и необработанные panic.
+func requestLogger(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		startedAt := time.Now()
+		response := &responseLogger{ResponseWriter: w, status: http.StatusOK}
+
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				logging.Logger().Error("panic recovered in HTTP handler",
+					zap.Any("panic", recovered),
+					zap.String("method", r.Method),
+					zap.String("path", r.URL.Path),
+				)
+				if !response.wroteHeader {
+					helpers.WriteError(response, http.StatusInternalServerError, "internal_error", "internal server error")
+				}
+			}
+
+			fields := []zap.Field{
+				zap.String("method", r.Method),
+				zap.String("path", r.URL.Path),
+				zap.Int("status", response.status),
+				zap.Duration("duration", time.Since(startedAt)),
+			}
+			if response.status >= http.StatusInternalServerError {
+				logging.Logger().Error("HTTP request completed", fields...)
+			} else {
+				logging.Logger().Info("HTTP request completed", fields...)
+			}
+			logging.Logger().Debug("HTTP request details",
+				zap.String("query", r.URL.RawQuery),
+				zap.String("user_agent", r.UserAgent()),
+			)
+		}()
+
+		next.ServeHTTP(response, r)
+	})
 }
 
 // cors добавляет CORS-заголовки и обрабатывает preflight-запросы

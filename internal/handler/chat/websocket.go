@@ -10,9 +10,11 @@ import (
 
 	"kvmm/internal/domain"
 	"kvmm/internal/handler/helpers"
+	"kvmm/internal/logging"
 	chusecase "kvmm/internal/usecase/chat"
 
 	"github.com/gorilla/websocket"
+	"go.uber.org/zap"
 )
 
 const (
@@ -26,7 +28,12 @@ var chatWebSocketUpgrader = websocket.Upgrader{
 	CheckOrigin:     allowedWebSocketOrigin,
 }
 
-var errChatNotSubscribed = errors.New("chat is not subscribed")
+var (
+	errChatNotSubscribed = errors.New("chat is not subscribed")
+	errInvalidChatID     = errors.New("chat_id must be positive")
+	errTooManyChats      = errors.New("too many chat subscriptions")
+	errUnknownEvent      = errors.New("unknown WebSocket event type")
+)
 
 type chatClient struct {
 	userID int64
@@ -184,6 +191,7 @@ func (h *ChatHandler) WebSocket(w http.ResponseWriter, r *http.Request) {
 	previous := h.hub.add(client)
 	if previous != nil {
 		if err := previous.conn.Close(); err != nil {
+			logging.Logger().Debug("previous WebSocket connection close failed", zap.Error(err))
 			h.hub.remove(previous)
 		}
 	}
@@ -201,6 +209,7 @@ func (h *ChatHandler) WebSocket(w http.ResponseWriter, r *http.Request) {
 	for {
 		var request domain.ChatWebSocketRequest
 		if err := conn.ReadJSON(&request); err != nil {
+			logging.Logger().Debug("WebSocket request read failed", zap.Error(err))
 			return
 		}
 
@@ -222,7 +231,7 @@ func (h *ChatHandler) WebSocket(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		default:
-			if err := h.writeWebSocketError(client, request.ChatID, errors.New("unknown WebSocket event type")); err != nil {
+			if err := h.writeWebSocketError(client, request.ChatID, errUnknownEvent); err != nil {
 				return
 			}
 		}
@@ -242,7 +251,7 @@ func (h *ChatHandler) subscribeChatIDs(
 		return h.writeWebSocketError(client, firstChatID(requestedChatIDs), err)
 	}
 	if len(chatIDs) > maxWebSocketSubscriptions {
-		return h.writeWebSocketError(client, firstChatID(chatIDs), errors.New("too many chat subscriptions"))
+		return h.writeWebSocketError(client, firstChatID(chatIDs), errTooManyChats)
 	}
 
 	for _, chatID := range chatIDs {
@@ -269,7 +278,7 @@ func uniquePositiveChatIDs(chatIDs []int64) ([]int64, error) {
 	seen := make(map[int64]struct{}, len(chatIDs))
 	for _, chatID := range chatIDs {
 		if chatID <= 0 {
-			return nil, errors.New("chat_ids must contain only positive values")
+			return nil, errInvalidChatID
 		}
 		if _, ok := seen[chatID]; ok {
 			continue
@@ -283,7 +292,7 @@ func uniquePositiveChatIDs(chatIDs []int64) ([]int64, error) {
 	return unique, nil
 }
 
-// firstChatID возвращает первый идентификатор чата для контекста ошибки.
+// firstChatID возвращает первый id чата для контекста ошибки
 func firstChatID(chatIDs []int64) int64 {
 	if len(chatIDs) == 0 {
 		return 0
@@ -291,7 +300,7 @@ func firstChatID(chatIDs []int64) int64 {
 	return chatIDs[0]
 }
 
-// sendMessage отправляет сообщение и публикует его подписанным пользователям.
+// sendMessage отправляет сообщение и публикует его подписанным пользователям
 func (h *ChatHandler) sendMessage(
 	r *http.Request,
 	client *chatClient,
@@ -324,7 +333,7 @@ func (h *ChatHandler) sendMessage(
 	return nil
 }
 
-// writeWebSocketError отправляет ошибку в формате WebSocket-события.
+// writeWebSocketError отправляет ошибку в формате WebSocket-события
 func (h *ChatHandler) writeWebSocketError(client *chatClient, chatID int64, err error) error {
 	return h.writeClientEvent(client, domain.ChatWebSocketEvent{
 		Type:   "error",
@@ -333,7 +342,7 @@ func (h *ChatHandler) writeWebSocketError(client *chatClient, chatID int64, err 
 	})
 }
 
-// writeClientEvent отправляет событие и отключает клиента при ошибке записи.
+// writeClientEvent отправляет событие и отключает клиента при ошибке записи
 func (h *ChatHandler) writeClientEvent(client *chatClient, event domain.ChatWebSocketEvent) error {
 	payload, err := json.Marshal(event)
 	if err != nil {
@@ -342,6 +351,7 @@ func (h *ChatHandler) writeClientEvent(client *chatClient, event domain.ChatWebS
 	if err = client.write(payload); err == nil {
 		return nil
 	}
+	logging.Logger().Error("WebSocket event write failed", zap.Error(err))
 	h.hub.remove(client)
 	if closeErr := client.conn.Close(); closeErr != nil {
 		return errors.Join(err, closeErr)
@@ -365,7 +375,7 @@ func allowedWebSocketOrigin(r *http.Request) bool {
 	return allowedOrigin == "*" || origin == allowedOrigin
 }
 
-// websocketError преобразует ошибку usecase в формат WebSocket-события.
+// websocketError преобразует ошибку usecase в формат WebSocket-события
 func websocketError(err error) *domain.ErrorResponse {
 	response := &domain.ErrorResponse{
 		Code:    "invalid_request",
@@ -376,11 +386,25 @@ func websocketError(err error) *domain.ErrorResponse {
 		response.Code = "unauthorized"
 	case errors.Is(err, chusecase.ErrInvalidCSRF):
 		response.Code = "csrf_failed"
+	case errors.Is(err, chusecase.ErrChatNotFound):
+		response.Code = "chat_not_found"
+		response.Message = "chat not found"
+	case errors.Is(err, chusecase.ErrNotParticipant):
+		response.Code = "not_chat_participant"
+		response.Message = "user is not a chat participant"
+	case errors.Is(err, chusecase.ErrEmptyMessage), errors.Is(err, chusecase.ErrMessageTooLong),
+		errors.Is(err, errChatNotSubscribed), errors.Is(err, errInvalidChatID),
+		errors.Is(err, errTooManyChats), errors.Is(err, errUnknownEvent):
+		return response
+	default:
+		logging.Logger().Error("internal WebSocket error", zap.Error(err))
+		response.Code = "internal_error"
+		response.Message = "internal server error"
 	}
 	return response
 }
 
-// writeWebSocketEvent отправляет событие до добавления соединения в hub.
+// writeWebSocketEvent отправляет событие до добавления соединения в hub
 func writeWebSocketEvent(conn *websocket.Conn, event domain.ChatWebSocketEvent) error {
 	payload, err := json.Marshal(event)
 	if err != nil {

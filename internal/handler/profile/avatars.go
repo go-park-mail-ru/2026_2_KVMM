@@ -17,6 +17,7 @@ import (
 // @Security SessionCookie
 // @Success 200 {object} domain.AvatarsResponse
 // @Failure 401 {object} domain.ErrorResponse
+// @Failure 500 {object} domain.ErrorResponse
 // @Router /api/profile/avatars [get]
 func (h *ProfileHandler) ListAvatars(w http.ResponseWriter, r *http.Request) {
 	if !helpers.MethodAllowed(w, r, http.MethodGet) {
@@ -43,6 +44,6 @@ func (h *ProfileHandler) writeAvatarError(w http.ResponseWriter, err error) {
 	case errors.Is(err, profileusecase.ErrInvalidAvatar):
 		helpers.WriteError(w, http.StatusBadRequest, "invalid_avatar", "only JPEG, PNG, WEBP and GIF images are supported")
 	default:
-		helpers.WriteError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		helpers.WriteInternalError(w, "profile.avatars", err)
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"kvmm/internal/domain"
+	"kvmm/internal/logging"
 	"kvmm/internal/repository"
 	sessionusecase "kvmm/internal/usecase/session"
 )
@@ -51,7 +52,11 @@ func (u *UseCase) Create(
 	if err != nil {
 		return domain.ProfileRelationship{}, err
 	}
-	return u.relationships.Create(ctx, userID, req)
+	relationship, err := u.relationships.Create(ctx, userID, req)
+	if err != nil {
+		logging.LogUseCaseError("relationship", "create relationship", err)
+	}
+	return relationship, err
 }
 
 // List возвращает связи текущего пользователя
@@ -64,7 +69,11 @@ func (u *UseCase) List(
 	if err != nil {
 		return domain.RelationshipsResponse{}, err
 	}
-	return u.relationships.List(ctx, userID, req)
+	response, err := u.relationships.List(ctx, userID, req)
+	if err != nil {
+		logging.LogUseCaseError("relationship", "list relationships", err)
+	}
+	return response, err
 }
 
 // Types возвращает виды активных связей текущего пользователя
@@ -73,7 +82,11 @@ func (u *UseCase) Types(ctx context.Context, sessionToken string) (domain.Relati
 	if err != nil {
 		return domain.RelationshipTypes{}, err
 	}
-	return u.relationships.Types(ctx, userID)
+	types, err := u.relationships.Types(ctx, userID)
+	if err != nil {
+		logging.LogUseCaseError("relationship", "list relationship types", err)
+	}
+	return types, err
 }
 
 // Requests возвращает входящие запросы на связь
@@ -88,7 +101,11 @@ func (u *UseCase) Requests(
 	if err != nil {
 		return domain.RelationshipsResponse{}, err
 	}
-	return u.relationships.Requests(ctx, userID, typeName, cursor, limit)
+	response, err := u.relationships.Requests(ctx, userID, typeName, cursor, limit)
+	if err != nil {
+		logging.LogUseCaseError("relationship", "list relationship requests", err)
+	}
+	return response, err
 }
 
 // Suggestions возвращает друзей друзей, отсортированных по числу общих связей
@@ -102,7 +119,11 @@ func (u *UseCase) Suggestions(
 	if err != nil {
 		return domain.RelationshipSuggestionsResponse{}, err
 	}
-	return u.relationships.Suggestions(ctx, userID, cursor, limit)
+	response, err := u.relationships.Suggestions(ctx, userID, cursor, limit)
+	if err != nil {
+		logging.LogUseCaseError("relationship", "list relationship suggestions", err)
+	}
+	return response, err
 }
 
 // Accept подтверждает входящий запрос на связь
@@ -116,7 +137,11 @@ func (u *UseCase) Accept(
 	if err != nil {
 		return domain.ProfileRelationship{}, err
 	}
-	return u.relationships.Accept(ctx, userID, req)
+	relationship, err := u.relationships.Accept(ctx, userID, req)
+	if err != nil {
+		logging.LogUseCaseError("relationship", "accept relationship", err)
+	}
+	return relationship, err
 }
 
 // Cancel отменяет запрос или закрывает активную связь
@@ -130,5 +155,9 @@ func (u *UseCase) Cancel(
 	if err != nil {
 		return domain.ProfileRelationship{}, err
 	}
-	return u.relationships.Cancel(ctx, userID, req)
+	relationship, err := u.relationships.Cancel(ctx, userID, req)
+	if err != nil {
+		logging.LogUseCaseError("relationship", "cancel relationship", err)
+	}
+	return relationship, err
 }

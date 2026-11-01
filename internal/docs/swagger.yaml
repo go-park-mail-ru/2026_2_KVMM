@@ -649,6 +649,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/domain.ErrorResponse'
           description: Unauthorized
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ErrorResponse'
+          description: Internal Server Error
       summary: Авторизация пользователя
       tags:
       - auth
@@ -670,6 +676,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/domain.ErrorResponse'
           description: Forbidden
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ErrorResponse'
+          description: Internal Server Error
       security:
       - SessionCookie: []
       summary: Выход из аккаунта
@@ -691,6 +703,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/domain.ErrorResponse'
           description: Unauthorized
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ErrorResponse'
+          description: Internal Server Error
       security:
       - SessionCookie: []
       summary: Текущий пользователь
@@ -792,6 +810,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/domain.ErrorResponse'
           description: Conflict
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ErrorResponse'
+          description: Internal Server Error
       security:
       - SessionCookie: []
       summary: Создать чат
@@ -801,12 +825,6 @@ paths:
     get:
       description: Возвращает чаты, в которых состоит текущий пользователь
       parameters:
-      - description: CSRF-токен
-        in: header
-        name: X-CSRF-Token
-        required: true
-        schema:
-          type: string
       - description: Указатель на начальный элемент для чатов
         in: query
         name: cursor
@@ -839,6 +857,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/domain.ErrorResponse'
           description: Unauthorized
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ErrorResponse'
+          description: Internal Server Error
       security:
       - SessionCookie: []
       summary: Получить список чатов
@@ -848,13 +872,7 @@ paths:
     get:
       description: Возвращает сообщения указанного чата в хронологическом порядке
       parameters:
-      - description: CSRF-токен
-        in: header
-        name: X-CSRF-Token
-        required: true
-        schema:
-          type: string
-      - description: ID чата
+      - description: id чата
         in: query
         name: chat_id
         required: true
@@ -898,6 +916,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/domain.ErrorResponse'
           description: Not Found
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ErrorResponse'
+          description: Internal Server Error
       security:
       - SessionCookie: []
       summary: Получить сообщения чата
@@ -954,6 +978,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/domain.ErrorResponse'
           description: Not Found
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ErrorResponse'
+          description: Internal Server Error
       security:
       - SessionCookie: []
       summary: Отправить сообщение
@@ -1015,6 +1045,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/domain.FeedResponse'
           description: OK
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ErrorResponse'
+          description: Internal Server Error
       summary: Лента публикаций
       tags:
       - feed
@@ -1069,6 +1105,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/domain.ErrorResponse'
           description: Not Found
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ErrorResponse'
+          description: Internal Server Error
       security:
       - SessionCookie: []
       summary: Создать публикацию
@@ -1122,6 +1164,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/domain.ErrorResponse'
           description: Not Found
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ErrorResponse'
+          description: Internal Server Error
       security:
       - SessionCookie: []
       summary: Удалить свою публикацию
@@ -1177,6 +1225,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/domain.ErrorResponse'
           description: Not Found
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ErrorResponse'
+          description: Internal Server Error
       security:
       - SessionCookie: []
       summary: Редактировать свою публикацию
@@ -1225,6 +1279,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/domain.ErrorResponse'
           description: Not Found
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ErrorResponse'
+          description: Internal Server Error
       summary: Получить публикации пользователя
       tags:
       - posts
@@ -1283,6 +1343,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/domain.ErrorResponse'
           description: Conflict
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ErrorResponse'
+          description: Internal Server Error
       security:
       - SessionCookie: []
       summary: Загрузить аватарку
@@ -1304,6 +1370,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/domain.ErrorResponse'
           description: Unauthorized
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ErrorResponse'
+          description: Internal Server Error
       security:
       - SessionCookie: []
       summary: Получить аватарки профиля
@@ -1352,6 +1424,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/domain.ErrorResponse'
           description: Not Found
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ErrorResponse'
+          description: Internal Server Error
       security:
       - SessionCookie: []
       summary: Удалить аватарку
@@ -1467,6 +1545,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/domain.ErrorResponse'
           description: Conflict
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ErrorResponse'
+          description: Internal Server Error
       security:
       - SessionCookie: []
       summary: Принять запрос на связь
@@ -1522,6 +1606,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/domain.ErrorResponse'
           description: Not Found
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ErrorResponse'
+          description: Internal Server Error
       security:
       - SessionCookie: []
       summary: Отменить связь
@@ -1583,6 +1673,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/domain.ErrorResponse'
           description: Conflict
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ErrorResponse'
+          description: Internal Server Error
       security:
       - SessionCookie: []
       summary: Отправить запрос на связь
@@ -1650,6 +1746,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/domain.ErrorResponse'
           description: Unauthorized
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ErrorResponse'
+          description: Internal Server Error
       security:
       - SessionCookie: []
       summary: Получить список связей по типу
@@ -1697,6 +1799,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/domain.ErrorResponse'
           description: Unauthorized
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ErrorResponse'
+          description: Internal Server Error
       security:
       - SessionCookie: []
       summary: Получить входящие запросы на связи
@@ -1739,6 +1847,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/domain.ErrorResponse'
           description: Unauthorized
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ErrorResponse'
+          description: Internal Server Error
       security:
       - SessionCookie: []
       summary: Получить список профилей возможных связей получателя по типу
@@ -1777,6 +1891,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/domain.ErrorResponse'
           description: Unauthorized
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ErrorResponse'
+          description: Internal Server Error
       security:
       - SessionCookie: []
       summary: Получить список связей по типам

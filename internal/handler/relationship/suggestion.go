@@ -18,6 +18,7 @@ import (
 // @Success 200 {object} domain.RelationshipSuggestionsResponse
 // @Failure 400 {object} domain.ErrorResponse
 // @Failure 401 {object} domain.ErrorResponse
+// @Failure 500 {object} domain.ErrorResponse
 // @Router /api/relationships/suggestions [get]
 func (h *FriendsHandler) Suggestions(w http.ResponseWriter, r *http.Request) {
 	if !helpers.MethodAllowed(w, r, http.MethodGet) {

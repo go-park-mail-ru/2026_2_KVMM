@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"errors"
 	"net/http"
 
 	"kvmm/internal/handler/helpers"
@@ -16,6 +17,7 @@ import (
 // @Security SessionCookie
 // @Success 200 {object} domain.MeResponse
 // @Failure 401 {object} domain.ErrorResponse
+// @Failure 500 {object} domain.ErrorResponse
 // @Router /api/auth/me [get]
 func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	if !helpers.MethodAllowed(w, r, http.MethodGet) {
@@ -24,6 +26,10 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	session := helpers.SessionCookie(r)
 	response, err := h.useCase.Current(r.Context(), session)
 	if err != nil {
+		if !errors.Is(err, authusecase.ErrUnauthorized) {
+			helpers.WriteInternalError(w, "auth.me", err)
+			return
+		}
 		helpers.WriteError(w, http.StatusUnauthorized, "unauthorized", "authentication required")
 		return
 	}
@@ -39,6 +45,7 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 // @Success 204
 // @Failure 401 {object} domain.ErrorResponse
 // @Failure 403 {object} domain.ErrorResponse
+// @Failure 500 {object} domain.ErrorResponse
 // @Router /api/auth/logout [post]
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	if !helpers.MethodAllowed(w, r, http.MethodPost) {
@@ -46,11 +53,13 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	}
 	session := helpers.SessionCookie(r)
 	if err := h.useCase.Logout(session, r.Header.Get("X-CSRF-Token")); err != nil {
-		switch err {
-		case authusecase.ErrInvalidCSRF:
+		switch {
+		case errors.Is(err, authusecase.ErrInvalidCSRF):
 			helpers.WriteError(w, http.StatusForbidden, "csrf_failed", "valid X-CSRF-Token header is required")
-		default:
+		case errors.Is(err, authusecase.ErrUnauthorized):
 			helpers.WriteError(w, http.StatusUnauthorized, "unauthorized", "authentication required")
+		default:
+			helpers.WriteInternalError(w, "auth.logout", err)
 		}
 		return
 	}

@@ -6,15 +6,22 @@ import (
 	"strings"
 
 	"kvmm/internal/domain"
+	"kvmm/internal/logging"
 	"kvmm/internal/repository"
 	sessionusecase "kvmm/internal/usecase/session"
 )
 
 var (
+	// ErrUnauthorized означает, что запрос выполнен без действующей сессии.
 	ErrUnauthorized = sessionusecase.ErrUnauthorized
-	ErrInvalidCSRF  = sessionusecase.ErrInvalidCSRF
-	ErrForbidden    = errors.New("post belongs to another profile")
-	ErrInvalidPost  = errors.New("post text must be at most 256 characters") // TODO: мб надо увеличить
+	// ErrInvalidCSRF означает неверный CSRF-токен.
+	ErrInvalidCSRF = sessionusecase.ErrInvalidCSRF
+	// ErrForbidden означает попытку изменить чужую публикацию.
+	ErrForbidden = errors.New("post belongs to another profile")
+	// ErrInvalidPost означает некорректный текст публикации.
+	ErrInvalidPost     = errors.New("post text must be at most 256 characters")
+	ErrPostNotFound    = repository.ErrPostNotFound
+	ErrProfileNotFound = repository.ErrProfileNotFound
 )
 
 type postRepository interface {
@@ -25,25 +32,25 @@ type postRepository interface {
 	Delete(context.Context, int64) error
 }
 
-// UseCase содержит бизнес-логику публикаций
+// UseCase содержит бизнес-логику публикаций.
 type UseCase struct {
 	posts    postRepository
 	sessions *sessionusecase.UseCase
 }
 
-// New создаёт usecase публикаций
+// New создаёт usecase публикаций.
 func New(posts postRepository, sessions *sessionusecase.UseCase) *UseCase {
 	return &UseCase{posts: posts, sessions: sessions}
 }
 
-// Create создаёт публикацию от имени текущего пользователя
+// Create создаёт публикацию от имени текущего пользователя.
 func (u *UseCase) Create(
 	ctx context.Context,
 	sessionToken string,
 	csrfToken string,
 	req domain.CreatePostRequest,
 ) (domain.Post, error) {
-	userID, err := u.sessions.Authorize(sessionToken, csrfToken)
+	userID, err := u.authorize(sessionToken, csrfToken)
 	if err != nil {
 		return domain.Post{}, err
 	}
@@ -55,20 +62,24 @@ func (u *UseCase) Create(
 	if text != "" {
 		postText = &text
 	}
-	return u.posts.Create(ctx, repository.CreatePostParams{
+	post, err := u.posts.Create(ctx, repository.CreatePostParams{
 		PostText:        postText,
 		AuthorProfileID: &userID,
 	})
+	if err != nil {
+		logging.LogUseCaseError("post", "create post", err)
+	}
+	return post, err
 }
 
-// Update изменяет текст собственной публикации
+// Update изменяет текст собственной публикации.
 func (u *UseCase) Update(
 	ctx context.Context,
 	sessionToken string,
 	csrfToken string,
 	req domain.UpdatePostRequest,
 ) (domain.Post, error) {
-	userID, err := u.sessions.Authorize(sessionToken, csrfToken)
+	userID, err := u.authorize(sessionToken, csrfToken)
 	if err != nil {
 		return domain.Post{}, err
 	}
@@ -77,37 +88,47 @@ func (u *UseCase) Update(
 	}
 	post, err := u.posts.ReadByID(ctx, req.PostID)
 	if err != nil {
+		logging.LogUseCaseError("post", "read post for update", err)
 		return domain.Post{}, err
 	}
 	if post.AuthorProfileID == nil || *post.AuthorProfileID != userID {
 		return domain.Post{}, ErrForbidden
 	}
 	text := strings.TrimSpace(*req.PostText)
-	return u.posts.Update(ctx, req.PostID, repository.UpdatePostParams{PostText: &text})
+	updated, err := u.posts.Update(ctx, req.PostID, repository.UpdatePostParams{PostText: &text})
+	if err != nil {
+		logging.LogUseCaseError("post", "update post", err)
+	}
+	return updated, err
 }
 
-// Delete удаляет собственную публикацию
+// Delete удаляет собственную публикацию.
 func (u *UseCase) Delete(
 	ctx context.Context,
 	sessionToken string,
 	csrfToken string,
 	postID int64,
 ) error {
-	userID, err := u.sessions.Authorize(sessionToken, csrfToken)
+	userID, err := u.authorize(sessionToken, csrfToken)
 	if err != nil {
 		return err
 	}
 	post, err := u.posts.ReadByID(ctx, postID)
 	if err != nil {
+		logging.LogUseCaseError("post", "read post for delete", err)
 		return err
 	}
 	if post.AuthorProfileID == nil || *post.AuthorProfileID != userID {
 		return ErrForbidden
 	}
-	return u.posts.Delete(ctx, postID)
+	err = u.posts.Delete(ctx, postID)
+	if err != nil {
+		logging.LogUseCaseError("post", "delete post", err)
+	}
+	return err
 }
 
-// UserPosts возвращает публикации пользователя
+// UserPosts возвращает публикации указанного пользователя.
 func (u *UseCase) UserPosts(
 	ctx context.Context,
 	profileID int64,
@@ -116,6 +137,7 @@ func (u *UseCase) UserPosts(
 ) (domain.UserPostsResponse, error) {
 	posts, nextCursor, hasMore, err := u.posts.ReadProfilePosts(ctx, profileID, cursor, limit)
 	if err != nil {
+		logging.LogUseCaseError("post", "read profile posts", err)
 		return domain.UserPostsResponse{}, err
 	}
 	return domain.UserPostsResponse{
@@ -126,4 +148,8 @@ func (u *UseCase) UserPosts(
 		HasMore:    hasMore,
 		NextCursor: nextCursor,
 	}, nil
+}
+
+func (u *UseCase) authorize(sessionToken, csrfToken string) (int64, error) {
+	return u.sessions.Authorize(sessionToken, csrfToken)
 }

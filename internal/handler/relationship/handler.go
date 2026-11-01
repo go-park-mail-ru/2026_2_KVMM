@@ -30,6 +30,6 @@ func (h *FriendsHandler) writeError(w http.ResponseWriter, err error) {
 	case errors.Is(err, relusecase.ErrInvalid):
 		helpers.WriteError(w, http.StatusBadRequest, "validation_error", "invalid relationship data")
 	default:
-		helpers.WriteError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		helpers.WriteInternalError(w, "relationship", err)
 	}
 }

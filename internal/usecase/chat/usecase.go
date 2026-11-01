@@ -5,13 +5,18 @@ import (
 	"strings"
 
 	"kvmm/internal/domain"
+	"kvmm/internal/logging"
 	"kvmm/internal/repository"
 	sessionusecase "kvmm/internal/usecase/session"
 )
 
 var (
-	ErrUnauthorized = sessionusecase.ErrUnauthorized
-	ErrInvalidCSRF  = sessionusecase.ErrInvalidCSRF
+	ErrUnauthorized   = sessionusecase.ErrUnauthorized
+	ErrInvalidCSRF    = sessionusecase.ErrInvalidCSRF
+	ErrChatNotFound   = repository.ErrChatNotFound
+	ErrNotParticipant = repository.ErrNotChatParticipant
+	ErrEmptyMessage   = repository.ErrEmptyMessage
+	ErrMessageTooLong = repository.ErrMessageTooLong
 )
 
 type chatRepository interface {
@@ -48,7 +53,11 @@ func (u *UseCase) Create(
 	if err != nil {
 		return domain.Chat{}, err
 	}
-	return u.chats.Create(ctx, userID, req.ProfileID)
+	chat, err := u.chats.Create(ctx, userID, req.ProfileID)
+	if err != nil {
+		logging.LogUseCaseError("chat", "create chat", err)
+	}
+	return chat, err
 }
 
 // List возвращает чаты текущего пользователя
@@ -63,7 +72,11 @@ func (u *UseCase) List(
 	if err != nil {
 		return domain.ChatsResponse{}, err
 	}
-	return u.chats.ListChats(ctx, userID, cursor, limit)
+	response, err := u.chats.ListChats(ctx, userID, cursor, limit)
+	if err != nil {
+		logging.LogUseCaseError("chat", "list chats", err)
+	}
+	return response, err
 }
 
 // Messages возвращает сообщения чата и связанные родительские сообщения
@@ -80,9 +93,14 @@ func (u *UseCase) Messages(
 		return domain.MessagesResponse{}, err
 	}
 	if err := u.chats.IsParticipant(ctx, chatID, userID); err != nil {
+		logging.LogUseCaseError("chat", "check chat participant", err)
 		return domain.MessagesResponse{}, err
 	}
-	return u.messages.ListMessages(ctx, chatID, cursor, limit)
+	response, err := u.messages.ListMessages(ctx, chatID, cursor, limit)
+	if err != nil {
+		logging.LogUseCaseError("chat", "list messages", err)
+	}
+	return response, err
 }
 
 // Send отправляет сообщение в чат
@@ -102,11 +120,15 @@ func (u *UseCase) Send(
 	if len([]rune(*req.MessageText)) > 256 {
 		return domain.Message{}, repository.ErrMessageTooLong
 	}
-	return u.messages.Create(ctx, repository.CreateMessageParams{
+	message, err := u.messages.Create(ctx, repository.CreateMessageParams{
 		ChatID:      req.ChatID,
 		AuthorID:    userID,
 		MessageText: req.MessageText,
 		RepostFrom:  req.RepostFrom,
 		ReplyFrom:   req.ReplyFrom,
 	})
+	if err != nil {
+		logging.LogUseCaseError("chat", "send message", err)
+	}
+	return message, err
 }

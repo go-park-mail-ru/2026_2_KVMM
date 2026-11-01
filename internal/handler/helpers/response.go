@@ -8,6 +8,9 @@ import (
 	"time"
 
 	"kvmm/internal/domain"
+	"kvmm/internal/logging"
+
+	"go.uber.org/zap"
 )
 
 const sessionCookieName = "session_id"
@@ -63,12 +66,23 @@ func cookieSameSite() http.SameSite {
 func WriteJSON(w http.ResponseWriter, status int, value any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(value)
+	if err := json.NewEncoder(w).Encode(value); err != nil {
+		logging.Logger().Error("json response encoding failed", zap.Error(err))
+	}
 }
 
 // writeError отправляет клиенту ошибку в едином формате
 func WriteError(w http.ResponseWriter, status int, code, message string) {
 	WriteJSON(w, status, domain.ErrorResponse{Code: code, Message: message})
+}
+
+// WriteInternalError записывает внутреннюю ошибку и возвращает ответ 500
+func WriteInternalError(w http.ResponseWriter, component string, err error) {
+	logging.Logger().Error("internal request error",
+		zap.String("component", component),
+		zap.Error(err),
+	)
+	WriteError(w, http.StatusInternalServerError, "internal_error", "internal server error")
 }
 
 // decodeJSON читает JSON из тела запроса с ограничением размера и проверяет его структуру

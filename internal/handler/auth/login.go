@@ -19,6 +19,7 @@ import (
 // @Success 200 {object} domain.AuthResponse
 // @Failure 400 {object} domain.ErrorResponse
 // @Failure 401 {object} domain.ErrorResponse
+// @Failure 500 {object} domain.ErrorResponse
 // @Router /api/auth/login [post]
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	if !helpers.MethodAllowed(w, r, http.MethodPost) {
@@ -39,7 +40,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 			helpers.WriteError(w, http.StatusUnauthorized, "invalid_credentials", "invalid login or password")
 			return
 		}
-		helpers.WriteError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		helpers.WriteInternalError(w, "auth.login", err)
 		return
 	}
 	helpers.SetSessionCookie(w, session)

@@ -1,9 +1,11 @@
 package posts
 
 import (
+	"errors"
 	"net/http"
 
 	"kvmm/internal/handler/helpers"
+	postusecase "kvmm/internal/usecase/post"
 )
 
 // UserPosts возвращает публикации конкретного пользователя с пагинацией
@@ -18,6 +20,7 @@ import (
 // @Success 200 {object} domain.UserPostsResponse
 // @Failure 400 {object} domain.ErrorResponse
 // @Failure 404 {object} domain.ErrorResponse
+// @Failure 500 {object} domain.ErrorResponse
 // @Router /api/posts/user [get]
 func (h *PostHandler) UserPosts(w http.ResponseWriter, r *http.Request) {
 	if !helpers.MethodAllowed(w, r, http.MethodGet) {
@@ -36,7 +39,11 @@ func (h *PostHandler) UserPosts(w http.ResponseWriter, r *http.Request) {
 	}
 	response, err := h.useCase.UserPosts(r.Context(), profileID, int64(cursor), limit)
 	if err != nil {
-		helpers.WriteError(w, http.StatusNotFound, "not_found", "profile or posts not found")
+		if errors.Is(err, postusecase.ErrProfileNotFound) {
+			helpers.WriteError(w, http.StatusNotFound, "not_found", "profile or posts not found")
+		} else {
+			helpers.WriteInternalError(w, "posts.user", err)
+		}
 		return
 	}
 	helpers.WriteJSON(w, http.StatusOK, response)

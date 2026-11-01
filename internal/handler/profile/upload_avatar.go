@@ -25,6 +25,7 @@ const avatarFormField = "avatar"
 // @Failure 401 {object} domain.ErrorResponse
 // @Failure 403 {object} domain.ErrorResponse
 // @Failure 409 {object} domain.ErrorResponse
+// @Failure 500 {object} domain.ErrorResponse
 // @Router /api/profile/avatar [post]
 func (h *ProfileHandler) UploadAvatar(w http.ResponseWriter, r *http.Request) {
 	if !helpers.MethodAllowed(w, r, http.MethodPost) {

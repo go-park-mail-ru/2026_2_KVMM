@@ -12,15 +12,15 @@ import (
 // @Description Возвращает сообщения указанного чата в хронологическом порядке
 // @Tags chats
 // @Security SessionCookie
-// @Param X-CSRF-Token header string true "CSRF-токен"
 // @Produce json
-// @Param chat_id query int true "ID чата"
+// @Param chat_id query int true "id чата"
 // @Param cursor query int false "Указатель на начальный элемент для сообщений" default(0)
 // @Param limit query int false "Размер страницы (максимум 10)" default(10) maximum(10)
 // @Success 200 {object} domain.MessagesResponse
 // @Failure 400 {object} domain.ErrorResponse
 // @Failure 401 {object} domain.ErrorResponse
 // @Failure 404 {object} domain.ErrorResponse
+// @Failure 500 {object} domain.ErrorResponse
 // @Router /api/chats/messages [get]
 func (h *ChatHandler) Messages(w http.ResponseWriter, r *http.Request) {
 	if !helpers.MethodAllowed(w, r, http.MethodGet) {
@@ -36,14 +36,7 @@ func (h *ChatHandler) Messages(w http.ResponseWriter, r *http.Request) {
 		helpers.WriteError(w, http.StatusBadRequest, "invalid_pagination", err.Error())
 		return
 	}
-	response, err := h.useCase.Messages(
-		r.Context(),
-		helpers.SessionCookie(r),
-		r.Header.Get("X-CSRF-Token"),
-		chatID,
-		int64(cursor),
-		limit,
-	)
+	response, err := h.useCase.Messages(r.Context(), helpers.SessionCookie(r), r.Header.Get("X-CSRF-Token"), chatID, int64(cursor), limit)
 	if err != nil {
 		h.writeError(w, err)
 		return

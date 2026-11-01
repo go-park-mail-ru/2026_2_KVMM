@@ -41,7 +41,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 			helpers.WriteError(w, http.StatusConflict, "already_exists", "nickname, email or phone_number is already used")
 			return
 		}
-		helpers.WriteError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		helpers.WriteInternalError(w, "auth.register", err)
 		return
 	}
 	helpers.SetSessionCookie(w, session)

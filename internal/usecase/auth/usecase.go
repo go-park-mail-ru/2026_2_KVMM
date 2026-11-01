@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"kvmm/internal/domain"
+	"kvmm/internal/logging"
 	"kvmm/internal/repository"
 	sessionusecase "kvmm/internal/usecase/session"
 
@@ -14,6 +15,7 @@ import (
 
 var (
 	ErrInvalidCredentials = errors.New("invalid credentials")
+	ErrUnauthorized       = sessionusecase.ErrUnauthorized
 	ErrInvalidCSRF        = sessionusecase.ErrInvalidCSRF
 	ErrConflict           = repository.ErrProfileConflict
 )
@@ -51,11 +53,13 @@ func (u *UseCase) Register(ctx context.Context, req domain.RegisterRequest) (dom
 	if existing, err := u.profiles.ReadByLoginAuth(ctx, req.Nickname); err == nil && existing.Profile.ID > 0 {
 		return domain.AuthResponse{}, "", ErrConflict
 	} else if err != nil && !errors.Is(err, repository.ErrProfileNotFound) {
+		logging.LogUseCaseError("auth", "read profile for registration", err)
 		return domain.AuthResponse{}, "", err
 	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
+		logging.LogUseCaseError("auth", "hash password", err)
 		return domain.AuthResponse{}, "", err
 	}
 
@@ -65,6 +69,7 @@ func (u *UseCase) Register(ctx context.Context, req domain.RegisterRequest) (dom
 		PasswordHash: string(hash),
 	})
 	if err != nil {
+		logging.LogUseCaseError("auth", "create profile", err)
 		return domain.AuthResponse{}, "", err
 	}
 
@@ -78,6 +83,7 @@ func (u *UseCase) Login(ctx context.Context, req domain.LoginRequest) (domain.Au
 		if errors.Is(err, repository.ErrProfileNotFound) {
 			return domain.AuthResponse{}, "", ErrInvalidCredentials
 		}
+		logging.LogUseCaseError("auth", "read profile for login", err)
 		return domain.AuthResponse{}, "", err
 	}
 	if bcrypt.CompareHashAndPassword([]byte(found.PasswordHash), []byte(req.Password)) != nil {
@@ -94,6 +100,7 @@ func (u *UseCase) Current(ctx context.Context, sessionToken string) (domain.MeRe
 	}
 	profile, err := u.profiles.ReadByID(ctx, userID)
 	if err != nil {
+		logging.LogUseCaseError("auth", "read current profile", err)
 		return domain.MeResponse{}, err
 	}
 	return domain.MeResponse{Profile: profile, CSRFToken: csrfToken}, nil
@@ -111,6 +118,7 @@ func (u *UseCase) Logout(sessionToken, csrfToken string) error {
 func (u *UseCase) createAuthResponse(profile domain.Profile) (domain.AuthResponse, string, error) {
 	sessionToken, csrfToken, err := u.sessions.Create(profile.ID)
 	if err != nil {
+		logging.LogUseCaseError("auth", "create session", err)
 		return domain.AuthResponse{}, "", err
 	}
 	return domain.AuthResponse{Profile: profile, CSRFToken: csrfToken}, sessionToken, nil

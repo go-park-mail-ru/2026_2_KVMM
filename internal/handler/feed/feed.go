@@ -15,6 +15,7 @@ import (
 // @Param limit query int false "Размер страницы (максимум 10)" default(10) maximum(10)
 // @Produce json
 // @Success 200 {object} domain.FeedResponse
+// @Failure 500 {object} domain.ErrorResponse
 // @Router /api/feed [get]
 func (h *FeedHandler) List(w http.ResponseWriter, r *http.Request) {
 	if !helpers.MethodAllowed(w, r, http.MethodGet) {
@@ -27,7 +28,7 @@ func (h *FeedHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	response, err := h.useCase.List(r.Context(), int64(cursor), limit)
 	if err != nil {
-		helpers.WriteError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		helpers.WriteInternalError(w, "feed.list", err)
 		return
 	}
 	helpers.WriteJSON(w, http.StatusOK, response)

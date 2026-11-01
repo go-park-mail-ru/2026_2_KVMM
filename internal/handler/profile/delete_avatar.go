@@ -7,7 +7,7 @@ import (
 	"kvmm/internal/handler/helpers"
 )
 
-// DeleteAvatar удаляет аватарку текущего пользователя по идентификатору
+// DeleteAvatar удаляет аватарку текущего пользователя по id
 // DeleteAvatar godoc
 // @Summary Удалить аватарку
 // @Description Удаляет выбранную аватарку текущего пользователя
@@ -20,6 +20,7 @@ import (
 // @Failure 401 {object} domain.ErrorResponse
 // @Failure 403 {object} domain.ErrorResponse
 // @Failure 404 {object} domain.ErrorResponse
+// @Failure 500 {object} domain.ErrorResponse
 // @Router /api/profile/avatars/{id} [delete]
 func (h *ProfileHandler) DeleteAvatar(w http.ResponseWriter, r *http.Request) {
 	if !helpers.MethodAllowed(w, r, http.MethodDelete) {

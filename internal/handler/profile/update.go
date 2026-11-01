@@ -49,7 +49,7 @@ func (h *ProfileHandler) Update(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, profileusecase.ErrConflict):
 			helpers.WriteError(w, http.StatusConflict, "already_exists", "nickname, email or phone_number is already used")
 		default:
-			helpers.WriteError(w, http.StatusInternalServerError, "invalid_request", err.Error())
+			helpers.WriteInternalError(w, "profile.update", err)
 		}
 		return
 	}

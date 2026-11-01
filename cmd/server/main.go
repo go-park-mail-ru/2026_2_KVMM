@@ -35,6 +35,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	logging.SetDefault(logger)
 	defer logger.Sync()
 
 	addr := os.Getenv("HTTP_ADDR")

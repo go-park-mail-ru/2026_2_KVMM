@@ -23,6 +23,7 @@ import (
 // @Success 200 {object} domain.RelationshipsResponse
 // @Failure 400 {object} domain.ErrorResponse
 // @Failure 401 {object} domain.ErrorResponse
+// @Failure 500 {object} domain.ErrorResponse
 // @Router /api/relationships/list [get]
 func (h *FriendsHandler) List(w http.ResponseWriter, r *http.Request) {
 	if !helpers.MethodAllowed(w, r, http.MethodGet) {
@@ -59,6 +60,7 @@ func (h *FriendsHandler) List(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} domain.RelationshipTypes
 // @Failure 400 {object} domain.ErrorResponse
 // @Failure 401 {object} domain.ErrorResponse
+// @Failure 500 {object} domain.ErrorResponse
 // @Router /api/relationships/typeslist [get]
 func (h *FriendsHandler) TypesList(w http.ResponseWriter, r *http.Request) {
 	if !helpers.MethodAllowed(w, r, http.MethodGet) {

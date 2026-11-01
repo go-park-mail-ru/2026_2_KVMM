@@ -1,6 +1,7 @@
 package posts
 
 import (
+	"errors"
 	"net/http"
 
 	"kvmm/internal/domain"
@@ -23,6 +24,7 @@ import (
 // @Failure 401 {object} domain.ErrorResponse
 // @Failure 403 {object} domain.ErrorResponse
 // @Failure 404 {object} domain.ErrorResponse
+// @Failure 500 {object} domain.ErrorResponse
 // @Router /api/posts/create [post]
 func (h *PostHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if !helpers.MethodAllowed(w, r, http.MethodPost) {
@@ -43,16 +45,18 @@ func (h *PostHandler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *PostHandler) writeError(w http.ResponseWriter, err error) {
-	switch err {
-	case postusecase.ErrUnauthorized:
+	switch {
+	case errors.Is(err, postusecase.ErrUnauthorized):
 		helpers.WriteError(w, http.StatusUnauthorized, "unauthorized", "authentication required")
-	case postusecase.ErrInvalidCSRF:
+	case errors.Is(err, postusecase.ErrInvalidCSRF):
 		helpers.WriteError(w, http.StatusForbidden, "csrf_failed", "valid X-CSRF-Token header is required")
-	case postusecase.ErrForbidden:
+	case errors.Is(err, postusecase.ErrForbidden):
 		helpers.WriteError(w, http.StatusForbidden, "forbidden", "you can change only your own post")
-	case postusecase.ErrInvalidPost:
+	case errors.Is(err, postusecase.ErrInvalidPost):
 		helpers.WriteError(w, http.StatusBadRequest, "validation_error", err.Error())
+	case errors.Is(err, postusecase.ErrPostNotFound), errors.Is(err, postusecase.ErrProfileNotFound):
+		helpers.WriteError(w, http.StatusNotFound, "not_found", "post or profile not found")
 	default:
-		helpers.WriteError(w, http.StatusBadRequest, "invalid_request", err.Error())
+		helpers.WriteInternalError(w, "posts", err)
 	}
 }

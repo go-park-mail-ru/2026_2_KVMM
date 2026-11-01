@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"kvmm/internal/domain"
+	"kvmm/internal/logging"
 	"kvmm/internal/repository"
 	sessionusecase "kvmm/internal/usecase/session"
 
@@ -84,13 +85,18 @@ func (u *UseCase) Update(
 	if req.Password != nil {
 		hash, hashErr := bcrypt.GenerateFromPassword([]byte(*req.Password), bcrypt.DefaultCost)
 		if hashErr != nil {
+			logging.LogUseCaseError("profile", "hash password", hashErr)
 			return domain.Profile{}, hashErr
 		}
 		hashString := string(hash)
 		params.PasswordHash = &hashString
 	}
 
-	return u.profiles.Update(ctx, userID, params)
+	profile, err := u.profiles.Update(ctx, userID, params)
+	if err != nil {
+		logging.LogUseCaseError("profile", "update profile", err)
+	}
+	return profile, err
 }
 
 // UploadAvatar загружает новую аватарку текущего пользователя
@@ -104,7 +110,11 @@ func (u *UseCase) UploadAvatar(
 	if err != nil {
 		return domain.Avatar{}, err
 	}
-	return u.avatars.Create(ctx, userID, req)
+	avatar, err := u.avatars.Create(ctx, userID, req)
+	if err != nil {
+		logging.LogUseCaseError("profile", "create avatar", err)
+	}
+	return avatar, err
 }
 
 // ListAvatars возвращает аватарки текущего пользователя от новой к старой
@@ -113,7 +123,11 @@ func (u *UseCase) ListAvatars(ctx context.Context, sessionToken string) (domain.
 	if err != nil {
 		return domain.AvatarsResponse{}, err
 	}
-	return u.avatars.List(ctx, userID)
+	response, err := u.avatars.List(ctx, userID)
+	if err != nil {
+		logging.LogUseCaseError("profile", "list avatars", err)
+	}
+	return response, err
 }
 
 // DeleteAvatar удаляет выбранную аватарку текущего пользователя
@@ -127,5 +141,9 @@ func (u *UseCase) DeleteAvatar(
 	if err != nil {
 		return err
 	}
-	return u.avatars.Delete(ctx, userID, avatarID)
+	err = u.avatars.Delete(ctx, userID, avatarID)
+	if err != nil {
+		logging.LogUseCaseError("profile", "delete avatar", err)
+	}
+	return err
 }

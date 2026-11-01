@@ -1,3 +1,4 @@
+// Package logging содержит общую настройку логирования приложения
 package logging
 
 import (
@@ -7,6 +8,32 @@ import (
 
 	"go.uber.org/zap"
 )
+
+var defaultLogger = zap.NewNop()
+
+// SetDefault сохраняет общий логер приложения для обработчиков и usecase
+func SetDefault(logger *zap.Logger) {
+	if logger != nil {
+		defaultLogger = logger
+	}
+}
+
+// Logger возвращает общий логер приложения
+func Logger() *zap.Logger {
+	return defaultLogger
+}
+
+// LogUseCaseError записывает ошибку usecase на debug-уровне
+func LogUseCaseError(component, operation string, err error) {
+	if err == nil {
+		return
+	}
+	defaultLogger.Debug("usecase operation failed",
+		zap.String("component", component),
+		zap.String("operation", operation),
+		zap.Error(err),
+	)
+}
 
 // New создаёт zap-логер
 func New() (*zap.Logger, bool, error) {

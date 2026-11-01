@@ -19,6 +19,7 @@ import (
 // @Success 200 {object} domain.RelationshipsResponse
 // @Failure 400 {object} domain.ErrorResponse
 // @Failure 401 {object} domain.ErrorResponse
+// @Failure 500 {object} domain.ErrorResponse
 // @Router /api/relationships/requests [get]
 func (h *FriendsHandler) Requests(w http.ResponseWriter, r *http.Request) {
 	if !helpers.MethodAllowed(w, r, http.MethodGet) {
