@@ -8,9 +8,17 @@ services:
       - ./deploy/.env
     expose:
       - "8080"
+    environment:
+      MEDIA_DIR: /data/media
+      MEDIA_PUBLIC_URL: /api/media
+    volumes:
+      - media_data:/data/media
     restart: unless-stopped
     networks:
       - kvmm
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   frontend:
     build:
@@ -36,6 +44,29 @@ services:
     restart: unless-stopped
     networks:
       - kvmm
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: kvmm-postgres
+    env_file:
+      - ./deploy/.env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+    - "5432:5432" # TODO: торчит для отладки
+    restart: unless-stopped
+    networks:
+      - kvmm
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  postgres_data:
+  media_data:
 
 networks:
   kvmm:
