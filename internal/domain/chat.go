@@ -34,9 +34,8 @@ type SendMessageRequest struct {
 
 // ChatWebSocketAuthRequest описывает первое WebSocket-сообщение авторизации
 type ChatWebSocketAuthRequest struct {
-	Type      string  `json:"type"`
-	CSRFToken string  `json:"csrf_token"`
-	ChatIDs   []int64 `json:"chat_ids,omitempty"`
+	Type      string `json:"type"`
+	CSRFToken string `json:"csrf_token"`
 }
 
 // ChatWebSocketRequest описывает входящее WebSocket-событие чата

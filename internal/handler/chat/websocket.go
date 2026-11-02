@@ -18,8 +18,8 @@ import (
 )
 
 const (
-	websocketMessageLimit     = 64 * 1024
-	maxWebSocketSubscriptions = 200
+	websocketMessageLimit  = 64 * 1024
+	websocketChatPageLimit = 100
 )
 
 var chatWebSocketUpgrader = websocket.Upgrader{
@@ -30,8 +30,6 @@ var chatWebSocketUpgrader = websocket.Upgrader{
 
 var (
 	errChatNotSubscribed = errors.New("chat is not subscribed")
-	errInvalidChatID     = errors.New("chat_id must be positive")
-	errTooManyChats      = errors.New("too many chat subscriptions")
 	errUnknownEvent      = errors.New("unknown WebSocket event type")
 )
 
@@ -109,13 +107,6 @@ func (c *chatClient) subscribe(chatID int64) {
 	c.chats[chatID] = struct{}{}
 }
 
-// unsubscribe удаляет чат из списка подписок пользователя
-func (c *chatClient) unsubscribe(chatID int64) {
-	c.chatsMu.Lock()
-	defer c.chatsMu.Unlock()
-	delete(c.chats, chatID)
-}
-
 // subscribed проверяет подписку пользователя на чат
 func (c *chatClient) subscribed(chatID int64) bool {
 	c.chatsMu.RLock()
@@ -134,7 +125,7 @@ func (c *chatClient) write(payload []byte) error {
 // WebSocket открывает одно WebSocket-соединение пользователя для всех его чатов
 // WebSocket godoc
 // @Summary Подключение к чатам через WebSocket
-// @Description Выполняет WebSocket upgrade. Session cookie передаётся автоматически. Первым сообщением необходимо отправить `{"type":"auth","csrf_token":"TOKEN","chat_ids":[1,2,3]}`. Поле `chat_ids` необязательно: оно сразу подписывает соединение на указанные чаты. После авторизации сообщение отправляется как `{"type":"message","chat_id":1,"message":{"message_text":"Привет!"}}`. Ошибки авторизации, CSRF и проверки доступа после Upgrade отправляются как WebSocket-события с `type: "error"`.
+// @Description Выполняет WebSocket upgrade. Session cookie передаётся автоматически. Первым сообщением необходимо отправить `{"type":"auth","csrf_token":"TOKEN"}`. После авторизации сервер загружает все чаты пользователя через пагинацию и подписывает соединение на них. Сообщение отправляется как `{"type":"message","chat_id":1,"message":{"message_text":"Привет!"}}`. Ошибки авторизации, CSRF и проверки доступа после Upgrade отправляются как WebSocket-события с `type: "error"`.
 // @Tags chats
 // @Security SessionCookie
 // @Produce json
@@ -200,10 +191,8 @@ func (h *ChatHandler) WebSocket(w http.ResponseWriter, r *http.Request) {
 	if err := h.writeClientEvent(client, domain.ChatWebSocketEvent{Type: "connected"}); err != nil {
 		return
 	}
-	if len(authRequest.ChatIDs) > 0 {
-		if err := h.subscribeChatIDs(r, client, sessionToken, csrfToken, authRequest.ChatIDs); err != nil {
-			return
-		}
+	if err := h.subscribeAllChats(r, client, sessionToken, csrfToken); err != nil {
+		return
 	}
 
 	for {
@@ -214,18 +203,6 @@ func (h *ChatHandler) WebSocket(w http.ResponseWriter, r *http.Request) {
 		}
 
 		switch request.Type {
-		case "subscribe":
-			if err := h.subscribeChatIDs(r, client, sessionToken, csrfToken, []int64{request.ChatID}); err != nil {
-				return
-			}
-		case "unsubscribe":
-			client.unsubscribe(request.ChatID)
-			if err := h.writeClientEvent(client, domain.ChatWebSocketEvent{
-				Type:   "unsubscribed",
-				ChatID: request.ChatID,
-			}); err != nil {
-				return
-			}
 		case "message", "":
 			if err := h.sendMessage(r, client, sessionToken, csrfToken, request); err != nil {
 				return
@@ -238,29 +215,41 @@ func (h *ChatHandler) WebSocket(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// subscribeChatIDs проверяет доступ пользователя ко всем чатам и добавляет подписки
-func (h *ChatHandler) subscribeChatIDs(
+// subscribeAllChats загружает все чаты пользователя и добавляет их в подписки соединения
+func (h *ChatHandler) subscribeAllChats(
 	r *http.Request,
 	client *chatClient,
 	sessionToken string,
 	csrfToken string,
-	requestedChatIDs []int64,
 ) error {
-	chatIDs, err := uniquePositiveChatIDs(requestedChatIDs)
-	if err != nil {
-		return h.writeWebSocketError(client, firstChatID(requestedChatIDs), err)
-	}
-	if len(chatIDs) > maxWebSocketSubscriptions {
-		return h.writeWebSocketError(client, firstChatID(chatIDs), errTooManyChats)
-	}
-
-	for _, chatID := range chatIDs {
-		if _, err := h.useCase.Messages(r.Context(), sessionToken, csrfToken, chatID, 0, 1); err != nil {
-			return h.writeWebSocketError(client, chatID, err)
+	cursor := int64(0)
+	chatIDs := make([]int64, 0)
+	for {
+		response, err := h.useCase.List(
+			r.Context(),
+			sessionToken,
+			csrfToken,
+			cursor,
+			websocketChatPageLimit,
+		)
+		if err != nil {
+			return h.writeWebSocketError(client, 0, err)
 		}
-	}
-	for _, chatID := range chatIDs {
-		client.subscribe(chatID)
+
+		for _, chat := range response.Chats {
+			if chat.ID > 0 {
+				chatIDs = append(chatIDs, chat.ID)
+				client.subscribe(chat.ID)
+			}
+		}
+
+		if !response.HasMore {
+			break
+		}
+		if response.NextCursor <= cursor {
+			return h.writeWebSocketError(client, 0, errors.New("invalid chats pagination"))
+		}
+		cursor = response.NextCursor
 	}
 
 	event := domain.ChatWebSocketEvent{Type: "subscribed"}
@@ -270,34 +259,6 @@ func (h *ChatHandler) subscribeChatIDs(
 		event.ChatIDs = chatIDs
 	}
 	return h.writeClientEvent(client, event)
-}
-
-// uniquePositiveChatIDs удаляет дубликаты и проверяет id чатов.
-func uniquePositiveChatIDs(chatIDs []int64) ([]int64, error) {
-	unique := make([]int64, 0, len(chatIDs))
-	seen := make(map[int64]struct{}, len(chatIDs))
-	for _, chatID := range chatIDs {
-		if chatID <= 0 {
-			return nil, errInvalidChatID
-		}
-		if _, ok := seen[chatID]; ok {
-			continue
-		}
-		seen[chatID] = struct{}{}
-		unique = append(unique, chatID)
-	}
-	if len(unique) == 0 {
-		return nil, errors.New("chat_ids must not be empty")
-	}
-	return unique, nil
-}
-
-// firstChatID возвращает первый id чата для контекста ошибки
-func firstChatID(chatIDs []int64) int64 {
-	if len(chatIDs) == 0 {
-		return 0
-	}
-	return chatIDs[0]
 }
 
 // sendMessage отправляет сообщение и публикует его подписанным пользователям
@@ -393,8 +354,7 @@ func websocketError(err error) *domain.ErrorResponse {
 		response.Code = "not_chat_participant"
 		response.Message = "user is not a chat participant"
 	case errors.Is(err, chusecase.ErrEmptyMessage), errors.Is(err, chusecase.ErrMessageTooLong),
-		errors.Is(err, errChatNotSubscribed), errors.Is(err, errInvalidChatID),
-		errors.Is(err, errTooManyChats), errors.Is(err, errUnknownEvent):
+		errors.Is(err, errChatNotSubscribed), errors.Is(err, errUnknownEvent):
 		return response
 	default:
 		logging.Logger().Error("internal WebSocket error", zap.Error(err))

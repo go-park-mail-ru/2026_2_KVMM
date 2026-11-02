@@ -28,7 +28,7 @@ func TestWebSocketAuthenticationSubscriptionAndMessage(t *testing.T) {
 	defer connection.Close()
 	_ = connection.SetReadDeadline(time.Now().Add(time.Second))
 
-	if err := connection.WriteJSON(domain.ChatWebSocketAuthRequest{Type: "auth", CSRFToken: "csrf", ChatIDs: []int64{1}}); err != nil {
+	if err := connection.WriteJSON(domain.ChatWebSocketAuthRequest{Type: "auth", CSRFToken: "csrf"}); err != nil {
 		t.Fatal(err)
 	}
 	var event domain.ChatWebSocketEvent
@@ -53,20 +53,6 @@ func TestWebSocketAuthenticationSubscriptionAndMessage(t *testing.T) {
 }
 
 func TestWebSocketHelpers(t *testing.T) {
-	ids, err := uniquePositiveChatIDs([]int64{1, 2, 1})
-	if err != nil || len(ids) != 2 || firstChatID(ids) != 1 {
-		t.Fatalf("uniquePositiveChatIDs() = %v, %v", ids, err)
-	}
-	if _, err := uniquePositiveChatIDs([]int64{0}); err == nil {
-		t.Fatal("uniquePositiveChatIDs() expected invalid id error")
-	}
-	if _, err := uniquePositiveChatIDs(nil); err == nil {
-		t.Fatal("uniquePositiveChatIDs(empty) expected error")
-	}
-
-	if websocketError(errInvalidChatID).Code != "invalid_request" {
-		t.Fatal("invalid chat error has wrong code")
-	}
 	if websocketError(chusecase.ErrUnauthorized).Code != "unauthorized" {
 		t.Fatal("unauthorized error has wrong code")
 	}
