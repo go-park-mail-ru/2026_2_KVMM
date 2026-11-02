@@ -9,6 +9,7 @@ require (
 	github.com/jackc/pgx/v5 v5.7.4
 	github.com/pashagolub/pgxmock/v4 v4.9.0
 	github.com/swaggo/swag/v2 v2.0.0-rc6
+	go.uber.org/mock v0.6.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/crypto v0.48.0
 )

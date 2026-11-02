@@ -30,9 +30,42 @@ swagger:
 	swag init -g doc.go -d internal/handler,internal/domain -o internal/docs --parseInternal --parseDependency --v3.1
 
 # Run tests and generate coverage report
-test-coverage:
-	go test -coverpkg=./... -coverprofile=coverage.out ./internal/handler
+test:
+	go test -coverpkg=./... -coverprofile=coverage.out ./...
 	go tool cover -func=coverage.out
+
+# Generate mocks
+MOCKGEN := go run go.uber.org/mock/mockgen
+mocks:
+	$(MOCKGEN) -source=internal/usecase/auth/usecase.go \
+		-destination=internal/mocks/auth/mock.go \
+		-package=authmock
+
+	$(MOCKGEN) -source=internal/usecase/chat/usecase.go \
+		-destination=internal/mocks/chat/mock.go \
+		-package=chatmock
+
+	$(MOCKGEN) -source=internal/usecase/feed/usecase.go \
+		-destination=internal/mocks/feed/mock.go \
+		-package=feedmock
+
+	$(MOCKGEN) -source=internal/usecase/post/usecase.go \
+		-destination=internal/mocks/post/mock.go \
+		-package=postmock
+
+	$(MOCKGEN) -source=internal/usecase/profile/usecase.go \
+		-destination=internal/mocks/profile/mock.go \
+		-package=profilemock
+
+	$(MOCKGEN) -source=internal/usecase/relationship/usecase.go \
+		-destination=internal/mocks/relationship/mock.go \
+		-package=relationshipmock
+
+	$(MOCKGEN) -source=internal/usecase/session/usecase.go \
+		-destination=internal/mocks/session/mock.go \
+		-package=sessionmock
+
+	gofmt -w internal/mocks
 
 # Run database migrations
 db-migrate:
@@ -82,21 +115,6 @@ deploy:
 	else \
 		echo "======================================"; \
 		echo "ERROR: .env file not found!"; \
-		echo "======================================"; \
-		echo ""; \
-		echo "Create the file:"; \
-		echo "	$(BACK_DIR)/deploy/.env"; \
-		echo ""; \
-		echo "Required variables:"; \
-		echo "	HTTP_ADDR=:8080"; \
-		echo "	FRONTEND_ORIGIN=http://161.104.106.151"; \
-		echo "	FRONTEND_URL=http://161.104.106.151"; \
-		echo "	COOKIE_SECURE=false"; \
-		echo "	COOKIE_SAMESITE=lax"; \
-		echo ""; \
-		echo "Example:"; \
-		echo "	nano $(BACK_DIR)/deploy/.env"; \
-		echo "======================================"; \
 		exit 1; \
 	fi
 

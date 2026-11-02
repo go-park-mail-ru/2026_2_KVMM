@@ -2,9 +2,12 @@ package httpapi
 
 import (
 	"bufio"
+	"bytes"
+	"io"
 	"net"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"kvmm/internal/handler/auth"
@@ -138,11 +141,12 @@ func (w *responseLogger) Unwrap() http.ResponseWriter {
 	return w.ResponseWriter
 }
 
-// requestLogger записывает входящие HTTP-запросы, ответы и необработанные panic.
+// requestLogger записывает входящие HTTP-запросы, ответы и необработанные panic
 func requestLogger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		startedAt := time.Now()
 		response := &responseLogger{ResponseWriter: w, status: http.StatusOK}
+		requestBody := readRequestBodyForLog(r)
 
 		defer func() {
 			if recovered := recover(); recovered != nil {
@@ -171,10 +175,49 @@ func requestLogger(next http.Handler) http.Handler {
 				zap.String("query", r.URL.RawQuery),
 				zap.String("user_agent", r.UserAgent()),
 			)
+			if requestBody != "" {
+				logging.Logger().Debug("HTTP request body",
+					zap.String("method", r.Method),
+					zap.String("path", r.URL.Path),
+					zap.String("body", requestBody),
+				)
+			}
 		}()
 
 		next.ServeHTTP(response, r)
 	})
+}
+
+const maxLoggedRequestBodySize = 1 << 20
+
+// readRequestBodyForLog читает тело запроса для debug-лога и возвращает его обработчику
+func readRequestBodyForLog(r *http.Request) string {
+	if !logging.Logger().Core().Enabled(zap.DebugLevel) || r.Body == nil || r.Body == http.NoBody {
+		return ""
+	}
+
+	body, err := io.ReadAll(r.Body)
+	r.Body = io.NopCloser(bytes.NewReader(body))
+	if err != nil {
+		logging.Logger().Debug("HTTP request body read failed", zap.Error(err))
+		return "[body read failed]"
+	}
+	if len(body) == 0 {
+		return ""
+	}
+	if len(body) > maxLoggedRequestBodySize {
+		return "[body omitted: exceeds 1 MiB]"
+	}
+
+	contentType := strings.ToLower(strings.TrimSpace(strings.Split(r.Header.Get("Content-Type"), ";")[0]))
+	if contentType == "multipart/form-data" {
+		return "[multipart body omitted]"
+	}
+	if contentType == "application/json" || strings.HasSuffix(contentType, "+json") ||
+		strings.HasPrefix(contentType, "text/") || contentType == "application/x-www-form-urlencoded" {
+		return string(body)
+	}
+	return "[binary body omitted]"
 }
 
 // cors добавляет CORS-заголовки и обрабатывает preflight-запросы

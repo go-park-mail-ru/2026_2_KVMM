@@ -17,7 +17,6 @@ RUN adduser -D -H -s /sbin/nologin appuser
 RUN mkdir -p /data/media && chown -R appuser:appuser /data
 
 COPY --from=build /out/kvmm-backend /kvmm-backend
-COPY --from=build /src/internal/store/media /data/media
 RUN chown -R appuser:appuser /data/media
 
 ENV HTTP_ADDR=0.0.0.0:8080 \
