@@ -5,6 +5,9 @@ components:
         profile_id:
           type: integer
         relationships_type:
+          enum:
+          - friendship
+          - family
           example: friendship
           maxLength: 32
           type: string
@@ -60,6 +63,9 @@ components:
         profile_id:
           type: integer
         relationships_type:
+          enum:
+          - friendship
+          - family
           example: friendship
           maxLength: 32
           type: string
@@ -154,6 +160,9 @@ components:
           example: 2
           type: integer
         relationships_type:
+          enum:
+          - friendship
+          - family
           example: friendship
           maxLength: 32
           type: string
@@ -426,6 +435,9 @@ components:
           $ref: '#/components/schemas/domain.RelationshipStatus'
           example: request
         relationships_type:
+          enum:
+          - friendship
+          - family
           example: friendship
           type: string
         updated_at:
@@ -2038,10 +2050,6 @@ paths:
         in: query
         name: relationships_status
         schema:
-          enum:
-          - request
-          - accepted
-          - canceled
           type: string
       - description: Вид связи
         example: friendship

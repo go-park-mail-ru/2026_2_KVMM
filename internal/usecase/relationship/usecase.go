@@ -52,6 +52,9 @@ func (u *UseCase) Create(
 	if err != nil {
 		return domain.ProfileRelationship{}, err
 	}
+	if err := validateRelationshipType(req.RelationshipsType); err != nil {
+		return domain.ProfileRelationship{}, err
+	}
 	relationship, err := u.relationships.Create(ctx, userID, req)
 	if err != nil {
 		logging.LogUseCaseError("relationship", "create relationship", err)
@@ -68,6 +71,11 @@ func (u *UseCase) List(
 	userID, _, err := u.sessions.Read(sessionToken)
 	if err != nil {
 		return domain.RelationshipsResponse{}, err
+	}
+	if req.RelationshipsType != "" {
+		if err := validateRelationshipType(req.RelationshipsType); err != nil {
+			return domain.RelationshipsResponse{}, err
+		}
 	}
 	response, err := u.relationships.List(ctx, userID, req)
 	if err != nil {
@@ -100,6 +108,11 @@ func (u *UseCase) Requests(
 	userID, _, err := u.sessions.Read(sessionToken)
 	if err != nil {
 		return domain.RelationshipsResponse{}, err
+	}
+	if typeName != "" {
+		if err := validateRelationshipType(typeName); err != nil {
+			return domain.RelationshipsResponse{}, err
+		}
 	}
 	response, err := u.relationships.Requests(ctx, userID, typeName, cursor, limit)
 	if err != nil {
@@ -137,6 +150,9 @@ func (u *UseCase) Accept(
 	if err != nil {
 		return domain.ProfileRelationship{}, err
 	}
+	if err := validateRelationshipType(req.RelationshipsType); err != nil {
+		return domain.ProfileRelationship{}, err
+	}
 	relationship, err := u.relationships.Accept(ctx, userID, req)
 	if err != nil {
 		logging.LogUseCaseError("relationship", "accept relationship", err)
@@ -155,9 +171,22 @@ func (u *UseCase) Cancel(
 	if err != nil {
 		return domain.ProfileRelationship{}, err
 	}
+	if err := validateRelationshipType(req.RelationshipsType); err != nil {
+		return domain.ProfileRelationship{}, err
+	}
 	relationship, err := u.relationships.Cancel(ctx, userID, req)
 	if err != nil {
 		logging.LogUseCaseError("relationship", "cancel relationship", err)
 	}
 	return relationship, err
+}
+
+// validateRelationshipType проверяет поддерживаемые виды связей
+func validateRelationshipType(typeName string) error {
+	switch typeName {
+	case domain.RelationshipTypeFriendship, domain.RelationshipTypeFamily:
+		return nil
+	default:
+		return ErrInvalid
+	}
 }

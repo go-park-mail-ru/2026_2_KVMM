@@ -10,13 +10,18 @@ const (
 	RelationshipCanceled RelationshipStatus = "canceled"
 )
 
+const (
+	RelationshipTypeFriendship = "friendship"
+	RelationshipTypeFamily     = "family"
+)
+
 // ProfileRelationship — направленная связь между профилями
 type ProfileRelationship struct {
 	ProfileIDMaster     int64              `json:"profile_id_master" example:"1"`
 	ProfileIDSlave      int64              `json:"profile_id_slave" example:"2"`
 	Profile             ShortProfile       `json:"profile"`
 	RelationshipsStatus RelationshipStatus `json:"relationships_status" example:"request" enums:"request,accepted,canceled"`
-	RelationshipsType   string             `json:"relationships_type" example:"friendship"`
+	RelationshipsType   string             `json:"relationships_type" example:"friendship" enums:"friendship,family"`
 	CreatedAt           time.Time          `json:"created_at" example:"2026-01-01T12:00:00Z"`
 	UpdatedAt           *time.Time         `json:"updated_at,omitempty" example:"2026-01-02T12:00:00Z"`
 	DeletedAt           *time.Time         `json:"deleted_at,omitempty"`
@@ -25,13 +30,13 @@ type ProfileRelationship struct {
 // CreateRelationshipRequest — отправка запроса на произвольный вид связи
 type CreateRelationshipRequest struct {
 	ProfileIDSlave    int64  `json:"profile_id_slave" example:"2" validate:"required,gt=0"`
-	RelationshipsType string `json:"relationships_type" example:"friendship" validate:"required,max=32"`
+	RelationshipsType string `json:"relationships_type" example:"friendship" enums:"friendship,family" validate:"required,max=32"`
 }
 
 // ListRelationshipsRequest — параметры фильтрации и пагинации списка связей
 type ListRelationshipsRequest struct {
 	RelationshipsStatus RelationshipStatus `json:"relationships_status,omitempty" example:"accepted"`
-	RelationshipsType   string             `json:"relationships_type,omitempty" example:"friendship"`
+	RelationshipsType   string             `json:"relationships_type,omitempty" example:"friendship" enums:"friendship,family"`
 	Cursor              int64              `json:"cursor" example:"0"`
 	Limit               int                `json:"limit" example:"10"`
 }
@@ -39,13 +44,13 @@ type ListRelationshipsRequest struct {
 // CancleRelationshipRequest — удаление связи или отмена исходящего запроса
 type CancleRelationshipRequest struct {
 	ProfileID         int64  `json:"profile_id" validate:"required,gt=0"`
-	RelationshipsType string `json:"relationships_type" example:"friendship" validate:"required,max=32"`
+	RelationshipsType string `json:"relationships_type" example:"friendship" enums:"friendship,family" validate:"required,max=32"`
 }
 
 // AcceptRelationshipRequest — подтверждение входящего запроса на связь
 type AcceptRelationshipRequest struct {
 	ProfileID         int64  `json:"profile_id" validate:"required,gt=0"`
-	RelationshipsType string `json:"relationships_type" example:"friendship" validate:"required,max=32"`
+	RelationshipsType string `json:"relationships_type" example:"friendship" enums:"friendship,family" validate:"required,max=32"`
 }
 
 // RelationshipsResponse — результат получения списка связей
