@@ -14,6 +14,10 @@ const docTemplate = `{
                         "type": "integer"
                     },
                     "relationships_type": {
+                        "enum": [
+                            "friendship",
+                            "family"
+                        ],
                         "example": "friendship",
                         "maxLength": 32,
                         "type": "string"
@@ -90,6 +94,10 @@ const docTemplate = `{
                         "type": "integer"
                     },
                     "relationships_type": {
+                        "enum": [
+                            "friendship",
+                            "family"
+                        ],
                         "example": "friendship",
                         "maxLength": 32,
                         "type": "string"
@@ -192,6 +200,10 @@ const docTemplate = `{
                         "type": "integer"
                     },
                     "relationships_type": {
+                        "enum": [
+                            "friendship",
+                            "family"
+                        ],
                         "example": "friendship",
                         "maxLength": 32,
                         "type": "string"
@@ -527,6 +539,10 @@ const docTemplate = `{
                         "example": "request"
                     },
                     "relationships_type": {
+                        "enum": [
+                            "friendship",
+                            "family"
+                        ],
                         "example": "friendship",
                         "type": "string"
                     },
@@ -2609,11 +2625,6 @@ const docTemplate = `{
                         "in": "query",
                         "name": "relationships_status",
                         "schema": {
-                            "enum": [
-                                "request",
-                                "accepted",
-                                "canceled"
-                            ],
                             "type": "string"
                         }
                     },

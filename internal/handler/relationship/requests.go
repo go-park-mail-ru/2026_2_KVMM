@@ -13,7 +13,7 @@ import (
 // @Tags relationships
 // @Security SessionCookie
 // @Produce json
-// @Param relationships_type query string false "Фильтр по виду связи" example(friendship)
+// @Param relationships_type query string false "Фильтр по виду связи" friendship,family example(friendship)
 // @Param cursor query int false "Указатель на начальный элемент для записей" default(0)
 // @Param limit query int false "Размер страницы (максимум 10)" default(10) maximum(10)
 // @Success 200 {object} domain.RelationshipsResponse

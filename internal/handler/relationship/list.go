@@ -16,8 +16,8 @@ import (
 // @Accept json
 // @Produce json
 // @Param X-CSRF-Token header string false "CSRF-токен, если требуется политикой приложения"
-// @Param relationships_status query string false "Статус связи" Enums(request,accepted,canceled)
-// @Param relationships_type query string false "Вид связи" example(friendship)
+// @Param relationships_status query string false "Статус связи" request,accepted,canceled
+// @Param relationships_type query string false "Вид связи" friendship,family example(friendship)
 // @Param cursor query int false "Указатель на начальный элемент для записей" default(0)
 // @Param limit query int false "Размер страницы (максимум 10)" default(10) maximum(10)
 // @Success 200 {object} domain.RelationshipsResponse
