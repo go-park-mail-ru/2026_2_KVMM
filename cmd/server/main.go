@@ -80,7 +80,7 @@ func main() {
 		fmt.Sprintf("%s: server up", time.Now().Format("2006-01-02 15:04:05"))); err != nil {
 		logger.Error("cant up mailer", zap.Error(err))
 	} else {
-		logger.Info("Email send to gussev.vova141205@gmail.com")
+		logger.Info("Email send to admin emial")
 	}
 
 	server := http.Server{
