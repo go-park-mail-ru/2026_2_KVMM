@@ -87,6 +87,21 @@ func (mr *MockprofileRepositoryMockRecorder) ReadByLoginAuth(arg0, arg1 any) *go
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadByLoginAuth", reflect.TypeOf((*MockprofileRepository)(nil).ReadByLoginAuth), arg0, arg1)
 }
 
+// Update mocks base method.
+func (m *MockprofileRepository) Update(arg0 context.Context, arg1 int64, arg2 repository.UpdateProfileParams) (domain.Profile, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Update", arg0, arg1, arg2)
+	ret0, _ := ret[0].(domain.Profile)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Update indicates an expected call of Update.
+func (mr *MockprofileRepositoryMockRecorder) Update(arg0, arg1, arg2 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockprofileRepository)(nil).Update), arg0, arg1, arg2)
+}
+
 // MocksessionRepository is a mock of sessionRepository interface.
 type MocksessionRepository struct {
 	ctrl     *gomock.Controller
@@ -167,4 +182,42 @@ func (m *MocksessionRepository) ValidateCSRF(arg0, arg1 string) error {
 func (mr *MocksessionRepositoryMockRecorder) ValidateCSRF(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateCSRF", reflect.TypeOf((*MocksessionRepository)(nil).ValidateCSRF), arg0, arg1)
+}
+
+// MockemailSender is a mock of emailSender interface.
+type MockemailSender struct {
+	ctrl     *gomock.Controller
+	recorder *MockemailSenderMockRecorder
+	isgomock struct{}
+}
+
+// MockemailSenderMockRecorder is the mock recorder for MockemailSender.
+type MockemailSenderMockRecorder struct {
+	mock *MockemailSender
+}
+
+// NewMockemailSender creates a new mock instance.
+func NewMockemailSender(ctrl *gomock.Controller) *MockemailSender {
+	mock := &MockemailSender{ctrl: ctrl}
+	mock.recorder = &MockemailSenderMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockemailSender) EXPECT() *MockemailSenderMockRecorder {
+	return m.recorder
+}
+
+// SendAuthCode mocks base method.
+func (m *MockemailSender) SendAuthCode(arg0, arg1 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SendAuthCode", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SendAuthCode indicates an expected call of SendAuthCode.
+func (mr *MockemailSenderMockRecorder) SendAuthCode(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendAuthCode", reflect.TypeOf((*MockemailSender)(nil).SendAuthCode), arg0, arg1)
 }

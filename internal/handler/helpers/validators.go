@@ -2,6 +2,7 @@ package helpers
 
 import (
 	"fmt"
+	"net/mail"
 	"regexp"
 	"strings"
 	"time"
@@ -28,6 +29,19 @@ var (
 	letterPattern   = regexp.MustCompile(`[A-Za-z]`)
 	digitPattern    = regexp.MustCompile(`[0-9]`)
 )
+
+// ValidateEmailAddress проверяет синтаксис email и его максимальную длину
+func ValidateEmailAddress(value string) error {
+	value = strings.TrimSpace(value)
+	if value == "" || len(value) > 254 {
+		return fmt.Errorf("email has invalid format")
+	}
+	address, err := mail.ParseAddress(value)
+	if err != nil || address.Address != value {
+		return fmt.Errorf("email has invalid format")
+	}
+	return nil
+}
 
 // validateRegisterRequest проверяет правила регистрации, которые нельзя описать только тегами
 func ValidateRegisterRequest(req domain.RegisterRequest) error {

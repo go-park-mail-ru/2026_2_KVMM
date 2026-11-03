@@ -42,6 +42,8 @@ func (h *ProfileHandler) Update(w http.ResponseWriter, r *http.Request) {
 	updatedProfile, err := h.useCase.Update(r.Context(), session, r.Header.Get("X-CSRF-Token"), req)
 	if err != nil {
 		switch {
+		case errors.Is(err, profileusecase.ErrEmailConfirm):
+			helpers.WriteError(w, http.StatusBadRequest, "email_confirmation_required", "use email confirmation endpoint to change email")
 		case errors.Is(err, profileusecase.ErrInvalidCSRF):
 			helpers.WriteError(w, http.StatusForbidden, "csrf_failed", "valid X-CSRF-Token header is required")
 		case errors.Is(err, profileusecase.ErrUnauthorized):

@@ -19,6 +19,7 @@ import (
 	"kvmm/internal/handler/relationship"
 	"kvmm/internal/httpapi"
 	"kvmm/internal/logging"
+	"kvmm/internal/mailer"
 	"kvmm/internal/repository"
 	authusecase "kvmm/internal/usecase/auth"
 	chatusecase "kvmm/internal/usecase/chat"
@@ -41,6 +42,11 @@ func main() {
 	addr := os.Getenv("HTTP_ADDR")
 	if addr == "" {
 		addr = ":8080"
+	}
+	if err := mailer.New().SendAuthCode("gussev.vova141205@gmail.com", "start"); err != nil {
+		logger.Error("cant up mailer", zap.Error(err))
+	} else {
+		logger.Info("Email send to gussev.vova141205@gmail.com")
 	}
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL == "" {
@@ -65,7 +71,7 @@ func main() {
 	mediaURL := os.Getenv("MEDIA_PUBLIC_URL")
 	avatars := repository.NewAvatarRepository(database, mediaDir, mediaURL)
 
-	authUseCase := authusecase.New(profiles, sessions)
+	authUseCase := authusecase.New(profiles, sessions, mailer.New())
 	profileUseCase := profileusecase.New(profiles, avatars, sessionReader)
 	feedUseCase := feedusecase.New(postsRepository)
 	postUseCase := postusecase.New(postsRepository, sessionReader)

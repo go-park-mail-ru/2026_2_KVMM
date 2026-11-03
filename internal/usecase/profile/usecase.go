@@ -2,6 +2,7 @@ package profile
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"time"
 
@@ -17,6 +18,7 @@ var (
 	ErrUnauthorized   = sessionusecase.ErrUnauthorized
 	ErrInvalidCSRF    = sessionusecase.ErrInvalidCSRF
 	ErrConflict       = repository.ErrProfileConflict
+	ErrEmailConfirm   = errors.New("email change requires confirmation")
 	ErrAvatarLimit    = repository.ErrAvatarLimit
 	ErrAvatarNotFound = repository.ErrAvatarNotFound
 	ErrInvalidAvatar  = repository.ErrInvalidAvatar
@@ -59,10 +61,12 @@ func (u *UseCase) Update(
 	if err != nil {
 		return domain.Profile{}, err
 	}
+	if req.Email != nil {
+		return domain.Profile{}, ErrEmailConfirm
+	}
 
 	params := repository.UpdateProfileParams{
 		Nickname:    req.Nickname,
-		Email:       req.Email,
 		PhoneNumber: req.PhoneNumber,
 		ProfileName: req.ProfileName,
 		Surname:     req.Surname,
