@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -43,11 +44,6 @@ func main() {
 	if addr == "" {
 		addr = ":8080"
 	}
-	if err := mailer.New().SendAuthCode("gussev.vova141205@gmail.com", "start"); err != nil {
-		logger.Error("cant up mailer", zap.Error(err))
-	} else {
-		logger.Info("Email send to gussev.vova141205@gmail.com")
-	}
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL == "" {
 		logger.Fatal("DATABASE_URL is required")
@@ -79,6 +75,13 @@ func main() {
 	relationshipUseCase := relationshipusecase.New(relationships, sessionReader)
 
 	logger.Info("server listening", zap.String("addr", addr))
+
+	if err := mailer.New().SendAuthCode(os.Getenv("ADMIN_EMAIL"),
+		fmt.Sprintf("%s: server up", time.Now().Format("2006-01-02 15:04:05"))); err != nil {
+		logger.Error("cant up mailer", zap.Error(err))
+	} else {
+		logger.Info("Email send to gussev.vova141205@gmail.com")
+	}
 
 	server := http.Server{
 		Addr: addr,
