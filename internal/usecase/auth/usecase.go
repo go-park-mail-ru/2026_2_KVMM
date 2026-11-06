@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"sync"
+	"time"
 
 	"kvmm/internal/domain"
 	"kvmm/internal/logging"
@@ -18,12 +20,15 @@ var (
 	ErrUnauthorized       = sessionusecase.ErrUnauthorized
 	ErrInvalidCSRF        = sessionusecase.ErrInvalidCSRF
 	ErrConflict           = repository.ErrProfileConflict
+	ErrInvalidEmailCode   = errors.New("invalid or expired email code")
+	ErrEmailDelivery      = errors.New("email delivery failed")
 )
 
 type profileRepository interface {
 	Create(context.Context, repository.CreateProfileParams) (domain.Profile, error)
 	ReadByID(context.Context, int64) (domain.Profile, error)
 	ReadByLoginAuth(context.Context, string) (repository.AuthProfile, error)
+	Update(context.Context, int64, repository.UpdateProfileParams) (domain.Profile, error)
 }
 
 type sessionRepository interface {
@@ -32,20 +37,44 @@ type sessionRepository interface {
 	Delete(string)
 }
 
+type emailSender interface {
+	SendAuthCode(string, string) error
+}
+
+type emailCode struct {
+	code      string
+	expiresAt time.Time
+}
+
 // UseCase содержит сценарии регистрации, входа и работы с текущей сессией
 type UseCase struct {
 	profiles profileRepository
 	sessions sessionRepository
 	reader   *sessionusecase.UseCase
+	sender   emailSender
+	emailMu  sync.Mutex
+	codes    map[string]emailCode
 }
 
 // New создаёт usecase авторизации
-func New(profiles profileRepository, sessions sessionRepository) *UseCase {
+func New(profiles profileRepository, sessions sessionRepository, senders ...emailSender) *UseCase {
+	var sender emailSender = unavailableEmailSender{}
+	if len(senders) > 0 && senders[0] != nil {
+		sender = senders[0]
+	}
 	return &UseCase{
 		profiles: profiles,
 		sessions: sessions,
 		reader:   sessionusecase.New(sessions),
+		sender:   sender,
+		codes:    make(map[string]emailCode),
 	}
+}
+
+type unavailableEmailSender struct{}
+
+func (unavailableEmailSender) SendAuthCode(string, string) error {
+	return ErrEmailDelivery
 }
 
 // Register регистрирует пользователя, хеширует пароль и создаёт сессию

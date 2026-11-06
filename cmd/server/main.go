@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -19,6 +20,7 @@ import (
 	"kvmm/internal/handler/relationship"
 	"kvmm/internal/httpapi"
 	"kvmm/internal/logging"
+	"kvmm/internal/mailer"
 	"kvmm/internal/repository"
 	authusecase "kvmm/internal/usecase/auth"
 	chatusecase "kvmm/internal/usecase/chat"
@@ -65,7 +67,7 @@ func main() {
 	mediaURL := os.Getenv("MEDIA_PUBLIC_URL")
 	avatars := repository.NewAvatarRepository(database, mediaDir, mediaURL)
 
-	authUseCase := authusecase.New(profiles, sessions)
+	authUseCase := authusecase.New(profiles, sessions, mailer.New())
 	profileUseCase := profileusecase.New(profiles, avatars, sessionReader)
 	feedUseCase := feedusecase.New(postsRepository)
 	postUseCase := postusecase.New(postsRepository, sessionReader)
@@ -73,6 +75,13 @@ func main() {
 	relationshipUseCase := relationshipusecase.New(relationships, sessionReader)
 
 	logger.Info("server listening", zap.String("addr", addr))
+
+	if err := mailer.New().SendAuthCode(os.Getenv("ADMIN_EMAIL"),
+		fmt.Sprintf("%s: server up", time.Now().Format("2006-01-02 15:04:05"))); err != nil {
+		logger.Error("cant up mailer", zap.Error(err))
+	} else {
+		logger.Info("Email send to admin emial")
+	}
 
 	server := http.Server{
 		Addr: addr,

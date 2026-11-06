@@ -109,6 +109,19 @@ const docTemplate = `{
                 ],
                 "type": "object"
             },
+            "domain.ChangeEmailRequest": {
+                "properties": {
+                    "email": {
+                        "example": "new@example.com",
+                        "maxLength": 254,
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "email"
+                ],
+                "type": "object"
+            },
             "domain.Chat": {
                 "properties": {
                     "created_at": {
@@ -164,6 +177,24 @@ const docTemplate = `{
                 },
                 "type": "object"
             },
+            "domain.ConfirmEmailRequest": {
+                "properties": {
+                    "code": {
+                        "example": "123456",
+                        "type": "string"
+                    },
+                    "email": {
+                        "example": "new@example.com",
+                        "maxLength": 254,
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "code",
+                    "email"
+                ],
+                "type": "object"
+            },
             "domain.CreateChatRequest": {
                 "properties": {
                     "profile_id": {
@@ -213,6 +244,28 @@ const docTemplate = `{
                     "profile_id_slave",
                     "relationships_type"
                 ],
+                "type": "object"
+            },
+            "domain.EmailCodeRequest": {
+                "properties": {
+                    "email": {
+                        "example": "ivan@example.com",
+                        "maxLength": 254,
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "email"
+                ],
+                "type": "object"
+            },
+            "domain.EmailCodeResponse": {
+                "properties": {
+                    "message": {
+                        "example": "verification code sent",
+                        "type": "string"
+                    }
+                },
                 "type": "object"
             },
             "domain.ErrorResponse": {
@@ -268,6 +321,24 @@ const docTemplate = `{
                     "GenderFemale",
                     "GenderOther"
                 ]
+            },
+            "domain.LoginByEmailRequest": {
+                "properties": {
+                    "code": {
+                        "example": "123456",
+                        "type": "string"
+                    },
+                    "email": {
+                        "example": "ivan@example.com",
+                        "maxLength": 254,
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "code",
+                    "email"
+                ],
+                "type": "object"
             },
             "domain.LoginRequest": {
                 "properties": {
@@ -551,6 +622,42 @@ const docTemplate = `{
                         "type": "string"
                     }
                 },
+                "type": "object"
+            },
+            "domain.RegisterByEmailRequest": {
+                "properties": {
+                    "code": {
+                        "example": "123456",
+                        "type": "string"
+                    },
+                    "email": {
+                        "example": "ivan@example.com",
+                        "maxLength": 254,
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "code",
+                    "email"
+                ],
+                "type": "object"
+            },
+            "domain.RegisterEmailCodeRequest": {
+                "properties": {
+                    "email": {
+                        "example": "ivan@example.com",
+                        "maxLength": 254,
+                        "type": "string"
+                    },
+                    "privacy_policy_allowed": {
+                        "example": true,
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "email",
+                    "privacy_policy_allowed"
+                ],
                 "type": "object"
             },
             "domain.RegisterRequest": {
@@ -873,6 +980,194 @@ const docTemplate = `{
         "url": ""
     },
     "paths": {
+        "/api/auth/email/change": {
+            "post": {
+                "parameters": [
+                    {
+                        "description": "CSRF-токен",
+                        "in": "header",
+                        "name": "X-CSRF-Token",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/domain.ChangeEmailRequest",
+                                "summary": "request",
+                                "description": "Новый email"
+                            }
+                        }
+                    },
+                    "description": "Новый email",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.EmailCodeResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Forbidden"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Conflict"
+                    },
+                    "503": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Service Unavailable"
+                    }
+                },
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "summary": "Запрос на смену email",
+                "tags": [
+                    "auth"
+                ]
+            }
+        },
+        "/api/auth/email/confirm": {
+            "post": {
+                "parameters": [
+                    {
+                        "description": "CSRF-токен",
+                        "in": "header",
+                        "name": "X-CSRF-Token",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/domain.ConfirmEmailRequest",
+                                "summary": "request",
+                                "description": "Email и код подтверждения"
+                            }
+                        }
+                    },
+                    "description": "Email и код подтверждения",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.Profile"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Forbidden"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Conflict"
+                    }
+                },
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "summary": "Подтверждение email",
+                "tags": [
+                    "auth"
+                ]
+            }
+        },
         "/api/auth/login": {
             "post": {
                 "description": "Авторизует пользователя и создаёт сессию",
@@ -932,6 +1227,122 @@ const docTemplate = `{
                     }
                 },
                 "summary": "Авторизация пользователя",
+                "tags": [
+                    "auth"
+                ]
+            }
+        },
+        "/api/auth/login/email/code": {
+            "post": {
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/domain.LoginByEmailRequest",
+                                "summary": "request",
+                                "description": "Email и код"
+                            }
+                        }
+                    },
+                    "description": "Email и код",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.AuthResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    }
+                },
+                "summary": "Авторизация по email-коду",
+                "tags": [
+                    "auth"
+                ]
+            }
+        },
+        "/api/auth/login/email/send/code": {
+            "post": {
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/domain.EmailCodeRequest",
+                                "summary": "request",
+                                "description": "Email"
+                            }
+                        }
+                    },
+                    "description": "Email",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.EmailCodeResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "503": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Service Unavailable"
+                    }
+                },
+                "summary": "Отправка кода входа",
                 "tags": [
                     "auth"
                 ]
@@ -1091,6 +1502,132 @@ const docTemplate = `{
                     }
                 },
                 "summary": "Регистрация пользователя",
+                "tags": [
+                    "auth"
+                ]
+            }
+        },
+        "/api/auth/register/email/code": {
+            "post": {
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/domain.RegisterByEmailRequest",
+                                "summary": "request",
+                                "description": "Email и код"
+                            }
+                        }
+                    },
+                    "description": "Email и код",
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.AuthResponse"
+                                }
+                            }
+                        },
+                        "description": "Created"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Conflict"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "Регистрация по email-коду",
+                "tags": [
+                    "auth"
+                ]
+            }
+        },
+        "/api/auth/register/email/send/code": {
+            "post": {
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/domain.RegisterEmailCodeRequest",
+                                "summary": "request",
+                                "description": "Email и согласие на обработку данных"
+                            }
+                        }
+                    },
+                    "description": "Email и согласие на обработку данных",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.EmailCodeResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Conflict"
+                    },
+                    "503": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Service Unavailable"
+                    }
+                },
+                "summary": "Отправка кода регистрации",
                 "tags": [
                     "auth"
                 ]
