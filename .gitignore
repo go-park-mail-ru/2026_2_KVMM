@@ -206,3 +206,4 @@ Temporary Items
 deploy/.env
 bin/
 *.out
+/deploy/command.md
