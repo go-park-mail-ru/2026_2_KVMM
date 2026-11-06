@@ -56,7 +56,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-    - "5432:5432" # TODO: торчит для отладки
+    - "127.0.0.1:5432:5432"
     restart: unless-stopped
     networks:
       - kvmm
