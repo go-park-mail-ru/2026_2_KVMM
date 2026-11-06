@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -51,7 +52,7 @@ func (u *UseCase) RegisterByEmail(ctx context.Context, req domain.RegisterByEmai
 	if err != nil {
 		return domain.AuthResponse{}, "", err
 	}
-	nickname, err := generatedEmailNickname()
+	nickname, err := u.generatedEmailNickname(ctx, email)
 	if err != nil {
 		return domain.AuthResponse{}, "", err
 	}
@@ -176,7 +177,7 @@ func numericCode() (string, error) {
 
 // randomSecret создаёт пароль, который не передаётся клиенту
 func randomSecret() (string, error) {
-	data := make([]byte, 24)
+	data := make([]byte, 32)
 	if _, err := rand.Read(data); err != nil {
 		return "", err
 	}
@@ -184,12 +185,60 @@ func randomSecret() (string, error) {
 }
 
 // generatedEmailNickname создаёт технический уникальный nickname
-func generatedEmailNickname() (string, error) {
-	secret, err := randomSecret()
+func (u *UseCase) generatedEmailNickname(ctx context.Context, email string) (string, error) {
+	local := email
+	if atPos := strings.IndexByte(email, '@'); atPos != -1 {
+		local = email[:atPos]
+	}
+
+	// Оставляем только латинские буквы и цифры
+	re := regexp.MustCompile(`[^A-Za-z0-9]`)
+	nickmane := re.ReplaceAllString(local, "")
+
+	isFree, err := u.isFreeNick(ctx, nickmane)
 	if err != nil {
 		return "", err
 	}
-	return "user_" + strings.ToLower(secret[:8]), nil
+
+	for isFree != true {
+		secret, err := randomSecret()
+		if err != nil {
+			return "", err
+		}
+		nickmane = nickmane + strings.ToLower(secret[:2])
+		if len([]rune(nickmane)) > 32 {
+			break
+		}
+		isFree, err = u.isFreeNick(ctx, nickmane)
+		if err != nil {
+			return "", err
+		}
+	}
+	if isFree != true {
+		secret, err := randomSecret()
+		if err != nil {
+			return "", err
+		}
+		nickmane = "user_" + strings.ToLower(secret[:27])
+		isFree, err = u.isFreeNick(ctx, nickmane)
+		if err != nil {
+			return "", err
+		}
+	}
+	if isFree != true {
+		return "", ErrConflict
+	}
+
+	return nickmane, nil
+}
+
+func (u *UseCase) isFreeNick(ctx context.Context, nickname string) (bool, error) {
+	if _, err := u.profiles.ReadByLoginAuth(ctx, nickname); err == nil {
+		return false, nil
+	} else if !errors.Is(err, repository.ErrProfileNotFound) {
+		return false, err
+	}
+	return true, nil
 }
 
 func normalizeEmail(email string) string {
