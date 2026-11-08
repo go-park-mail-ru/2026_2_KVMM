@@ -84,19 +84,22 @@ func TestProfileSearchHandler(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	profiles := profilemock.NewMockprofileRepository(ctrl)
 	avatars := profilemock.NewMockavatarRepository(ctrl)
+	session := sessionmock.NewMockSessionReader(ctrl)
 	h := NewProfileHandler(profileusecase.New(
 		profiles,
 		avatars,
-		sessionusecase.New(sessionmock.NewMockSessionReader(ctrl)),
+		sessionusecase.New(session),
 	))
 
+	session.EXPECT().Read("session").Return(int64(7), "csrf", nil).Times(2)
+	session.EXPECT().ValidateCSRF("session", "csrf").Return(nil).Times(2)
 	profiles.EXPECT().ReadByLogin(gomock.Any(), "alice").Return(domain.Profile{
 		ID:       1,
 		Nickname: "alice",
 	}, nil)
 
 	w := httptest.NewRecorder()
-	request := httptest.NewRequest(http.MethodGet, "/api/profile/search?login=alice", nil)
+	request := profileRequest(http.MethodGet, "/api/profile/search?login=alice", nil)
 	h.Search(w, request)
 	if w.Code != http.StatusOK {
 		t.Fatalf("Search() status = %d", w.Code)
@@ -110,7 +113,7 @@ func TestProfileSearchHandler(t *testing.T) {
 		Nickname: "alice",
 	}, nil)
 	w = httptest.NewRecorder()
-	request = httptest.NewRequest(http.MethodGet, "/api/profile/search?profile_id=1", nil)
+	request = profileRequest(http.MethodGet, "/api/profile/search?profile_id=1", nil)
 	h.Search(w, request)
 	if w.Code != http.StatusOK {
 		t.Fatalf("Search(profile_id) status = %d", w.Code)

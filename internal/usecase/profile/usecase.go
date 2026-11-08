@@ -54,7 +54,15 @@ func New(
 }
 
 // Search возвращает публичный профиль пользователя по логину, email или телефону
-func (u *UseCase) Search(ctx context.Context, login string) (domain.Profile, error) {
+func (u *UseCase) Search(
+	ctx context.Context,
+	sessionToken string,
+	csrfToken string,
+	login string,
+) (domain.Profile, error) {
+	if _, err := u.sessions.Authorize(sessionToken, csrfToken); err != nil {
+		return domain.Profile{}, err
+	}
 	profile, err := u.profiles.ReadByLogin(ctx, strings.TrimSpace(login))
 	if err != nil {
 		logging.LogUseCaseError("profile", "search profile", err)
@@ -63,7 +71,15 @@ func (u *UseCase) Search(ctx context.Context, login string) (domain.Profile, err
 }
 
 // SearchByID возвращает публичный профиль пользователя по ID
-func (u *UseCase) SearchByID(ctx context.Context, id int64) (domain.Profile, error) {
+func (u *UseCase) SearchByID(
+	ctx context.Context,
+	sessionToken string,
+	csrfToken string,
+	id int64,
+) (domain.Profile, error) {
+	if _, err := u.sessions.Authorize(sessionToken, csrfToken); err != nil {
+		return domain.Profile{}, err
+	}
 	profile, err := u.profiles.ReadByID(ctx, id)
 	if err != nil {
 		logging.LogUseCaseError("profile", "search profile by id", err)

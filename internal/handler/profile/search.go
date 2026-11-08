@@ -17,10 +17,14 @@ import (
 // @Description Возвращает публичные данные. Можно передать profile_id или login
 // @Tags profile
 // @Produce json
+// @Security SessionCookie
+// @Param X-CSRF-Token header string true "CSRF-токен"
 // @Param profile_id query int false "ID пользователя" minimum(1)
 // @Param login query string false "Логин, email или номер телефона"
 // @Success 200 {object} domain.Profile
 // @Failure 400 {object} domain.ErrorResponse
+// @Failure 401 {object} domain.ErrorResponse
+// @Failure 403 {object} domain.ErrorResponse
 // @Failure 404 {object} domain.ErrorResponse
 // @Failure 500 {object} domain.ErrorResponse
 // @Router /api/profile/search [get]
@@ -37,7 +41,12 @@ func (h *ProfileHandler) Search(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		h.writeSearchResult(w, func() (domain.Profile, error) {
-			return h.useCase.SearchByID(r.Context(), id)
+			return h.useCase.SearchByID(
+				r.Context(),
+				helpers.SessionCookie(r),
+				r.Header.Get("X-CSRF-Token"),
+				id,
+			)
 		})
 		return
 	}
@@ -48,7 +57,12 @@ func (h *ProfileHandler) Search(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.writeSearchResult(w, func() (domain.Profile, error) {
-		return h.useCase.Search(r.Context(), login)
+		return h.useCase.Search(
+			r.Context(),
+			helpers.SessionCookie(r),
+			r.Header.Get("X-CSRF-Token"),
+			login,
+		)
 	})
 }
 
@@ -57,6 +71,10 @@ func (h *ProfileHandler) writeSearchResult(w http.ResponseWriter, search func() 
 	profile, err := search()
 	if err != nil {
 		switch {
+		case errors.Is(err, profileusecase.ErrUnauthorized):
+			helpers.WriteError(w, http.StatusUnauthorized, "unauthorized", "authentication required")
+		case errors.Is(err, profileusecase.ErrInvalidCSRF):
+			helpers.WriteError(w, http.StatusForbidden, "csrf_failed", "valid X-CSRF-Token header is required")
 		case errors.Is(err, profileusecase.ErrProfileNotFound):
 			helpers.WriteError(w, http.StatusNotFound, "profile_not_found", "profile not found")
 		default:
