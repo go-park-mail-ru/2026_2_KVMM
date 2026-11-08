@@ -194,6 +194,15 @@ func (u *UseCase) generatedEmailNickname(ctx context.Context, email string) (str
 	// Оставляем только латинские буквы и цифры
 	re := regexp.MustCompile(`[^A-Za-z0-9]`)
 	nickmane := re.ReplaceAllString(local, "")
+	if nickmane == "" {
+		return "", ErrConflict
+	}
+	for len([]rune(nickmane)) < 4 {
+		nickmane += nickmane
+	}
+	if len([]rune(nickmane)) > 32 {
+		nickmane = nickmane[:32]
+	}
 
 	isFree, err := u.isFreeNick(ctx, nickmane)
 	if err != nil {
