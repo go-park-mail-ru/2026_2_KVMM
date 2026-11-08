@@ -148,6 +148,11 @@ func (h *ChatHandler) WebSocket(w http.ResponseWriter, r *http.Request) {
 	sessionToken := helpers.SessionCookie(r)
 	conn, err := chatWebSocketUpgrader.Upgrade(w, r, nil)
 	if err != nil {
+		logging.Logger().Error("WebSocket upgrade failed",
+			zap.Error(err),
+			zap.String("origin", r.Header.Get("Origin")),
+			zap.String("path", r.URL.Path),
+		)
 		return
 	}
 	defer conn.Close()
