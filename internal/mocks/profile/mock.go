@@ -42,6 +42,36 @@ func (m *MockprofileRepository) EXPECT() *MockprofileRepositoryMockRecorder {
 	return m.recorder
 }
 
+// ReadByID mocks base method.
+func (m *MockprofileRepository) ReadByID(arg0 context.Context, arg1 int64) (domain.Profile, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReadByID", arg0, arg1)
+	ret0, _ := ret[0].(domain.Profile)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ReadByID indicates an expected call of ReadByID.
+func (mr *MockprofileRepositoryMockRecorder) ReadByID(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadByID", reflect.TypeOf((*MockprofileRepository)(nil).ReadByID), arg0, arg1)
+}
+
+// ReadByLogin mocks base method.
+func (m *MockprofileRepository) ReadByLogin(arg0 context.Context, arg1 string) (domain.Profile, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReadByLogin", arg0, arg1)
+	ret0, _ := ret[0].(domain.Profile)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ReadByLogin indicates an expected call of ReadByLogin.
+func (mr *MockprofileRepositoryMockRecorder) ReadByLogin(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadByLogin", reflect.TypeOf((*MockprofileRepository)(nil).ReadByLogin), arg0, arg1)
+}
+
 // Update mocks base method.
 func (m *MockprofileRepository) Update(arg0 context.Context, arg1 int64, arg2 repository.UpdateProfileParams) (domain.Profile, error) {
 	m.ctrl.T.Helper()

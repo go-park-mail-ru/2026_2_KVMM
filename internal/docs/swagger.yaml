@@ -1346,7 +1346,8 @@ paths:
       description: 'Выполняет WebSocket upgrade. Session cookie передаётся автоматически.
         Первым сообщением необходимо отправить `{"type":"auth","csrf_token":"TOKEN"}`.
         После авторизации сервер загружает все чаты пользователя через пагинацию и
-        подписывает соединение на них. Сообщение отправляется как `{"type":"message","chat_id":1,"message":{"message_text":"Привет!"}}`.
+        подписывает соединение на них. Один аккаунт может иметь несколько одновременных
+        подключений с разных устройств. Сообщение отправляется как `{"type":"message","chat_id":1,"message":{"message_text":"Привет!"}}`.
         Ошибки авторизации, CSRF и проверки доступа после Upgrade отправляются как
         WebSocket-события с `type: "error"`.'
       responses:
@@ -1785,6 +1786,49 @@ paths:
       security:
       - SessionCookie: []
       summary: Удалить аватарку
+      tags:
+      - profile
+  /api/profile/search:
+    get:
+      description: Возвращает публичные данные. Можно передать profile_id или login
+      parameters:
+      - description: ID пользователя
+        in: query
+        name: profile_id
+        schema:
+          minimum: 1
+          type: integer
+      - description: Логин, email или номер телефона
+        in: query
+        name: login
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.Profile'
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ErrorResponse'
+          description: Bad Request
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ErrorResponse'
+          description: Not Found
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/domain.ErrorResponse'
+          description: Internal Server Error
+      summary: Найти пользователя
       tags:
       - profile
   /api/profile/update:
