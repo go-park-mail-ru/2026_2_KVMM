@@ -28,7 +28,7 @@ func TestRequestLoggerAddsRequestID(t *testing.T) {
 	request := httptest.NewRequest(http.MethodGet, "/request-id", nil)
 	request.Header.Set("X-Request-ID", "client-request-123")
 	handler.ServeHTTP(w, request)
-	if got := w.Header().Get("X-Request-ID"); got != "client-request-123" {
+	if got := w.Header().Get("X-Request-ID"); got == "" || got == "client-request-123" {
 		t.Fatalf("request ID header = %q", got)
 	}
 }

@@ -158,7 +158,7 @@ func (w *responseLogger) RequestID() string {
 func requestLogger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		startedAt := time.Now()
-		requestID := logging.RequestIDFromHeader(r.Header.Get(logging.RequestIDHeader))
+		requestID := logging.NewRequestID()
 		r = r.WithContext(logging.WithRequestID(r.Context(), requestID))
 		response := &responseLogger{ResponseWriter: w, requestID: requestID, status: http.StatusOK}
 		response.Header().Set(logging.RequestIDHeader, requestID)

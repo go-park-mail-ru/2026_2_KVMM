@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"strings"
 )
 
 const RequestIDHeader = "X-Request-ID"
@@ -18,22 +17,6 @@ func NewRequestID() string {
 		return "unknown"
 	}
 	return hex.EncodeToString(value)
-}
-
-// RequestIDFromHeader возвращает ID из заголовка или создаёт новый
-func RequestIDFromHeader(value string) string {
-	value = strings.TrimSpace(value)
-	if value == "" || len(value) > 64 {
-		return NewRequestID()
-	}
-	for _, char := range value {
-		if (char < 'a' || char > 'z') &&
-			(char < 'A' || char > 'Z') &&
-			(char < '0' || char > '9') && char != '-' && char != '_' {
-			return NewRequestID()
-		}
-	}
-	return value
 }
 
 // WithRequestID сохраняет ID запроса в context.Context
