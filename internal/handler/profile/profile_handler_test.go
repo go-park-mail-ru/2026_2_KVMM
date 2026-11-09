@@ -5,6 +5,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"go.uber.org/mock/gomock"
@@ -76,6 +77,47 @@ func TestProfileHandlers(t *testing.T) {
 	h.UploadAvatar(w, request)
 	if w.Code != http.StatusCreated {
 		t.Fatalf("UploadAvatar() status = %d", w.Code)
+	}
+}
+
+func TestProfileSearchHandler(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	profiles := profilemock.NewMockprofileRepository(ctrl)
+	avatars := profilemock.NewMockavatarRepository(ctrl)
+	session := sessionmock.NewMockSessionReader(ctrl)
+	h := NewProfileHandler(profileusecase.New(
+		profiles,
+		avatars,
+		sessionusecase.New(session),
+	))
+
+	session.EXPECT().Read("session").Return(int64(7), "csrf", nil).Times(2)
+	profiles.EXPECT().ReadByLogin(gomock.Any(), "alice").Return(domain.Profile{
+		ID:       1,
+		Nickname: "alice",
+	}, nil)
+
+	w := httptest.NewRecorder()
+	request := profileRequest(http.MethodGet, "/api/profile/search?login=alice", nil)
+	request.Header.Del("X-CSRF-Token")
+	h.Search(w, request)
+	if w.Code != http.StatusOK {
+		t.Fatalf("Search() status = %d", w.Code)
+	}
+	if body := w.Body.String(); !strings.Contains(body, `"nickname":"alice"`) {
+		t.Fatalf("Search() body = %s", body)
+	}
+
+	profiles.EXPECT().ReadByID(gomock.Any(), int64(1)).Return(domain.Profile{
+		ID:       1,
+		Nickname: "alice",
+	}, nil)
+	w = httptest.NewRecorder()
+	request = profileRequest(http.MethodGet, "/api/profile/search?profile_id=1", nil)
+	request.Header.Del("X-CSRF-Token")
+	h.Search(w, request)
+	if w.Code != http.StatusOK {
+		t.Fatalf("Search(profile_id) status = %d", w.Code)
 	}
 }
 

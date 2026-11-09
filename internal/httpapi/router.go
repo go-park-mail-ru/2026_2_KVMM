@@ -45,9 +45,15 @@ func NewRouter(deps Dependencies) http.Handler {
 	relationshipHandler := deps.Relationship
 
 	router.HandleFunc("/api/auth/register", authHandler.Register).Methods(http.MethodPost)
+	router.HandleFunc("/api/auth/register/email/send/code", authHandler.RequestRegisterCode).Methods(http.MethodPost)
+	router.HandleFunc("/api/auth/register/email/code", authHandler.RegisterByEmail).Methods(http.MethodPost)
 	router.HandleFunc("/api/auth/login", authHandler.Login).Methods(http.MethodPost)
+	router.HandleFunc("/api/auth/login/email/send/code", authHandler.RequestLoginCode).Methods(http.MethodPost)
+	router.HandleFunc("/api/auth/login/email/code", authHandler.LoginByEmail).Methods(http.MethodPost)
 	router.HandleFunc("/api/auth/me", authHandler.Me).Methods(http.MethodGet)
 	router.HandleFunc("/api/auth/logout", authHandler.Logout).Methods(http.MethodPost)
+	router.HandleFunc("/api/auth/email/change", authHandler.RequestEmailChange).Methods(http.MethodPost)
+	router.HandleFunc("/api/auth/email/confirm", authHandler.ConfirmEmail).Methods(http.MethodPost)
 
 	router.HandleFunc("/api/feed", feedHandler.List).Methods(http.MethodGet)
 
@@ -65,6 +71,7 @@ func NewRouter(deps Dependencies) http.Handler {
 	)
 
 	router.HandleFunc("/api/profile/update", profileHandler.Update).Methods(http.MethodPatch)
+	router.HandleFunc("/api/profile/search", profileHandler.Search).Methods(http.MethodGet)
 	router.HandleFunc("/api/profile/avatar", profileHandler.UploadAvatar).Methods(http.MethodPost)
 	router.HandleFunc("/api/profile/avatars", profileHandler.ListAvatars).Methods(http.MethodGet)
 	router.HandleFunc("/api/profile/avatars/{id}", profileHandler.DeleteAvatar).Methods(http.MethodDelete)

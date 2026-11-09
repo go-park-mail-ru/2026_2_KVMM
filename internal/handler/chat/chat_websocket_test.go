@@ -63,13 +63,23 @@ func TestWebSocketHelpers(t *testing.T) {
 	hub := newChatHub()
 	first := &chatClient{userID: 1, chats: make(map[int64]struct{})}
 	second := &chatClient{userID: 1, chats: make(map[int64]struct{})}
-	previous := hub.add(first)
-	if previous != nil {
-		t.Fatal("first hub add returned previous client")
-	}
-	if hub.add(second) != first {
-		t.Fatal("second hub add did not return previous client")
+	hub.add(first)
+	hub.add(second)
+	hub.mu.RLock()
+	clientsCount := len(hub.users[1])
+	hub.mu.RUnlock()
+	if clientsCount != 2 {
+		t.Fatalf("hub stored %d connections, want 2", clientsCount)
 	}
 	hub.remove(first)
+	hub.mu.RLock()
+	clientsCount = len(hub.users[1])
+	hub.mu.RUnlock()
+	if clientsCount != 1 {
+		t.Fatalf("removing first connection left %d connections, want 1", clientsCount)
+	}
 	hub.remove(second)
+	if _, ok := hub.users[1]; ok {
+		t.Fatal("user entry was not removed after the last connection closed")
+	}
 }

@@ -44,28 +44,36 @@ type chatClient struct {
 
 type chatHub struct {
 	mu    sync.RWMutex
-	users map[int64]*chatClient
+	users map[int64]map[*chatClient]struct{}
 }
 
 // newChatHub создаёт хранилище WebSocket-подключений пользователей
 func newChatHub() *chatHub {
-	return &chatHub{users: make(map[int64]*chatClient)}
+	return &chatHub{users: make(map[int64]map[*chatClient]struct{})}
 }
 
-// add добавляет подключение пользователя и возвращает его старое подключение
-func (h *chatHub) add(client *chatClient) *chatClient {
+// add добавляет новое WebSocket-подключение пользователя
+func (h *chatHub) add(client *chatClient) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	previous := h.users[client.userID]
-	h.users[client.userID] = client
-	return previous
+	clients := h.users[client.userID]
+	if clients == nil {
+		clients = make(map[*chatClient]struct{})
+		h.users[client.userID] = clients
+	}
+	clients[client] = struct{}{}
 }
 
-// remove удаляет подключение, только если оно всё ещё является текущим
+// remove удаляет конкретное WebSocket-подключение пользователя.
 func (h *chatHub) remove(client *chatClient) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	if h.users[client.userID] == client {
+	clients := h.users[client.userID]
+	if clients == nil {
+		return
+	}
+	delete(clients, client)
+	if len(clients) == 0 {
 		delete(h.users, client.userID)
 	}
 }
@@ -78,10 +86,12 @@ func (h *chatHub) broadcast(chatID int64, event domain.ChatWebSocketEvent) error
 	}
 
 	h.mu.RLock()
-	clients := make([]*chatClient, 0, len(h.users))
-	for _, client := range h.users {
-		if client.subscribed(chatID) {
-			clients = append(clients, client)
+	clients := make([]*chatClient, 0)
+	for _, userClients := range h.users {
+		for client := range userClients {
+			if client.subscribed(chatID) {
+				clients = append(clients, client)
+			}
 		}
 	}
 	h.mu.RUnlock()
@@ -122,10 +132,11 @@ func (c *chatClient) write(payload []byte) error {
 	return c.conn.WriteMessage(websocket.TextMessage, payload)
 }
 
-// WebSocket открывает одно WebSocket-соединение пользователя для всех его чатов
+// WebSocket открывает WebSocket-соединение пользователя для всех его чатов
+// Один пользователь может одновременно подключиться с нескольких устройств
 // WebSocket godoc
 // @Summary Подключение к чатам через WebSocket
-// @Description Выполняет WebSocket upgrade. Session cookie передаётся автоматически. Первым сообщением необходимо отправить `{"type":"auth","csrf_token":"TOKEN"}`. После авторизации сервер загружает все чаты пользователя через пагинацию и подписывает соединение на них. Сообщение отправляется как `{"type":"message","chat_id":1,"message":{"message_text":"Привет!"}}`. Ошибки авторизации, CSRF и проверки доступа после Upgrade отправляются как WebSocket-события с `type: "error"`.
+// @Description Выполняет WebSocket upgrade. Session cookie передаётся автоматически. Первым сообщением необходимо отправить `{"type":"auth","csrf_token":"TOKEN"}`. После авторизации сервер загружает все чаты пользователя через пагинацию и подписывает соединение на них. Один аккаунт может иметь несколько одновременных подключений с разных устройств. Сообщение отправляется как `{"type":"message","chat_id":1,"message":{"message_text":"Привет!"}}`. Ошибки авторизации, CSRF и проверки доступа после Upgrade отправляются как WebSocket-события с `type: "error"`.
 // @Tags chats
 // @Security SessionCookie
 // @Produce json
@@ -137,6 +148,11 @@ func (h *ChatHandler) WebSocket(w http.ResponseWriter, r *http.Request) {
 	sessionToken := helpers.SessionCookie(r)
 	conn, err := chatWebSocketUpgrader.Upgrade(w, r, nil)
 	if err != nil {
+		logging.Logger().Error("WebSocket upgrade failed",
+			zap.Error(err),
+			zap.String("origin", r.Header.Get("Origin")),
+			zap.String("path", r.URL.Path),
+		)
 		return
 	}
 	defer conn.Close()
@@ -179,13 +195,7 @@ func (h *ChatHandler) WebSocket(w http.ResponseWriter, r *http.Request) {
 		conn:   conn,
 		chats:  make(map[int64]struct{}),
 	}
-	previous := h.hub.add(client)
-	if previous != nil {
-		if err := previous.conn.Close(); err != nil {
-			logging.Logger().Debug("previous WebSocket connection close failed", zap.Error(err))
-			h.hub.remove(previous)
-		}
-	}
+	h.hub.add(client)
 	defer h.hub.remove(client)
 
 	if err := h.writeClientEvent(client, domain.ChatWebSocketEvent{Type: "connected"}); err != nil {

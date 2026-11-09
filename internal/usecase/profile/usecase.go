@@ -2,6 +2,7 @@ package profile
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"time"
 
@@ -14,15 +15,19 @@ import (
 )
 
 var (
-	ErrUnauthorized   = sessionusecase.ErrUnauthorized
-	ErrInvalidCSRF    = sessionusecase.ErrInvalidCSRF
-	ErrConflict       = repository.ErrProfileConflict
-	ErrAvatarLimit    = repository.ErrAvatarLimit
-	ErrAvatarNotFound = repository.ErrAvatarNotFound
-	ErrInvalidAvatar  = repository.ErrInvalidAvatar
+	ErrUnauthorized    = sessionusecase.ErrUnauthorized
+	ErrInvalidCSRF     = sessionusecase.ErrInvalidCSRF
+	ErrProfileNotFound = repository.ErrProfileNotFound
+	ErrConflict        = repository.ErrProfileConflict
+	ErrEmailConfirm    = errors.New("email change requires confirmation")
+	ErrAvatarLimit     = repository.ErrAvatarLimit
+	ErrAvatarNotFound  = repository.ErrAvatarNotFound
+	ErrInvalidAvatar   = repository.ErrInvalidAvatar
 )
 
 type profileRepository interface {
+	ReadByID(context.Context, int64) (domain.Profile, error)
+	ReadByLogin(context.Context, string) (domain.Profile, error)
 	Update(context.Context, int64, repository.UpdateProfileParams) (domain.Profile, error)
 }
 
@@ -48,6 +53,38 @@ func New(
 	return &UseCase{profiles: profiles, avatars: avatars, sessions: sessions}
 }
 
+// Search возвращает публичный профиль пользователя по логину, email или телефону
+func (u *UseCase) Search(
+	ctx context.Context,
+	sessionToken string,
+	login string,
+) (domain.Profile, error) {
+	if _, _, err := u.sessions.Read(sessionToken); err != nil {
+		return domain.Profile{}, err
+	}
+	profile, err := u.profiles.ReadByLogin(ctx, strings.TrimSpace(login))
+	if err != nil {
+		logging.LogUseCaseError("profile", "search profile", err)
+	}
+	return profile, err
+}
+
+// SearchByID возвращает публичный профиль пользователя по ID
+func (u *UseCase) SearchByID(
+	ctx context.Context,
+	sessionToken string,
+	id int64,
+) (domain.Profile, error) {
+	if _, _, err := u.sessions.Read(sessionToken); err != nil {
+		return domain.Profile{}, err
+	}
+	profile, err := u.profiles.ReadByID(ctx, id)
+	if err != nil {
+		logging.LogUseCaseError("profile", "search profile by id", err)
+	}
+	return profile, err
+}
+
 // Update проверяет сессию, хеширует новый пароль и изменяет переданные поля
 func (u *UseCase) Update(
 	ctx context.Context,
@@ -59,10 +96,12 @@ func (u *UseCase) Update(
 	if err != nil {
 		return domain.Profile{}, err
 	}
+	if req.Email != nil {
+		return domain.Profile{}, ErrEmailConfirm
+	}
 
 	params := repository.UpdateProfileParams{
 		Nickname:    req.Nickname,
-		Email:       req.Email,
 		PhoneNumber: req.PhoneNumber,
 		ProfileName: req.ProfileName,
 		Surname:     req.Surname,
