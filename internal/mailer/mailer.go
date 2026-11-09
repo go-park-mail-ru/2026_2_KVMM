@@ -40,7 +40,7 @@ func New() *Mailer {
 // SendAuthCode отправляет одноразовый код на email
 func (m *Mailer) SendAuthCode(to, code string) error {
 	to = strings.ToLower(strings.TrimSpace(to))
-	if !m.reserve(to) {
+	if !m.ReserveAuthCode(to) {
 		return ErrCooldown
 	}
 
@@ -95,6 +95,11 @@ func (m *Mailer) SendAuthCode(to, code string) error {
 
 	success = true
 	return nil
+}
+
+// ReserveAuthCode резервирует email на время cooldown без отправки письма
+func (m *Mailer) ReserveAuthCode(to string) bool {
+	return m.reserve(strings.ToLower(strings.TrimSpace(to)))
 }
 
 // reserve проверяет cooldown и резервирует email для отправки

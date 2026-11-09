@@ -7,6 +7,8 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"math/big"
+	"regexp"
 	"strings"
 	"time"
 
@@ -22,13 +24,21 @@ const (
 	loginEmailPurpose    = "login"
 	changeEmailPurpose   = "change_email"
 	emailCodeTTL         = 2 * time.Minute
+	generatedPasswordLen = 32
+	maxNicknameAttempts  = 20
 )
+
+var emailNicknameInvalidChars = regexp.MustCompile(`[^A-Za-z0-9]`)
+var generatedPasswordAlphabet = []byte("ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*_-+")
 
 // RequestRegisterEmailCode проверяет свободный email и отправляет код регистрации
 func (u *UseCase) RequestRegisterEmailCode(ctx context.Context, email string) error {
 	email = normalizeEmail(email)
 	if _, err := u.profiles.ReadByLoginAuth(ctx, email); err == nil {
-		return ErrConflict
+		// Не раскрываем, зарегистрирован ли email. Письмо не отправляем,
+		// но резервируем адрес на время общего cooldown.
+		u.sender.ReserveAuthCode(email)
+		return nil
 	} else if !errors.Is(err, repository.ErrProfileNotFound) {
 		logging.LogUseCaseErrorContext(ctx, "auth", "check registration email", err)
 		return err
@@ -43,7 +53,7 @@ func (u *UseCase) RegisterByEmail(ctx context.Context, req domain.RegisterByEmai
 		return domain.AuthResponse{}, "", ErrInvalidEmailCode
 	}
 
-	password, err := randomSecret()
+	password, err := randomPassword()
 	if err != nil {
 		return domain.AuthResponse{}, "", err
 	}
@@ -51,7 +61,7 @@ func (u *UseCase) RegisterByEmail(ctx context.Context, req domain.RegisterByEmai
 	if err != nil {
 		return domain.AuthResponse{}, "", err
 	}
-	nickname, err := generatedEmailNickname()
+	nickname, err := u.generatedEmailNickname(ctx, email)
 	if err != nil {
 		return domain.AuthResponse{}, "", err
 	}
@@ -74,7 +84,8 @@ func (u *UseCase) RequestLoginEmailCode(ctx context.Context, email string) error
 	profile, err := u.profiles.ReadByLoginAuth(ctx, email)
 	if err != nil {
 		if errors.Is(err, repository.ErrProfileNotFound) {
-			return ErrInvalidCredentials
+			u.sender.ReserveAuthCode(email)
+			return nil
 		}
 		logging.LogUseCaseErrorContext(ctx, "auth", "check login email", err)
 		return err
@@ -174,7 +185,7 @@ func numericCode() (string, error) {
 	return string(data), nil
 }
 
-// randomSecret создаёт пароль, который не передаётся клиенту
+// randomSecret создаёт hex-секрет для внутренних технических значений
 func randomSecret() (string, error) {
 	data := make([]byte, 24)
 	if _, err := rand.Read(data); err != nil {
@@ -183,13 +194,105 @@ func randomSecret() (string, error) {
 	return hex.EncodeToString(data), nil
 }
 
-// generatedEmailNickname создаёт технический уникальный nickname
-func generatedEmailNickname() (string, error) {
-	secret, err := randomSecret()
+// randomPassword создаёт сложный пароль, который не передаётся клиенту
+func randomPassword() (string, error) {
+	password := make([]byte, generatedPasswordLen)
+	required := []byte("Aa1!")
+	copy(password, required)
+
+	for i := len(required); i < len(password); i++ {
+		value, err := rand.Int(rand.Reader, big.NewInt(int64(len(generatedPasswordAlphabet))))
+		if err != nil {
+			return "", err
+		}
+		password[i] = generatedPasswordAlphabet[value.Int64()]
+	}
+
+	for i := len(password) - 1; i > 0; i-- {
+		value, err := rand.Int(rand.Reader, big.NewInt(int64(i+1)))
+		if err != nil {
+			return "", err
+		}
+		j := int(value.Int64())
+		password[i], password[j] = password[j], password[i]
+	}
+	return string(password), nil
+}
+
+// generatedEmailNickname создаёт уникальный nickname из локальной части email.
+func (u *UseCase) generatedEmailNickname(ctx context.Context, email string) (string, error) {
+	local := email
+	if atPos := strings.IndexByte(email, '@'); atPos != -1 {
+		local = email[:atPos]
+	}
+
+	nickname := emailNicknameInvalidChars.ReplaceAllString(local, "")
+	if nickname == "" {
+		return "", ErrConflict
+	}
+	startsWithLetter := (nickname[0] >= 'A' && nickname[0] <= 'Z') ||
+		(nickname[0] >= 'a' && nickname[0] <= 'z')
+	if !startsWithLetter {
+		nickname = "user_" + nickname
+	}
+	for len(nickname) < 4 {
+		nickname += nickname
+	}
+	if len(nickname) > 32 {
+		nickname = nickname[:32]
+	}
+
+	free, err := u.isFreeNick(ctx, nickname)
 	if err != nil {
 		return "", err
 	}
-	return "user_" + strings.ToLower(secret[:8]), nil
+	if free {
+		return nickname, nil
+	}
+
+	base := nickname
+	if len(base) > 30 {
+		base = base[:30]
+	}
+	for i := 0; i < maxNicknameAttempts; i++ {
+		secret, err := randomSecret()
+		if err != nil {
+			return "", err
+		}
+		candidate := base + strings.ToLower(secret[:2])
+		free, err := u.isFreeNick(ctx, candidate)
+		if err != nil {
+			return "", err
+		}
+		if free {
+			return candidate, nil
+		}
+	}
+
+	for i := 0; i < maxNicknameAttempts; i++ {
+		secret, err := randomSecret()
+		if err != nil {
+			return "", err
+		}
+		candidate := "user_" + strings.ToLower(secret[:27])
+		free, err := u.isFreeNick(ctx, candidate)
+		if err != nil {
+			return "", err
+		}
+		if free {
+			return candidate, nil
+		}
+	}
+	return "", ErrConflict
+}
+
+func (u *UseCase) isFreeNick(ctx context.Context, nickname string) (bool, error) {
+	if _, err := u.profiles.ReadByLoginAuth(ctx, nickname); err == nil {
+		return false, nil
+	} else if !errors.Is(err, repository.ErrProfileNotFound) {
+		return false, err
+	}
+	return true, nil
 }
 
 func normalizeEmail(email string) string {

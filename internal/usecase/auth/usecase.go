@@ -39,6 +39,7 @@ type sessionRepository interface {
 
 type emailSender interface {
 	SendAuthCode(string, string) error
+	ReserveAuthCode(string) bool
 }
 
 type emailCode struct {
@@ -76,6 +77,10 @@ type unavailableEmailSender struct{}
 
 func (unavailableEmailSender) SendAuthCode(string, string) error {
 	return ErrEmailDelivery
+}
+
+func (unavailableEmailSender) ReserveAuthCode(string) bool {
+	return false
 }
 
 // Register регистрирует пользователя, хеширует пароль и создаёт сессию

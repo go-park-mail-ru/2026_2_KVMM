@@ -208,6 +208,20 @@ func (m *MockemailSender) EXPECT() *MockemailSenderMockRecorder {
 	return m.recorder
 }
 
+// ReserveAuthCode mocks base method.
+func (m *MockemailSender) ReserveAuthCode(arg0 string) bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReserveAuthCode", arg0)
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// ReserveAuthCode indicates an expected call of ReserveAuthCode.
+func (mr *MockemailSenderMockRecorder) ReserveAuthCode(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReserveAuthCode", reflect.TypeOf((*MockemailSender)(nil).ReserveAuthCode), arg0)
+}
+
 // SendAuthCode mocks base method.
 func (m *MockemailSender) SendAuthCode(arg0, arg1 string) error {
 	m.ctrl.T.Helper()
