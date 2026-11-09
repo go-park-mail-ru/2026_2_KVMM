@@ -55,7 +55,7 @@ func (u *UseCase) Create(
 	}
 	chat, err := u.chats.Create(ctx, userID, req.ProfileID)
 	if err != nil {
-		logging.LogUseCaseError("chat", "create chat", err)
+		logging.LogUseCaseErrorContext(ctx, "chat", "create chat", err)
 	}
 	return chat, err
 }
@@ -74,7 +74,7 @@ func (u *UseCase) List(
 	}
 	response, err := u.chats.ListChats(ctx, userID, cursor, limit)
 	if err != nil {
-		logging.LogUseCaseError("chat", "list chats", err)
+		logging.LogUseCaseErrorContext(ctx, "chat", "list chats", err)
 	}
 	return response, err
 }
@@ -93,12 +93,12 @@ func (u *UseCase) Messages(
 		return domain.MessagesResponse{}, err
 	}
 	if err := u.chats.IsParticipant(ctx, chatID, userID); err != nil {
-		logging.LogUseCaseError("chat", "check chat participant", err)
+		logging.LogUseCaseErrorContext(ctx, "chat", "check chat participant", err)
 		return domain.MessagesResponse{}, err
 	}
 	response, err := u.messages.ListMessages(ctx, chatID, cursor, limit)
 	if err != nil {
-		logging.LogUseCaseError("chat", "list messages", err)
+		logging.LogUseCaseErrorContext(ctx, "chat", "list messages", err)
 	}
 	return response, err
 }
@@ -128,7 +128,7 @@ func (u *UseCase) Send(
 		ReplyFrom:   req.ReplyFrom,
 	})
 	if err != nil {
-		logging.LogUseCaseError("chat", "send message", err)
+		logging.LogUseCaseErrorContext(ctx, "chat", "send message", err)
 	}
 	return message, err
 }

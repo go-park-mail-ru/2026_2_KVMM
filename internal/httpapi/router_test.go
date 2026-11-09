@@ -17,6 +17,22 @@ func TestRequestLoggerRecoversPanic(t *testing.T) {
 	}
 }
 
+func TestRequestLoggerAddsRequestID(t *testing.T) {
+	handler := requestLogger(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if loggingID := r.Context().Value(struct{}{}); loggingID != nil {
+			t.Fatal("request ID leaked under an unrelated context key")
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	w := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/request-id", nil)
+	request.Header.Set("X-Request-ID", "client-request-123")
+	handler.ServeHTTP(w, request)
+	if got := w.Header().Get("X-Request-ID"); got != "client-request-123" {
+		t.Fatalf("request ID header = %q", got)
+	}
+}
+
 func TestRouterHealthAndCORS(t *testing.T) {
 	router := NewRouter(Dependencies{})
 	w := httptest.NewRecorder()

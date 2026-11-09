@@ -57,7 +57,7 @@ func (u *UseCase) Create(
 	}
 	relationship, err := u.relationships.Create(ctx, userID, req)
 	if err != nil {
-		logging.LogUseCaseError("relationship", "create relationship", err)
+		logging.LogUseCaseErrorContext(ctx, "relationship", "create relationship", err)
 	}
 	return relationship, err
 }
@@ -79,7 +79,7 @@ func (u *UseCase) List(
 	}
 	response, err := u.relationships.List(ctx, userID, req)
 	if err != nil {
-		logging.LogUseCaseError("relationship", "list relationships", err)
+		logging.LogUseCaseErrorContext(ctx, "relationship", "list relationships", err)
 	}
 	return response, err
 }
@@ -92,7 +92,7 @@ func (u *UseCase) Types(ctx context.Context, sessionToken string) (domain.Relati
 	}
 	types, err := u.relationships.Types(ctx, userID)
 	if err != nil {
-		logging.LogUseCaseError("relationship", "list relationship types", err)
+		logging.LogUseCaseErrorContext(ctx, "relationship", "list relationship types", err)
 	}
 	return types, err
 }
@@ -116,7 +116,7 @@ func (u *UseCase) Requests(
 	}
 	response, err := u.relationships.Requests(ctx, userID, typeName, cursor, limit)
 	if err != nil {
-		logging.LogUseCaseError("relationship", "list relationship requests", err)
+		logging.LogUseCaseErrorContext(ctx, "relationship", "list relationship requests", err)
 	}
 	return response, err
 }
@@ -134,7 +134,7 @@ func (u *UseCase) Suggestions(
 	}
 	response, err := u.relationships.Suggestions(ctx, userID, cursor, limit)
 	if err != nil {
-		logging.LogUseCaseError("relationship", "list relationship suggestions", err)
+		logging.LogUseCaseErrorContext(ctx, "relationship", "list relationship suggestions", err)
 	}
 	return response, err
 }
@@ -155,7 +155,7 @@ func (u *UseCase) Accept(
 	}
 	relationship, err := u.relationships.Accept(ctx, userID, req)
 	if err != nil {
-		logging.LogUseCaseError("relationship", "accept relationship", err)
+		logging.LogUseCaseErrorContext(ctx, "relationship", "accept relationship", err)
 	}
 	return relationship, err
 }
@@ -176,12 +176,12 @@ func (u *UseCase) Cancel(
 	}
 	relationship, err := u.relationships.Cancel(ctx, userID, req)
 	if err != nil {
-		logging.LogUseCaseError("relationship", "cancel relationship", err)
+		logging.LogUseCaseErrorContext(ctx, "relationship", "cancel relationship", err)
 	}
 	return relationship, err
 }
 
-// validateRelationshipType проверяет поддерживаемые виды связей
+// validateRelationshipType проверяет поддерживаемые виды связей.
 func validateRelationshipType(typeName string) error {
 	switch typeName {
 	case domain.RelationshipTypeFriendship, domain.RelationshipTypeFamily:

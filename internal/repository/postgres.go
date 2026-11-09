@@ -5,6 +5,8 @@ import (
 	"errors"
 	"strings"
 
+	"kvmm/internal/logging"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/tracelog"
 	"go.uber.org/zap"
@@ -46,6 +48,9 @@ func newPGXLogger(logger *zap.Logger) tracelog.Logger {
 	return tracelog.LoggerFunc(func(ctx context.Context, level tracelog.LogLevel, message string, data map[string]any) {
 		fields := make([]zap.Field, 0, len(data)+1)
 		fields = append(fields, zap.String("component", "postgres"))
+		if requestID := logging.RequestID(ctx); requestID != "" {
+			fields = append(fields, zap.String("request_id", requestID))
+		}
 		for key, value := range data {
 			fields = append(fields, zap.Any(key, value))
 		}

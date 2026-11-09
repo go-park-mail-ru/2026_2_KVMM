@@ -25,7 +25,7 @@ func New(posts postRepository) *UseCase {
 func (u *UseCase) List(ctx context.Context, cursor int64, limit int) (domain.FeedResponse, error) {
 	posts, nextCursor, hasMore, err := u.posts.ReadFeedPosts(ctx, cursor, limit)
 	if err != nil {
-		logging.LogUseCaseError("feed", "read feed posts", err)
+		logging.LogUseCaseErrorContext(ctx, "feed", "read feed posts", err)
 		return domain.FeedResponse{}, err
 	}
 	return domain.FeedResponse{

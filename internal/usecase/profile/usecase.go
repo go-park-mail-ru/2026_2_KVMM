@@ -64,7 +64,7 @@ func (u *UseCase) Search(
 	}
 	profile, err := u.profiles.ReadByLogin(ctx, strings.TrimSpace(login))
 	if err != nil {
-		logging.LogUseCaseError("profile", "search profile", err)
+		logging.LogUseCaseErrorContext(ctx, "profile", "search profile", err)
 	}
 	return profile, err
 }
@@ -80,7 +80,7 @@ func (u *UseCase) SearchByID(
 	}
 	profile, err := u.profiles.ReadByID(ctx, id)
 	if err != nil {
-		logging.LogUseCaseError("profile", "search profile by id", err)
+		logging.LogUseCaseErrorContext(ctx, "profile", "search profile by id", err)
 	}
 	return profile, err
 }
@@ -124,7 +124,7 @@ func (u *UseCase) Update(
 	if req.Password != nil {
 		hash, hashErr := bcrypt.GenerateFromPassword([]byte(*req.Password), bcrypt.DefaultCost)
 		if hashErr != nil {
-			logging.LogUseCaseError("profile", "hash password", hashErr)
+			logging.LogUseCaseErrorContext(ctx, "profile", "hash password", hashErr)
 			return domain.Profile{}, hashErr
 		}
 		hashString := string(hash)
@@ -133,7 +133,7 @@ func (u *UseCase) Update(
 
 	profile, err := u.profiles.Update(ctx, userID, params)
 	if err != nil {
-		logging.LogUseCaseError("profile", "update profile", err)
+		logging.LogUseCaseErrorContext(ctx, "profile", "update profile", err)
 	}
 	return profile, err
 }
@@ -151,7 +151,7 @@ func (u *UseCase) UploadAvatar(
 	}
 	avatar, err := u.avatars.Create(ctx, userID, req)
 	if err != nil {
-		logging.LogUseCaseError("profile", "create avatar", err)
+		logging.LogUseCaseErrorContext(ctx, "profile", "create avatar", err)
 	}
 	return avatar, err
 }
@@ -164,7 +164,7 @@ func (u *UseCase) ListAvatars(ctx context.Context, sessionToken string) (domain.
 	}
 	response, err := u.avatars.List(ctx, userID)
 	if err != nil {
-		logging.LogUseCaseError("profile", "list avatars", err)
+		logging.LogUseCaseErrorContext(ctx, "profile", "list avatars", err)
 	}
 	return response, err
 }
@@ -182,7 +182,7 @@ func (u *UseCase) DeleteAvatar(
 	}
 	err = u.avatars.Delete(ctx, userID, avatarID)
 	if err != nil {
-		logging.LogUseCaseError("profile", "delete avatar", err)
+		logging.LogUseCaseErrorContext(ctx, "profile", "delete avatar", err)
 	}
 	return err
 }

@@ -31,8 +31,9 @@ swagger:
 
 # Run tests and generate coverage report
 test:
-	go test -coverpkg=./... -coverprofile=coverage.out ./...
-	go tool cover -func=coverage.out
+	go test -coverpkg=./internal/... -coverprofile=coverage.out ./internal/...
+	grep -v '/internal/mocks/' coverage.out > coverage-no-mocks.out
+	go tool cover -func=coverage-no-mocks.out | tail -1
 
 # Generate mocks
 MOCKGEN := go run go.uber.org/mock/mockgen

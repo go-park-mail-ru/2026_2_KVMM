@@ -2,6 +2,7 @@
 package logging
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -33,6 +34,26 @@ func LogUseCaseError(component, operation string, err error) {
 		zap.String("operation", operation),
 		zap.Error(err),
 	)
+}
+
+// LogUseCaseErrorContext записывает ошибку usecase вместе с ID запроса
+func LogUseCaseErrorContext(ctx context.Context, component, operation string, err error) {
+	if err == nil {
+		return
+	}
+	LoggerWithContext(ctx).Debug("usecase operation failed",
+		zap.String("component", component),
+		zap.String("operation", operation),
+		zap.Error(err),
+	)
+}
+
+// LoggerWithContext возвращает логер с полями из context.Context
+func LoggerWithContext(ctx context.Context) *zap.Logger {
+	if requestID := RequestID(ctx); requestID != "" {
+		return defaultLogger.With(zap.String("request_id", requestID))
+	}
+	return defaultLogger
 }
 
 // New создаёт zap-логер

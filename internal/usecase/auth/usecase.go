@@ -57,6 +57,7 @@ type UseCase struct {
 }
 
 // New создаёт usecase авторизации
+
 func New(profiles profileRepository, sessions sessionRepository, senders ...emailSender) *UseCase {
 	var sender emailSender = unavailableEmailSender{}
 	if len(senders) > 0 && senders[0] != nil {
@@ -82,13 +83,13 @@ func (u *UseCase) Register(ctx context.Context, req domain.RegisterRequest) (dom
 	if existing, err := u.profiles.ReadByLoginAuth(ctx, req.Nickname); err == nil && existing.Profile.ID > 0 {
 		return domain.AuthResponse{}, "", ErrConflict
 	} else if err != nil && !errors.Is(err, repository.ErrProfileNotFound) {
-		logging.LogUseCaseError("auth", "read profile for registration", err)
+		logging.LogUseCaseErrorContext(ctx, "auth", "read profile for registration", err)
 		return domain.AuthResponse{}, "", err
 	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		logging.LogUseCaseError("auth", "hash password", err)
+		logging.LogUseCaseErrorContext(ctx, "auth", "hash password", err)
 		return domain.AuthResponse{}, "", err
 	}
 
@@ -98,11 +99,11 @@ func (u *UseCase) Register(ctx context.Context, req domain.RegisterRequest) (dom
 		PasswordHash: string(hash),
 	})
 	if err != nil {
-		logging.LogUseCaseError("auth", "create profile", err)
+		logging.LogUseCaseErrorContext(ctx, "auth", "create profile", err)
 		return domain.AuthResponse{}, "", err
 	}
 
-	return u.createAuthResponse(profile)
+	return u.createAuthResponse(ctx, profile)
 }
 
 // Login проверяет логин и пароль и создаёт сессию
@@ -112,13 +113,13 @@ func (u *UseCase) Login(ctx context.Context, req domain.LoginRequest) (domain.Au
 		if errors.Is(err, repository.ErrProfileNotFound) {
 			return domain.AuthResponse{}, "", ErrInvalidCredentials
 		}
-		logging.LogUseCaseError("auth", "read profile for login", err)
+		logging.LogUseCaseErrorContext(ctx, "auth", "read profile for login", err)
 		return domain.AuthResponse{}, "", err
 	}
 	if bcrypt.CompareHashAndPassword([]byte(found.PasswordHash), []byte(req.Password)) != nil {
 		return domain.AuthResponse{}, "", ErrInvalidCredentials
 	}
-	return u.createAuthResponse(found.Profile)
+	return u.createAuthResponse(ctx, found.Profile)
 }
 
 // Current возвращает профиль и CSRF-токен текущей сессии
@@ -129,7 +130,7 @@ func (u *UseCase) Current(ctx context.Context, sessionToken string) (domain.MeRe
 	}
 	profile, err := u.profiles.ReadByID(ctx, userID)
 	if err != nil {
-		logging.LogUseCaseError("auth", "read current profile", err)
+		logging.LogUseCaseErrorContext(ctx, "auth", "read current profile", err)
 		return domain.MeResponse{}, err
 	}
 	return domain.MeResponse{Profile: profile, CSRFToken: csrfToken}, nil
@@ -144,10 +145,10 @@ func (u *UseCase) Logout(sessionToken, csrfToken string) error {
 	return nil
 }
 
-func (u *UseCase) createAuthResponse(profile domain.Profile) (domain.AuthResponse, string, error) {
+func (u *UseCase) createAuthResponse(ctx context.Context, profile domain.Profile) (domain.AuthResponse, string, error) {
 	sessionToken, csrfToken, err := u.sessions.Create(profile.ID)
 	if err != nil {
-		logging.LogUseCaseError("auth", "create session", err)
+		logging.LogUseCaseErrorContext(ctx, "auth", "create session", err)
 		return domain.AuthResponse{}, "", err
 	}
 	return domain.AuthResponse{Profile: profile, CSRFToken: csrfToken}, sessionToken, nil

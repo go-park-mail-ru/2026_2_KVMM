@@ -103,6 +103,7 @@ func NewRouter(deps Dependencies) http.Handler {
 
 type responseLogger struct {
 	http.ResponseWriter
+	requestID   string
 	status      int
 	wroteHeader bool
 }
@@ -148,17 +149,26 @@ func (w *responseLogger) Unwrap() http.ResponseWriter {
 	return w.ResponseWriter
 }
 
-// requestLogger записывает входящие HTTP-запросы, ответы и необработанные panic
+// RequestID возвращает ID текущего HTTP-запроса для вспомогательных логов
+func (w *responseLogger) RequestID() string {
+	return w.requestID
+}
+
+// requestLogger записывает входящие HTTP-запросы
 func requestLogger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		startedAt := time.Now()
-		response := &responseLogger{ResponseWriter: w, status: http.StatusOK}
+		requestID := logging.RequestIDFromHeader(r.Header.Get(logging.RequestIDHeader))
+		r = r.WithContext(logging.WithRequestID(r.Context(), requestID))
+		response := &responseLogger{ResponseWriter: w, requestID: requestID, status: http.StatusOK}
+		response.Header().Set(logging.RequestIDHeader, requestID)
 		requestBody := readRequestBodyForLog(r)
 
 		defer func() {
 			if recovered := recover(); recovered != nil {
 				logging.Logger().Error("panic recovered in HTTP handler",
 					zap.Any("panic", recovered),
+					zap.String("request_id", requestID),
 					zap.String("method", r.Method),
 					zap.String("path", r.URL.Path),
 				)
@@ -170,6 +180,7 @@ func requestLogger(next http.Handler) http.Handler {
 			fields := []zap.Field{
 				zap.String("method", r.Method),
 				zap.String("path", r.URL.Path),
+				zap.String("request_id", requestID),
 				zap.Int("status", response.status),
 				zap.Duration("duration", time.Since(startedAt)),
 			}
@@ -179,11 +190,13 @@ func requestLogger(next http.Handler) http.Handler {
 				logging.Logger().Info("HTTP request completed", fields...)
 			}
 			logging.Logger().Debug("HTTP request details",
+				zap.String("request_id", requestID),
 				zap.String("query", r.URL.RawQuery),
 				zap.String("user_agent", r.UserAgent()),
 			)
 			if requestBody != "" {
 				logging.Logger().Debug("HTTP request body",
+					zap.String("request_id", requestID),
 					zap.String("method", r.Method),
 					zap.String("path", r.URL.Path),
 					zap.String("body", requestBody),
@@ -242,6 +255,7 @@ func cors(next http.Handler) http.Handler {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			w.Header().Set("Vary", "Origin")
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
+			w.Header().Set("Access-Control-Expose-Headers", logging.RequestIDHeader)
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-CSRF-Token")
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS")
 		}

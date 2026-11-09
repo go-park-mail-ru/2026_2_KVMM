@@ -78,7 +78,13 @@ func WriteError(w http.ResponseWriter, status int, code, message string) {
 
 // WriteInternalError записывает внутреннюю ошибку и возвращает ответ 500
 func WriteInternalError(w http.ResponseWriter, component string, err error) {
-	logging.Logger().Error("internal request error",
+	logger := logging.Logger()
+	if requestIDWriter, ok := w.(interface{ RequestID() string }); ok {
+		if requestID := requestIDWriter.RequestID(); requestID != "" {
+			logger = logger.With(zap.String("request_id", requestID))
+		}
+	}
+	logger.Error("internal request error",
 		zap.String("component", component),
 		zap.Error(err),
 	)

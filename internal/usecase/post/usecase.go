@@ -67,7 +67,7 @@ func (u *UseCase) Create(
 		AuthorProfileID: &userID,
 	})
 	if err != nil {
-		logging.LogUseCaseError("post", "create post", err)
+		logging.LogUseCaseErrorContext(ctx, "post", "create post", err)
 	}
 	return post, err
 }
@@ -88,7 +88,7 @@ func (u *UseCase) Update(
 	}
 	post, err := u.posts.ReadByID(ctx, req.PostID)
 	if err != nil {
-		logging.LogUseCaseError("post", "read post for update", err)
+		logging.LogUseCaseErrorContext(ctx, "post", "read post for update", err)
 		return domain.Post{}, err
 	}
 	if post.AuthorProfileID == nil || *post.AuthorProfileID != userID {
@@ -97,7 +97,7 @@ func (u *UseCase) Update(
 	text := strings.TrimSpace(*req.PostText)
 	updated, err := u.posts.Update(ctx, req.PostID, repository.UpdatePostParams{PostText: &text})
 	if err != nil {
-		logging.LogUseCaseError("post", "update post", err)
+		logging.LogUseCaseErrorContext(ctx, "post", "update post", err)
 	}
 	return updated, err
 }
@@ -115,7 +115,7 @@ func (u *UseCase) Delete(
 	}
 	post, err := u.posts.ReadByID(ctx, postID)
 	if err != nil {
-		logging.LogUseCaseError("post", "read post for delete", err)
+		logging.LogUseCaseErrorContext(ctx, "post", "read post for delete", err)
 		return err
 	}
 	if post.AuthorProfileID == nil || *post.AuthorProfileID != userID {
@@ -123,7 +123,7 @@ func (u *UseCase) Delete(
 	}
 	err = u.posts.Delete(ctx, postID)
 	if err != nil {
-		logging.LogUseCaseError("post", "delete post", err)
+		logging.LogUseCaseErrorContext(ctx, "post", "delete post", err)
 	}
 	return err
 }
@@ -137,7 +137,7 @@ func (u *UseCase) UserPosts(
 ) (domain.UserPostsResponse, error) {
 	posts, nextCursor, hasMore, err := u.posts.ReadProfilePosts(ctx, profileID, cursor, limit)
 	if err != nil {
-		logging.LogUseCaseError("post", "read profile posts", err)
+		logging.LogUseCaseErrorContext(ctx, "post", "read profile posts", err)
 		return domain.UserPostsResponse{}, err
 	}
 	return domain.UserPostsResponse{
