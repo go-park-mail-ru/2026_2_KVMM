@@ -96,6 +96,9 @@ func TestProfileSearchHandler(t *testing.T) {
 		ID:       1,
 		Nickname: "alice",
 	}, nil)
+	avatars.EXPECT().List(gomock.Any(), int64(1)).Return(domain.AvatarsResponse{
+		Avatars: []domain.Avatar{{ID: 11, URL: "/api/media/avatars/new.png"}},
+	}, nil).Times(2)
 
 	w := httptest.NewRecorder()
 	request := profileRequest(http.MethodGet, "/api/profile/search?login=alice", nil)
@@ -106,6 +109,9 @@ func TestProfileSearchHandler(t *testing.T) {
 	}
 	if body := w.Body.String(); !strings.Contains(body, `"nickname":"alice"`) {
 		t.Fatalf("Search() body = %s", body)
+	}
+	if body := w.Body.String(); !strings.Contains(body, `"avatar_urls":["/api/media/avatars/new.png"]`) {
+		t.Fatalf("Search() avatar body = %s", body)
 	}
 
 	profiles.EXPECT().ReadByID(gomock.Any(), int64(1)).Return(domain.Profile{

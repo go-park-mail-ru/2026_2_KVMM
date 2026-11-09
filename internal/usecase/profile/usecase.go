@@ -65,8 +65,9 @@ func (u *UseCase) Search(
 	profile, err := u.profiles.ReadByLogin(ctx, strings.TrimSpace(login))
 	if err != nil {
 		logging.LogUseCaseErrorContext(ctx, "profile", "search profile", err)
+		return domain.Profile{}, err
 	}
-	return profile, err
+	return u.attachAvatars(ctx, profile)
 }
 
 // SearchByID возвращает публичный профиль пользователя по ID
@@ -81,8 +82,24 @@ func (u *UseCase) SearchByID(
 	profile, err := u.profiles.ReadByID(ctx, id)
 	if err != nil {
 		logging.LogUseCaseErrorContext(ctx, "profile", "search profile by id", err)
+		return domain.Profile{}, err
 	}
-	return profile, err
+	return u.attachAvatars(ctx, profile)
+}
+
+// attachAvatars добавляет к публичному профилю его активные аватарки
+func (u *UseCase) attachAvatars(ctx context.Context, profile domain.Profile) (domain.Profile, error) {
+	avatars, err := u.avatars.List(ctx, profile.ID)
+	if err != nil {
+		logging.LogUseCaseErrorContext(ctx, "profile", "load profile avatars", err)
+		return domain.Profile{}, err
+	}
+
+	profile.AvatarURLs = make([]string, 0, len(avatars.Avatars))
+	for _, avatar := range avatars.Avatars {
+		profile.AvatarURLs = append(profile.AvatarURLs, avatar.URL)
+	}
+	return profile, nil
 }
 
 // Update проверяет сессию, хеширует новый пароль и изменяет переданные поля
