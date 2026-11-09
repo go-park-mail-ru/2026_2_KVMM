@@ -24,6 +24,7 @@ func chatParticipantRows(chatID, profileID int64, nickname string) *pgxmock.Rows
 	return pgxmock.NewRows([]string{
 		"chat_id", "id", "nickname", "email", "phone_number", "profile_name", "surname",
 		"patronymic", "gender", "birthday", "bio", "created_at", "updated_at", "deleted_at",
+		"avatar_url",
 	}).AddRow(
 		chatID,
 		profileID,
@@ -39,6 +40,7 @@ func chatParticipantRows(chatID, profileID int64, nickname string) *pgxmock.Rows
 		time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC),
 		nil,
 		nil,
+		"/api/media/avatars/bob.png",
 	)
 }
 
@@ -114,6 +116,9 @@ func TestChatRepositoryListAndParticipant(t *testing.T) {
 	response, err := repository.ListChats(ctx, 1, -1, 1)
 	if err != nil || len(response.Chats) != 1 || response.NextCursor != 7 || !response.HasMore || response.Chats[0].LastMessage == nil {
 		t.Fatalf("ListChats() = %+v, %v", response, err)
+	}
+	if got := response.Chats[0].Participants[0].AvatarURLs; len(got) != 1 || got[0] != "/api/media/avatars/bob.png" {
+		t.Fatalf("ListChats() avatar_urls = %v", got)
 	}
 
 	mock.ExpectQuery(queryPattern(requireParticipantQuery)).

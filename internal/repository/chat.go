@@ -8,6 +8,7 @@ import (
 	"kvmm/internal/domain"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type ChatRepository struct {
@@ -107,9 +108,20 @@ const readParticipantsBatchQuery = `
 		p.bio,
 		p.created_at,
 		p.updated_at,
-		p.deleted_at
+		p.deleted_at,
+		avatar.media_path AS avatar_url
 	FROM chat_profile cp
 	JOIN profile p ON p.id = cp.profile_id
+	LEFT JOIN LATERAL (
+		SELECT m.media_path
+		FROM profile_avatar pa
+		JOIN media m ON m.id = pa.media_id
+		WHERE pa.profile_id = p.id
+			AND pa.deleted_at IS NULL
+			AND m.deleted_at IS NULL
+		ORDER BY pa.created_at DESC, pa.media_id DESC
+		LIMIT 1
+	) avatar ON TRUE
 	WHERE cp.chat_id = ANY($1::BIGINT[])
 		AND cp.deleted_at IS NULL
 		AND p.deleted_at IS NULL
@@ -355,9 +367,13 @@ func (r *ChatRepository) readParticipantsBatch(
 
 	for rows.Next() {
 		var chatID int64
-		profile, _, scanErr := scanProfileWithLeading(rows, &chatID, false)
+		var avatarURL pgtype.Text
+		profile, _, scanErr := scanProfileWithLeadingAvatar(rows, &chatID, &avatarURL)
 		if scanErr != nil {
 			return nil, scanErr
+		}
+		if avatarURL.Valid {
+			profile.AvatarURLs = []string{avatarURL.String}
 		}
 		participants[chatID] = append(participants[chatID], profile)
 	}

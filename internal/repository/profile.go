@@ -264,9 +264,28 @@ func scanProfile(row rowScanner, withCredentials bool) (domain.Profile, string, 
 	return scanProfileWithLeading(row, nil, withCredentials)
 }
 
+// scanProfileWithLeading сканирует профиль с дополнительным полем перед данными профиля
 func scanProfileWithLeading(
 	row rowScanner,
 	leading any,
+	withCredentials bool,
+) (domain.Profile, string, error) {
+	return scanProfileValues(row, leading, nil, withCredentials)
+}
+
+// scanProfileWithLeadingAvatar сканирует профиль и добавляет URL последней аватарки
+func scanProfileWithLeadingAvatar(
+	row rowScanner,
+	leading any,
+	avatarURL *pgtype.Text,
+) (domain.Profile, string, error) {
+	return scanProfileValues(row, leading, avatarURL, false)
+}
+
+func scanProfileValues(
+	row rowScanner,
+	leading any,
+	avatarURL *pgtype.Text,
 	withCredentials bool,
 ) (domain.Profile, string, error) {
 	var (
@@ -305,6 +324,9 @@ func scanProfileWithLeading(
 		&updatedAt,
 		&deletedAt,
 	)
+	if avatarURL != nil {
+		dest = append(dest, avatarURL)
+	}
 	if withCredentials {
 		dest = append(dest, &passwordHash)
 	}
