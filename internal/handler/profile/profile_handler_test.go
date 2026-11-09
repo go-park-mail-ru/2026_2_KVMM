@@ -92,7 +92,6 @@ func TestProfileSearchHandler(t *testing.T) {
 	))
 
 	session.EXPECT().Read("session").Return(int64(7), "csrf", nil).Times(2)
-	session.EXPECT().ValidateCSRF("session", "csrf").Return(nil).Times(2)
 	profiles.EXPECT().ReadByLogin(gomock.Any(), "alice").Return(domain.Profile{
 		ID:       1,
 		Nickname: "alice",
@@ -100,6 +99,7 @@ func TestProfileSearchHandler(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	request := profileRequest(http.MethodGet, "/api/profile/search?login=alice", nil)
+	request.Header.Del("X-CSRF-Token")
 	h.Search(w, request)
 	if w.Code != http.StatusOK {
 		t.Fatalf("Search() status = %d", w.Code)
@@ -114,6 +114,7 @@ func TestProfileSearchHandler(t *testing.T) {
 	}, nil)
 	w = httptest.NewRecorder()
 	request = profileRequest(http.MethodGet, "/api/profile/search?profile_id=1", nil)
+	request.Header.Del("X-CSRF-Token")
 	h.Search(w, request)
 	if w.Code != http.StatusOK {
 		t.Fatalf("Search(profile_id) status = %d", w.Code)

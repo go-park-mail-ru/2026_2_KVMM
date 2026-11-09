@@ -2741,15 +2741,6 @@ const docTemplate = `{
                 "description": "Возвращает публичные данные. Можно передать profile_id или login",
                 "parameters": [
                     {
-                        "description": "CSRF-токен",
-                        "in": "header",
-                        "name": "X-CSRF-Token",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
                         "description": "ID пользователя",
                         "in": "query",
                         "name": "profile_id",
@@ -2797,16 +2788,6 @@ const docTemplate = `{
                             }
                         },
                         "description": "Unauthorized"
-                    },
-                    "403": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/domain.ErrorResponse"
-                                }
-                            }
-                        },
-                        "description": "Forbidden"
                     },
                     "404": {
                         "content": {

@@ -57,10 +57,9 @@ func New(
 func (u *UseCase) Search(
 	ctx context.Context,
 	sessionToken string,
-	csrfToken string,
 	login string,
 ) (domain.Profile, error) {
-	if _, err := u.sessions.Authorize(sessionToken, csrfToken); err != nil {
+	if _, _, err := u.sessions.Read(sessionToken); err != nil {
 		return domain.Profile{}, err
 	}
 	profile, err := u.profiles.ReadByLogin(ctx, strings.TrimSpace(login))
@@ -74,10 +73,9 @@ func (u *UseCase) Search(
 func (u *UseCase) SearchByID(
 	ctx context.Context,
 	sessionToken string,
-	csrfToken string,
 	id int64,
 ) (domain.Profile, error) {
-	if _, err := u.sessions.Authorize(sessionToken, csrfToken); err != nil {
+	if _, _, err := u.sessions.Read(sessionToken); err != nil {
 		return domain.Profile{}, err
 	}
 	profile, err := u.profiles.ReadByID(ctx, id)
