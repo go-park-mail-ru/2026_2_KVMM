@@ -218,7 +218,7 @@ const docTemplate = `{
                     },
                     "post_text": {
                         "example": "Привет, мир!",
-                        "maxLength": 256,
+                        "maxLength": 2048,
                         "type": "string"
                     }
                 },
@@ -854,7 +854,7 @@ const docTemplate = `{
                     },
                     "post_text": {
                         "example": "Обновлённый текст",
-                        "maxLength": 256,
+                        "maxLength": 2048,
                         "type": "string"
                     }
                 },

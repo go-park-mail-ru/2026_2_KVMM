@@ -85,7 +85,7 @@ CREATE TABLE post (
     id BIGINT GENERATED ALWAYS AS IDENTITY,
 
     post_text TEXT NULL
-        CHECK (LENGTH(post_text) <= 256),
+        CHECK (LENGTH(post_text) <= 2048),
 
     author_profile_id BIGINT NULL,
     author_community_id BIGINT NULL,

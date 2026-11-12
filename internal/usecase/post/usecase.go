@@ -12,13 +12,9 @@ import (
 )
 
 var (
-	// ErrUnauthorized означает, что запрос выполнен без действующей сессии.
-	ErrUnauthorized = sessionusecase.ErrUnauthorized
-	// ErrInvalidCSRF означает неверный CSRF-токен.
-	ErrInvalidCSRF = sessionusecase.ErrInvalidCSRF
-	// ErrForbidden означает попытку изменить чужую публикацию.
-	ErrForbidden = errors.New("post belongs to another profile")
-	// ErrInvalidPost означает некорректный текст публикации.
+	ErrUnauthorized    = sessionusecase.ErrUnauthorized
+	ErrInvalidCSRF     = sessionusecase.ErrInvalidCSRF
+	ErrForbidden       = errors.New("post belongs to another profile")
 	ErrInvalidPost     = errors.New("post text must be at most 256 characters")
 	ErrPostNotFound    = repository.ErrPostNotFound
 	ErrProfileNotFound = repository.ErrProfileNotFound
@@ -55,7 +51,7 @@ func (u *UseCase) Create(
 		return domain.Post{}, err
 	}
 	text := strings.TrimSpace(req.PostText)
-	if len([]rune(text)) > 256 {
+	if len([]rune(text)) > 2048 {
 		return domain.Post{}, ErrInvalidPost
 	}
 	var postText *string

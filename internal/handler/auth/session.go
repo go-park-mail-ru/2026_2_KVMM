@@ -20,9 +20,6 @@ import (
 // @Failure 500 {object} domain.ErrorResponse
 // @Router /api/auth/me [get]
 func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
-	if !helpers.MethodAllowed(w, r, http.MethodGet) {
-		return
-	}
 	session := helpers.SessionCookie(r)
 	response, err := h.useCase.Current(r.Context(), session)
 	if err != nil {
