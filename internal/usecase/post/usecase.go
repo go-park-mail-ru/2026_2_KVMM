@@ -15,7 +15,7 @@ var (
 	ErrUnauthorized    = sessionusecase.ErrUnauthorized
 	ErrInvalidCSRF     = sessionusecase.ErrInvalidCSRF
 	ErrForbidden       = errors.New("post belongs to another profile")
-	ErrInvalidPost     = errors.New("post text must be at most 256 characters")
+	ErrInvalidPost     = errors.New("post text must be at most 2048 characters")
 	ErrPostNotFound    = repository.ErrPostNotFound
 	ErrProfileNotFound = repository.ErrProfileNotFound
 )
@@ -28,18 +28,18 @@ type postRepository interface {
 	Delete(context.Context, int64) error
 }
 
-// UseCase содержит бизнес-логику публикаций.
+// UseCase содержит бизнес-логику публикаций
 type UseCase struct {
 	posts    postRepository
 	sessions *sessionusecase.UseCase
 }
 
-// New создаёт usecase публикаций.
+// New создаёт usecase публикаций
 func New(posts postRepository, sessions *sessionusecase.UseCase) *UseCase {
 	return &UseCase{posts: posts, sessions: sessions}
 }
 
-// Create создаёт публикацию от имени текущего пользователя.
+// Create создаёт публикацию от имени текущего пользователя
 func (u *UseCase) Create(
 	ctx context.Context,
 	sessionToken string,
@@ -68,7 +68,7 @@ func (u *UseCase) Create(
 	return post, err
 }
 
-// Update изменяет текст собственной публикации.
+// Update изменяет текст собственной публикации
 func (u *UseCase) Update(
 	ctx context.Context,
 	sessionToken string,
@@ -79,7 +79,7 @@ func (u *UseCase) Update(
 	if err != nil {
 		return domain.Post{}, err
 	}
-	if req.PostText == nil || len([]rune(strings.TrimSpace(*req.PostText))) > 256 {
+	if req.PostText == nil || len([]rune(strings.TrimSpace(*req.PostText))) > 2048 {
 		return domain.Post{}, ErrInvalidPost
 	}
 	post, err := u.posts.ReadByID(ctx, req.PostID)
@@ -98,7 +98,7 @@ func (u *UseCase) Update(
 	return updated, err
 }
 
-// Delete удаляет собственную публикацию.
+// Delete удаляет собственную публикацию
 func (u *UseCase) Delete(
 	ctx context.Context,
 	sessionToken string,
@@ -124,7 +124,7 @@ func (u *UseCase) Delete(
 	return err
 }
 
-// UserPosts возвращает публикации указанного пользователя.
+// UserPosts возвращает публикации указанного пользователя
 func (u *UseCase) UserPosts(
 	ctx context.Context,
 	profileID int64,
