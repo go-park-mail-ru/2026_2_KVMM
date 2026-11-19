@@ -83,33 +83,6 @@ func TestHelpers(t *testing.T) {
 	}
 }
 
-func TestSessionRepository(t *testing.T) {
-	t.Parallel()
-
-	repository := NewSessionRepository()
-	if _, _, err := repository.Read(""); !errors.Is(err, ErrSessionNotFound) {
-		t.Fatalf("Read(empty) error = %v", err)
-	}
-	token, csrf, err := repository.Create(42)
-	if err != nil || token == "" || csrf == "" {
-		t.Fatalf("Create() = %q, %q, %v", token, csrf, err)
-	}
-	userID, storedCSRF, err := repository.Read(token)
-	if err != nil || userID != 42 || storedCSRF != csrf {
-		t.Fatalf("Read() = %d, %q, %v", userID, storedCSRF, err)
-	}
-	if err := repository.ValidateCSRF(token, csrf); err != nil {
-		t.Fatalf("ValidateCSRF() error = %v", err)
-	}
-	if err := repository.ValidateCSRF(token, "wrong"); !errors.Is(err, ErrInvalidCSRF) {
-		t.Fatalf("ValidateCSRF(wrong) error = %v", err)
-	}
-	repository.Delete(token)
-	if _, _, err := repository.Read(token); !errors.Is(err, ErrSessionNotFound) {
-		t.Fatalf("Read(deleted) error = %v", err)
-	}
-}
-
 func TestNormalizeErrors(t *testing.T) {
 	t.Parallel()
 	if !errors.Is(normalizeMessageError(pgx.ErrNoRows), ErrMessageNotFound) {

@@ -16,6 +16,11 @@ media:
 logging:
   mode: debug
 
+redis:
+  addr: redis:6379
+  db: 0
+  session_ttl: 720h
+
 smtp:
   logo_url: "https://nexlysocial.ru/public/icon.png"
 
@@ -25,4 +30,4 @@ local:
     origin: http://localhost:8001
     url: http://localhost:8001
   smtp:
-  logo_url: "http://localhost/public/icon.png"
+    logo_url: "http://localhost/public/icon.png"

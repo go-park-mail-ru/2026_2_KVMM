@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/spf13/viper"
 )
@@ -18,6 +19,7 @@ type Config struct {
 	DatabaseURL string         `mapstructure:"database_url"`
 	SMTP        SMTPConfig     `mapstructure:"smtp"`
 	Local       LocalConfig    `mapstructure:"local"`
+	Redis       RedisConfig    `mapstructure:"redis"`
 }
 
 // HTTPConfig содержит настройки HTTP-сервера
@@ -71,6 +73,19 @@ type LocalSMTPConfig struct {
 	LogoURL string `mapstructure:"logo_url"`
 }
 
+// RedisConfig содержит настройки Redis для хранения сессий.
+type RedisConfig struct {
+	Addr       string `mapstructure:"addr"`
+	DB         int    `mapstructure:"db"`
+	SessionTTL string `mapstructure:"session_ttl"`
+	Password   string `mapstructure:"password"`
+}
+
+// TTLDuration возвращает срок жизни сессии в формате time.Duration.
+func (c RedisConfig) TTLDuration() (time.Duration, error) {
+	return time.ParseDuration(c.SessionTTL)
+}
+
 // LogConfig содержит безопасное представление настроек для стартового лога
 type LogConfig struct {
 	HTTP        HTTPConfig     `json:"http"`
@@ -81,6 +96,7 @@ type LogConfig struct {
 	DatabaseURL string         `json:"database_url"`
 	SMTP        SMTPLogConfig  `json:"smtp"`
 	Local       LocalConfig    `json:"local"`
+	Redis       RedisLogConfig `json:"redis"`
 }
 
 // SMTPLogConfig содержит SMTP-настройки без секретных значений
@@ -92,6 +108,14 @@ type SMTPLogConfig struct {
 	From     string `json:"from"`
 	FromName string `json:"from_name"`
 	LogoURL  string `json:"logo_url"`
+}
+
+// RedisLogConfig содержит безопасное представление настроек Redis.
+type RedisLogConfig struct {
+	Addr       string `json:"addr"`
+	DB         int    `json:"db"`
+	SessionTTL string `json:"session_ttl"`
+	Password   string `json:"password"`
 }
 
 // SafeForLog возвращает настройки, безопасные для записи в лог
@@ -125,7 +149,20 @@ func (c Config) SafeForLog() LogConfig {
 			LogoURL:  c.SMTP.LogoURL,
 		},
 		Local: c.Local,
+		Redis: RedisLogConfig{
+			Addr:       c.Redis.Addr,
+			DB:         c.Redis.DB,
+			SessionTTL: c.Redis.SessionTTL,
+			Password:   redactIfSet(c.Redis.Password),
+		},
 	}
+}
+
+func redactIfSet(value string) string {
+	if value == "" {
+		return ""
+	}
+	return "*hiden*"
 }
 
 // Default возвращает настройки приложения по умолчанию
@@ -136,6 +173,7 @@ func Default() Config {
 		Cookie:   CookieConfig{Secure: false, SameSite: "lax"},
 		Media:    MediaConfig{Dir: "/data/media", PublicURL: "/api/media"},
 		Logging:  LoggingConfig{Mode: "prod"},
+		Redis:    RedisConfig{Addr: "redis:6379", SessionTTL: "720h"},
 	}
 }
 
@@ -163,6 +201,7 @@ func Load() (Config, error) {
 	cfg.SMTP.Password = settings.GetString("smtp.password")
 	cfg.SMTP.From = settings.GetString("smtp.from")
 	cfg.SMTP.FromName = settings.GetString("smtp.from_name")
+	cfg.Redis.Password = settings.GetString("redis.password")
 	if cfg.Local.IsLocal {
 		if strings.TrimSpace(cfg.Local.FrontendLocal.Origin) != "" {
 			cfg.Frontend.Origin = cfg.Local.FrontendLocal.Origin
@@ -199,6 +238,7 @@ func bindEnvironment(settings *viper.Viper) error {
 		"smtp.password":  "SMTP_PASSWORD",
 		"smtp.from":      "SMTP_FROM",
 		"smtp.from_name": "SMTP_FROM_NAME",
+		"redis.password": "REDIS_PASSWORD",
 	}
 	for key, environment := range bindings {
 		if err := settings.BindEnv(key, environment); err != nil {

@@ -66,7 +66,7 @@ func (m *MockchatRepository) CreateByUUID(arg0 context.Context, arg1 int64, arg2
 	return ret0, ret1
 }
 
-// CreateByUUID indicates an expected call of CreateByUUID
+// CreateByUUID indicates an expected call of CreateByUUID.
 func (mr *MockchatRepositoryMockRecorder) CreateByUUID(arg0, arg1, arg2 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateByUUID", reflect.TypeOf((*MockchatRepository)(nil).CreateByUUID), arg0, arg1, arg2)
@@ -94,7 +94,7 @@ func (m *MockchatRepository) IsParticipantByUUID(arg0 context.Context, arg1 stri
 	return ret0
 }
 
-// IsParticipantByUUID indicates an expected call of IsParticipantByUUID
+// IsParticipantByUUID indicates an expected call of IsParticipantByUUID.
 func (mr *MockchatRepositoryMockRecorder) IsParticipantByUUID(arg0, arg1, arg2 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsParticipantByUUID", reflect.TypeOf((*MockchatRepository)(nil).IsParticipantByUUID), arg0, arg1, arg2)
@@ -124,7 +124,7 @@ func (m *MockchatRepository) ListChatsByUUID(arg0 context.Context, arg1 int64, a
 	return ret0, ret1
 }
 
-// ListChatsByUUID indicates an expected call of ListChatsByUUID
+// ListChatsByUUID indicates an expected call of ListChatsByUUID.
 func (mr *MockchatRepositoryMockRecorder) ListChatsByUUID(arg0, arg1, arg2, arg3 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListChatsByUUID", reflect.TypeOf((*MockchatRepository)(nil).ListChatsByUUID), arg0, arg1, arg2, arg3)
@@ -178,7 +178,7 @@ func (m *MockmessageRepository) CreateByUUID(arg0 context.Context, arg1 reposito
 	return ret0, ret1
 }
 
-// CreateByUUID indicates an expected call of CreateByUUID
+// CreateByUUID indicates an expected call of CreateByUUID.
 func (mr *MockmessageRepositoryMockRecorder) CreateByUUID(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateByUUID", reflect.TypeOf((*MockmessageRepository)(nil).CreateByUUID), arg0, arg1)
@@ -208,7 +208,7 @@ func (m *MockmessageRepository) ListMessagesByUUID(arg0 context.Context, arg1, a
 	return ret0, ret1
 }
 
-// ListMessagesByUUID indicates an expected call of ListMessagesByUUID
+// ListMessagesByUUID indicates an expected call of ListMessagesByUUID.
 func (mr *MockmessageRepositoryMockRecorder) ListMessagesByUUID(arg0, arg1, arg2, arg3 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMessagesByUUID", reflect.TypeOf((*MockmessageRepository)(nil).ListMessagesByUUID), arg0, arg1, arg2, arg3)

@@ -1,36 +1,50 @@
 package repository
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/subtle"
 	"encoding/hex"
 	"errors"
-	"sync"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/redis/go-redis/v9"
 )
+
+const redisSessionKeyPrefix = "kvmm:session:"
 
 var (
 	ErrSessionNotFound = errors.New("session not found")  // сессия не существует
 	ErrInvalidCSRF     = errors.New("invalid csrf token") // CSRF-токен не совпал с токеном сессии
+	ErrNoToken         = errors.New("please use session id")
 )
 
-type session struct {
-	userID    int64
-	csrfToken string
+// RedisSessionRepository хранит сессии в Redis
+type RedisSessionRepository struct {
+	client *redis.Client
+	ttl    time.Duration
 }
 
-// SessionRepository хранит активные сессии приложения
-type SessionRepository struct {
-	mu       sync.RWMutex
-	sessions map[string]session
+// NewRedisSessionRepository создаёт Redis-хранилище сессий
+func NewRedisSessionRepository(client *redis.Client, ttl time.Duration) (*RedisSessionRepository, error) {
+	if client == nil {
+		return nil, errors.New("redis client is nil")
+	}
+	if ttl <= 0 {
+		return nil, errors.New("redis session TTL must be positive")
+	}
+	return &RedisSessionRepository{client: client, ttl: ttl}, nil
 }
 
-// NewSessionRepository создаёт хранилище сессий в памяти процесса
-func NewSessionRepository() *SessionRepository {
-	return &SessionRepository{sessions: make(map[string]session)}
+// Ping проверяет доступность Redis
+func (r *RedisSessionRepository) Ping(ctx context.Context) error {
+	return r.client.Ping(ctx).Err()
 }
 
 // Create создаёт сессию и возвращает session cookie и CSRF-токен
-func (r *SessionRepository) Create(userID int64) (string, string, error) {
+func (r *RedisSessionRepository) Create(userID int64) (string, string, error) {
 	sessionToken, err := randomToken()
 	if err != nil {
 		return "", "", err
@@ -40,40 +54,62 @@ func (r *SessionRepository) Create(userID int64) (string, string, error) {
 		return "", "", err
 	}
 
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	if r.sessions == nil {
-		r.sessions = make(map[string]session)
+	ctx := context.Background()
+	key := redisSessionKey(sessionToken)
+	if err := r.client.HSet(ctx, key, map[string]any{
+		"user_id":    userID,
+		"csrf_token": csrfToken,
+	}).Err(); err != nil {
+		return "", "", err
 	}
-	r.sessions[sessionToken] = session{userID: userID, csrfToken: csrfToken}
+	if err := r.client.Expire(ctx, key, r.ttl).Err(); err != nil {
+		_ = r.client.Del(ctx, key).Err()
+		return "", "", err
+	}
 	return sessionToken, csrfToken, nil
 }
 
-// Read возвращает пользователя и CSRF-токен по ID
-func (r *SessionRepository) Read(token string) (int64, string, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	current, ok := r.sessions[token]
-	if !ok || token == "" {
+// Read возвращает пользователя и CSRF-токен по session cookie
+func (r *RedisSessionRepository) Read(token string) (int64, string, error) {
+	if strings.TrimSpace(token) == "" {
 		return 0, "", ErrSessionNotFound
 	}
-	return current.userID, current.csrfToken, nil
+	values, err := r.client.HGetAll(context.Background(), redisSessionKey(token)).Result()
+	if err != nil {
+		return 0, "", err
+	}
+	userID, err := strconv.ParseInt(values["user_id"], 10, 64)
+	if len(values) == 0 || err != nil || userID <= 0 || values["csrf_token"] == "" {
+		return 0, "", ErrSessionNotFound
+	}
+	return userID, values["csrf_token"], nil
 }
 
-// ValidateCSRF проверяет CSRF-токен для сессии
-func (r *SessionRepository) ValidateCSRF(token, csrfToken string) error {
-	_, expected, err := r.Read(token)
-	if err != nil || csrfToken == "" || subtle.ConstantTimeCompare([]byte(expected), []byte(csrfToken)) != 1 {
+// ValidateCSRF проверяет CSRF-токен без загрузки всей записи сессии
+func (r *RedisSessionRepository) ValidateCSRF(token, csrfToken string) error {
+	if strings.TrimSpace(token) == "" || csrfToken == "" {
+		return ErrInvalidCSRF
+	}
+	expected, err := r.client.HGet(context.Background(), redisSessionKey(token), "csrf_token").Result()
+	if err != nil || subtle.ConstantTimeCompare([]byte(expected), []byte(csrfToken)) != 1 {
 		return ErrInvalidCSRF
 	}
 	return nil
 }
 
 // Delete завершает сессию
-func (r *SessionRepository) Delete(token string) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	delete(r.sessions, token)
+func (r *RedisSessionRepository) Delete(token string) error {
+	if strings.TrimSpace(token) == "" {
+		return ErrNoToken
+	}
+	if err := r.client.Del(context.Background(), redisSessionKey(token)).Err(); err != nil {
+		return ErrNoToken
+	}
+	return nil
+}
+
+func redisSessionKey(token string) string {
+	return redisSessionKeyPrefix + token
 }
 
 func randomToken() (string, error) {

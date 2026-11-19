@@ -79,7 +79,7 @@ func (m *MockpostRepository) DeleteByUUID(arg0 context.Context, arg1 string, arg
 	return ret0
 }
 
-// DeleteByUUID indicates an expected call of DeleteByUUID
+// DeleteByUUID indicates an expected call of DeleteByUUID.
 func (mr *MockpostRepositoryMockRecorder) DeleteByUUID(arg0, arg1, arg2 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteByUUID", reflect.TypeOf((*MockpostRepository)(nil).DeleteByUUID), arg0, arg1, arg2)
@@ -128,7 +128,7 @@ func (m *MockpostRepository) ReadProfilePostsByUUID(arg0 context.Context, arg1, 
 	return ret0, ret1, ret2, ret3
 }
 
-// ReadProfilePostsByUUID indicates an expected call of ReadProfilePostsByUUID
+// ReadProfilePostsByUUID indicates an expected call of ReadProfilePostsByUUID.
 func (mr *MockpostRepositoryMockRecorder) ReadProfilePostsByUUID(arg0, arg1, arg2, arg3 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadProfilePostsByUUID", reflect.TypeOf((*MockpostRepository)(nil).ReadProfilePostsByUUID), arg0, arg1, arg2, arg3)
@@ -158,7 +158,7 @@ func (m *MockpostRepository) UpdateByUUID(arg0 context.Context, arg1 string, arg
 	return ret0, ret1
 }
 
-// UpdateByUUID indicates an expected call of UpdateByUUID
+// UpdateByUUID indicates an expected call of UpdateByUUID.
 func (mr *MockpostRepositoryMockRecorder) UpdateByUUID(arg0, arg1, arg2, arg3 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateByUUID", reflect.TypeOf((*MockpostRepository)(nil).UpdateByUUID), arg0, arg1, arg2, arg3)

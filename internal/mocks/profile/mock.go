@@ -81,7 +81,7 @@ func (m *MockprofileRepository) SearchByUUID(arg0 context.Context, arg1 string) 
 	return ret0, ret1
 }
 
-// SearchByUUID indicates an expected call of SearchByUUID
+// SearchByUUID indicates an expected call of SearchByUUID.
 func (mr *MockprofileRepositoryMockRecorder) SearchByUUID(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SearchByUUID", reflect.TypeOf((*MockprofileRepository)(nil).SearchByUUID), arg0, arg1)

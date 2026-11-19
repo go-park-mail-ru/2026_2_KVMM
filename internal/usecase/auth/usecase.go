@@ -34,7 +34,7 @@ type profileRepository interface {
 type sessionRepository interface {
 	sessionusecase.SessionReader
 	Create(int64) (string, string, error)
-	Delete(string)
+	Delete(string) error
 }
 
 type emailSender interface {

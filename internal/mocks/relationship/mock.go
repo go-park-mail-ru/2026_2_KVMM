@@ -65,7 +65,7 @@ func (m *MockrelationshipRepository) AcceptByUUID(arg0 context.Context, arg1 int
 	return ret0, ret1
 }
 
-// AcceptByUUID indicates an expected call of AcceptByUUID
+// AcceptByUUID indicates an expected call of AcceptByUUID.
 func (mr *MockrelationshipRepositoryMockRecorder) AcceptByUUID(arg0, arg1, arg2, arg3 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AcceptByUUID", reflect.TypeOf((*MockrelationshipRepository)(nil).AcceptByUUID), arg0, arg1, arg2, arg3)
@@ -95,7 +95,7 @@ func (m *MockrelationshipRepository) CancelByUUID(arg0 context.Context, arg1 int
 	return ret0, ret1
 }
 
-// CancelByUUID indicates an expected call of CancelByUUID
+// CancelByUUID indicates an expected call of CancelByUUID.
 func (mr *MockrelationshipRepositoryMockRecorder) CancelByUUID(arg0, arg1, arg2, arg3 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CancelByUUID", reflect.TypeOf((*MockrelationshipRepository)(nil).CancelByUUID), arg0, arg1, arg2, arg3)
@@ -125,7 +125,7 @@ func (m *MockrelationshipRepository) CreateByUUID(arg0 context.Context, arg1 int
 	return ret0, ret1
 }
 
-// CreateByUUID indicates an expected call of CreateByUUID
+// CreateByUUID indicates an expected call of CreateByUUID.
 func (mr *MockrelationshipRepositoryMockRecorder) CreateByUUID(arg0, arg1, arg2, arg3 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateByUUID", reflect.TypeOf((*MockrelationshipRepository)(nil).CreateByUUID), arg0, arg1, arg2, arg3)

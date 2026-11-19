@@ -30,6 +30,8 @@ import (
 	profileusecase "kvmm/internal/usecase/profile"
 	relationshipusecase "kvmm/internal/usecase/relationship"
 	sessionusecase "kvmm/internal/usecase/session"
+
+	"github.com/redis/go-redis/v9"
 )
 
 var (
@@ -54,6 +56,26 @@ func main() {
 		zap.String("git_commit", gitCommit),
 		zap.Any("config", appConfig.SafeForLog()),
 	)
+	redisTTL, err := appConfig.Redis.TTLDuration()
+	if err != nil {
+		logger.Fatal("invalid Redis session TTL", zap.Error(err))
+	}
+	redisClient := redis.NewClient(&redis.Options{
+		Addr:     appConfig.Redis.Addr,
+		Password: appConfig.Redis.Password,
+		DB:       appConfig.Redis.DB,
+	})
+	redisSessions, err := repository.NewRedisSessionRepository(redisClient, redisTTL)
+	if err != nil {
+		logger.Fatal("Redis session repository initialization failed", zap.Error(err))
+	}
+	redisContext, cancelRedis := context.WithTimeout(context.Background(), 5*time.Second)
+	if err := redisSessions.Ping(redisContext); err != nil {
+		cancelRedis()
+		logger.Fatal("Redis connection failed", zap.Error(err))
+	}
+	cancelRedis()
+	defer redisClient.Close()
 
 	databaseURL := appConfig.DatabaseURL
 	if databaseURL == "" {
@@ -67,7 +89,7 @@ func main() {
 	}
 	defer database.Close()
 
-	sessions := repository.NewSessionRepository()
+	sessions := redisSessions
 	sessionReader := sessionusecase.New(sessions)
 	profiles := repository.NewProfileRepository(database)
 	postsRepository := repository.NewPostRepository(database)

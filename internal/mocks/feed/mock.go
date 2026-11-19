@@ -69,7 +69,7 @@ func (m *MockpostRepository) ReadFeedPostsByUUID(arg0 context.Context, arg1 stri
 	return ret0, ret1, ret2, ret3
 }
 
-// ReadFeedPostsByUUID indicates an expected call of ReadFeedPostsByUUID
+// ReadFeedPostsByUUID indicates an expected call of ReadFeedPostsByUUID.
 func (mr *MockpostRepositoryMockRecorder) ReadFeedPostsByUUID(arg0, arg1, arg2 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadFeedPostsByUUID", reflect.TypeOf((*MockpostRepository)(nil).ReadFeedPostsByUUID), arg0, arg1, arg2)
