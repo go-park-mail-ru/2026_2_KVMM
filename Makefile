@@ -23,7 +23,7 @@ help:
 # Restart containers with rebuilding of images
 restart:
 	docker compose down
-	docker compose up -d --build
+	GIT_BRANCH=$$(git branch --show-current) GIT_COMMIT=$$(git rev-parse HEAD) docker compose up -d --build
 
 # Generate Swagger API documentation
 swagger:
@@ -121,6 +121,7 @@ deploy:
 
 	@echo ">>> Building and starting Docker..."
 	cd $(BACK_DIR) && \
+	GIT_BRANCH=$$(git branch --show-current) GIT_COMMIT=$$(git rev-parse HEAD) \
 	$(COMPOSE) up -d --build
 
 	@echo ">>> Removing unused Docker images..."

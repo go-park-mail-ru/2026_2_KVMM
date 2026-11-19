@@ -1,0 +1,28 @@
+http:
+  addr: 0.0.0.0:8080
+
+frontend:
+  origin: https://nexlysocial.ru
+  url: https://nexlysocial.ru
+
+cookie:
+  secure: false
+  same_site: lax
+
+media:
+  dir: /data/media
+  public_url: /api/media
+
+logging:
+  mode: debug
+
+smtp:
+  logo_url: "https://nexlysocial.ru/public/icon.png"
+
+local:
+  is_local: false
+  frontend_local:
+    origin: http://localhost:8001
+    url: http://localhost:8001
+  smtp:
+  logo_url: "http://localhost/public/icon.png"

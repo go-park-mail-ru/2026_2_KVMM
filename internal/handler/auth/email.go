@@ -65,7 +65,7 @@ func (h *AuthHandler) RegisterByEmail(w http.ResponseWriter, r *http.Request) {
 		h.writeEmailError(w, err, http.StatusBadRequest)
 		return
 	}
-	helpers.SetSessionCookie(w, session)
+	helpers.SetSessionCookie(w, session, h.cookieSettings)
 	helpers.WriteJSON(w, http.StatusCreated, response)
 }
 
@@ -124,7 +124,7 @@ func (h *AuthHandler) LoginByEmail(w http.ResponseWriter, r *http.Request) {
 		h.writeEmailError(w, err, http.StatusUnauthorized)
 		return
 	}
-	helpers.SetSessionCookie(w, session)
+	helpers.SetSessionCookie(w, session, h.cookieSettings)
 	helpers.WriteJSON(w, http.StatusOK, response)
 }
 

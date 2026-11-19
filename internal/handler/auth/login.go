@@ -40,6 +40,6 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		helpers.WriteInternalError(w, "auth.login", err)
 		return
 	}
-	helpers.SetSessionCookie(w, session)
+	helpers.SetSessionCookie(w, session, h.cookieSettings)
 	helpers.WriteJSON(w, http.StatusOK, response)
 }

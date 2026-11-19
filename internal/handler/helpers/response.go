@@ -3,7 +3,6 @@ package helpers
 import (
 	"encoding/json"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -15,6 +14,12 @@ import (
 
 const sessionCookieName = "session_id"
 
+// CookieSettings содержит настройки cookie сессии
+type CookieSettings struct {
+	Secure   bool
+	SameSite string
+}
+
 // SessionCookie возвращает значение cookie сессии из запроса
 func SessionCookie(r *http.Request) string {
 	cookie, err := r.Cookie(sessionCookieName)
@@ -25,34 +30,44 @@ func SessionCookie(r *http.Request) string {
 }
 
 // SetSessionCookie устанавливает cookie сессии
-func SetSessionCookie(w http.ResponseWriter, session string) {
+func SetSessionCookie(w http.ResponseWriter, session string, settings ...CookieSettings) {
+	cookieSettings := cookieSettings(settings)
 	http.SetCookie(w, &http.Cookie{
 		Name:     sessionCookieName,
 		Value:    session,
 		Path:     "/",
 		MaxAge:   int((30 * 24 * time.Hour) / time.Second),
 		HttpOnly: true,
-		Secure:   os.Getenv("COOKIE_SECURE") == "true",
-		SameSite: cookieSameSite(),
+		Secure:   cookieSettings.Secure,
+		SameSite: cookieSameSite(cookieSettings.SameSite),
 	})
 }
 
 // DeleteSessionCookie удаляет cookie сессии
-func DeleteSessionCookie(w http.ResponseWriter) {
+func DeleteSessionCookie(w http.ResponseWriter, settings ...CookieSettings) {
+	cookieSettings := cookieSettings(settings)
 	http.SetCookie(w, &http.Cookie{
 		Name:     sessionCookieName,
 		Value:    "",
 		Path:     "/",
 		MaxAge:   -1,
 		HttpOnly: true,
-		Secure:   os.Getenv("COOKIE_SECURE") == "true",
-		SameSite: cookieSameSite(),
+		Secure:   cookieSettings.Secure,
+		SameSite: cookieSameSite(cookieSettings.SameSite),
 	})
 }
 
-// cookieSameSite возвращает режим SameSite из переменной окружения
-func cookieSameSite() http.SameSite {
-	switch strings.ToLower(os.Getenv("COOKIE_SAMESITE")) {
+// cookieSettings возвращает настройки cookie или безопасные значения по умолчанию.
+func cookieSettings(settings []CookieSettings) CookieSettings {
+	if len(settings) == 0 {
+		return CookieSettings{SameSite: "lax"}
+	}
+	return settings[0]
+}
+
+// cookieSameSite преобразует текстовый режим SameSite в значение net/http.
+func cookieSameSite(value string) http.SameSite {
+	switch strings.ToLower(strings.TrimSpace(value)) {
 	case "strict":
 		return http.SameSiteStrictMode
 	case "none":

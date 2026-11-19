@@ -41,6 +41,6 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		helpers.WriteInternalError(w, "auth.register", err)
 		return
 	}
-	helpers.SetSessionCookie(w, session)
+	helpers.SetSessionCookie(w, session, h.cookieSettings)
 	helpers.WriteJSON(w, http.StatusCreated, response)
 }

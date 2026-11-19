@@ -299,7 +299,6 @@ const cancelRelationshipByUUIDQuery = `
 	RETURNING ` + relationshipColumns
 
 // CreateByUUID создаёт запрос на связь, используя UUID второго профиля
-
 func (r *RelationshipRepository) CreateByUUID(
 	ctx context.Context,
 	masterID int64,

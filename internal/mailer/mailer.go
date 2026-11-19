@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"html/template"
 	"net/smtp"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -30,11 +29,27 @@ type EmailData struct {
 type Mailer struct {
 	mu       sync.Mutex
 	lastSent map[string]time.Time
+	settings SMTPSettings
+}
+
+// SMTPSettings содержит настройки SMTP-сервера
+type SMTPSettings struct {
+	Host     string
+	Port     string
+	Username string
+	Password string
+	From     string
+	FromName string
+	LogoURL  string
 }
 
 // New создаёт SMTP-mailer
-func New() *Mailer {
-	return &Mailer{lastSent: make(map[string]time.Time)}
+func New(settings ...SMTPSettings) *Mailer {
+	var smtpSettings SMTPSettings
+	if len(settings) > 0 {
+		smtpSettings = settings[0]
+	}
+	return &Mailer{lastSent: make(map[string]time.Time), settings: smtpSettings}
 }
 
 // SendAuthCode отправляет одноразовый код на email
@@ -53,13 +68,13 @@ func (m *Mailer) SendAuthCode(to, code string) error {
 		}
 	}()
 
-	host := strings.TrimSpace(os.Getenv("SMTP_HOST"))
-	port := strings.TrimSpace(os.Getenv("SMTP_PORT"))
-	username := os.Getenv("SMTP_USERNAME")
-	password := os.Getenv("SMTP_PASSWORD")
-	from := strings.TrimSpace(os.Getenv("SMTP_FROM"))
-	fromName := strings.TrimSpace(os.Getenv("SMTP_FROM_NAME"))
-	logoURL := strings.TrimSpace(os.Getenv("LOGO_URL"))
+	host := strings.TrimSpace(m.settings.Host)
+	port := strings.TrimSpace(m.settings.Port)
+	username := m.settings.Username
+	password := m.settings.Password
+	from := strings.TrimSpace(m.settings.From)
+	fromName := strings.TrimSpace(m.settings.FromName)
+	logoURL := strings.TrimSpace(m.settings.LogoURL)
 
 	if host == "" || port == "" || from == "" || password == "" || fromName == "" {
 		return errors.New("SMTP_HOST, SMTP_PORT and SMTP_FROM are required")

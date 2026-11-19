@@ -57,6 +57,6 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	helpers.DeleteSessionCookie(w)
+	helpers.DeleteSessionCookie(w, h.cookieSettings)
 	w.WriteHeader(http.StatusNoContent)
 }

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"os"
 	"sync"
 	"time"
 
@@ -21,12 +20,6 @@ const (
 	websocketMessageLimit  = 64 * 1024
 	websocketChatPageLimit = 100
 )
-
-var chatWebSocketUpgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-	CheckOrigin:     allowedWebSocketOrigin,
-}
 
 var (
 	errChatNotSubscribed = errors.New("chat is not subscribed")
@@ -163,7 +156,14 @@ func (c *chatClient) write(payload []byte) error {
 // @Router /api/chats/ws [get]
 func (h *ChatHandler) WebSocket(w http.ResponseWriter, r *http.Request) {
 	sessionToken := helpers.SessionCookie(r)
-	conn, err := chatWebSocketUpgrader.Upgrade(w, r, nil)
+	upgrader := websocket.Upgrader{
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+		CheckOrigin: func(request *http.Request) bool {
+			return allowedWebSocketOrigin(request, h.allowedOrigin)
+		},
+	}
+	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		logging.Logger().Error("WebSocket upgrade failed",
 			zap.Error(err),
@@ -369,16 +369,13 @@ func (h *ChatHandler) writeClientEvent(client *chatClient, event domain.ChatWebS
 	return err
 }
 
-func allowedWebSocketOrigin(r *http.Request) bool {
+func allowedWebSocketOrigin(r *http.Request, configuredOrigin string) bool {
 	origin := r.Header.Get("Origin")
 	if origin == "" {
 		return true
 	}
 
-	allowedOrigin := os.Getenv("FRONTEND_ORIGIN")
-	if allowedOrigin == "" {
-		allowedOrigin = os.Getenv("FRONTEND_URL")
-	}
+	allowedOrigin := configuredOrigin
 	if allowedOrigin == "" {
 		allowedOrigin = "http://localhost:8001"
 	}

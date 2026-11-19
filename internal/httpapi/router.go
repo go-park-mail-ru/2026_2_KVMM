@@ -6,10 +6,10 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
+	"kvmm/internal/config"
 	"kvmm/internal/handler/auth"
 	"kvmm/internal/handler/chat"
 	"kvmm/internal/handler/feed"
@@ -25,6 +25,7 @@ import (
 
 // обработчики приложения
 type Dependencies struct {
+	Config       config.Config
 	Auth         *auth.AuthHandler
 	Chat         *chat.ChatHandler
 	Feed         *feed.FeedHandler
@@ -35,6 +36,10 @@ type Dependencies struct {
 
 // NewRouter создаёт маршрутизатор API на основе gorilla/mux
 func NewRouter(deps Dependencies) http.Handler {
+	appConfig := deps.Config
+	if appConfig.HTTP.Addr == "" {
+		appConfig = config.Default()
+	}
 	router := mux.NewRouter()
 
 	authHandler := deps.Auth
@@ -62,12 +67,8 @@ func NewRouter(deps Dependencies) http.Handler {
 	router.HandleFunc("/api/posts/update", postHandler.Update).Methods(http.MethodPatch)
 	router.HandleFunc("/api/posts/user", postHandler.UserPosts).Methods(http.MethodGet)
 
-	mediaDir := os.Getenv("MEDIA_DIR")
-	if mediaDir == "" {
-		mediaDir = "./internal/store/media"
-	}
 	router.PathPrefix("/api/media/").Handler(
-		http.StripPrefix("/api/media/", http.FileServer(http.Dir(mediaDir))),
+		http.StripPrefix("/api/media/", http.FileServer(http.Dir(appConfig.Media.Dir))),
 	)
 
 	router.HandleFunc("/api/profile/update", profileHandler.Update).Methods(http.MethodPatch)
@@ -98,7 +99,7 @@ func NewRouter(deps Dependencies) http.Handler {
 		}
 	}).Methods(http.MethodGet)
 
-	return requestLogger(cors(router))
+	return requestLogger(cors(router, appConfig.Frontend.Origin))
 }
 
 type responseLogger struct {
@@ -241,11 +242,8 @@ func readRequestBodyForLog(r *http.Request) string {
 }
 
 // cors добавляет CORS-заголовки и обрабатывает preflight-запросы
-func cors(next http.Handler) http.Handler {
-	allowedOrigin := os.Getenv("FRONTEND_ORIGIN")
-	if allowedOrigin == "" {
-		allowedOrigin = os.Getenv("FRONTEND_URL")
-	}
+func cors(next http.Handler, configuredOrigin string) http.Handler {
+	allowedOrigin := configuredOrigin
 	if allowedOrigin == "" {
 		allowedOrigin = "http://localhost:8001"
 	}

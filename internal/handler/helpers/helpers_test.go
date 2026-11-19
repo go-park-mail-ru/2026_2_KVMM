@@ -108,9 +108,8 @@ func TestInternalErrorAndSameSite(t *testing.T) {
 		t.Fatalf("WriteInternalError() = %d, %s", w.Code, w.Body.String())
 	}
 	for _, value := range []string{"strict", "none", "lax"} {
-		t.Setenv("COOKIE_SAMESITE", value)
 		w = httptest.NewRecorder()
-		SetSessionCookie(w, "session")
+		SetSessionCookie(w, "session", CookieSettings{SameSite: value})
 		if len(w.Result().Cookies()) != 1 {
 			t.Fatalf("cookie was not set for SameSite=%s", value)
 		}

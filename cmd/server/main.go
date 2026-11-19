@@ -11,9 +11,11 @@ import (
 
 	"go.uber.org/zap"
 
+	"kvmm/internal/config"
 	"kvmm/internal/handler/auth"
 	"kvmm/internal/handler/chat"
 	"kvmm/internal/handler/feed"
+	"kvmm/internal/handler/helpers"
 	"kvmm/internal/handler/posts"
 	"kvmm/internal/handler/profile"
 	"kvmm/internal/handler/relationship"
@@ -30,25 +32,30 @@ import (
 	sessionusecase "kvmm/internal/usecase/session"
 )
 
+var (
+	gitBranch = "unknown"
+	gitCommit = "unknown"
+)
+
 // main запускает HTTP-сервер backend API.
 func main() {
-	logger, debugDatabase, err := logging.New()
+	appConfig, err := config.Load()
+	if err != nil {
+		panic(err)
+	}
+	logger, debugDatabase, err := logging.New(appConfig.Logging.Mode)
 	if err != nil {
 		panic(err)
 	}
 	logging.SetDefault(logger)
 	defer logger.Sync()
+	logger.Info("application configuration",
+		zap.String("git_branch", gitBranch),
+		zap.String("git_commit", gitCommit),
+		zap.Any("config", appConfig.SafeForLog()),
+	)
 
-	addr := os.Getenv("HTTP_ADDR")
-	if addr == "" {
-		addr = ":8080"
-	}
-	if err := mailer.New().SendAuthCode("gussev.vova141205@gmail.com", "start"); err != nil {
-		logger.Error("cant up mailer", zap.Error(err))
-	} else {
-		logger.Info("Email send to gussev.vova141205@gmail.com")
-	}
-	databaseURL := os.Getenv("DATABASE_URL")
+	databaseURL := appConfig.DatabaseURL
 	if databaseURL == "" {
 		logger.Fatal("DATABASE_URL is required")
 	}
@@ -67,24 +74,35 @@ func main() {
 	chats := repository.NewChatRepository(database)
 	messages := repository.NewMessageRepository(database)
 	relationships := repository.NewRelationshipRepository(database)
-	mediaDir := os.Getenv("MEDIA_DIR")
-	mediaURL := os.Getenv("MEDIA_PUBLIC_URL")
-	avatars := repository.NewAvatarRepository(database, mediaDir, mediaURL)
+	avatars := repository.NewAvatarRepository(database, appConfig.Media.Dir, appConfig.Media.PublicURL)
+	mailSender := mailer.New(mailer.SMTPSettings{
+		Host:     appConfig.SMTP.Host,
+		Port:     appConfig.SMTP.Port,
+		Username: appConfig.SMTP.Username,
+		Password: appConfig.SMTP.Password,
+		From:     appConfig.SMTP.From,
+		FromName: appConfig.SMTP.FromName,
+		LogoURL:  appConfig.SMTP.LogoURL,
+	})
 
-	authUseCase := authusecase.New(profiles, sessions, mailer.New())
+	authUseCase := authusecase.New(profiles, sessions, mailSender)
 	profileUseCase := profileusecase.New(profiles, avatars, sessionReader)
 	feedUseCase := feedusecase.New(postsRepository)
 	postUseCase := postusecase.New(postsRepository, sessionReader)
 	chatUseCase := chatusecase.New(chats, messages, sessionReader)
 	relationshipUseCase := relationshipusecase.New(relationships, sessionReader)
 
-	logger.Info("server listening", zap.String("addr", addr))
+	logger.Info("server listening", zap.String("addr", appConfig.HTTP.Addr))
 
 	server := http.Server{
-		Addr: addr,
+		Addr: appConfig.HTTP.Addr,
 		Handler: httpapi.NewRouter(httpapi.Dependencies{
-			Auth:         auth.NewAuthHandler(authUseCase),
-			Chat:         chat.NewChatHandler(chatUseCase, sessionReader),
+			Config: appConfig,
+			Auth: auth.NewAuthHandler(authUseCase, helpers.CookieSettings{
+				Secure:   appConfig.Cookie.Secure,
+				SameSite: appConfig.Cookie.SameSite,
+			}),
+			Chat:         chat.NewChatHandler(chatUseCase, sessionReader, appConfig.Frontend.Origin),
 			Feed:         feed.NewFeedHandler(feedUseCase),
 			Posts:        posts.NewPostHandler(postUseCase),
 			Profile:      profile.NewProfileHandler(profileUseCase),

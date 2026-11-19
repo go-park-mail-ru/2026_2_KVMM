@@ -4,7 +4,6 @@ package logging
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 
 	"go.uber.org/zap"
@@ -57,10 +56,10 @@ func LoggerWithContext(ctx context.Context) *zap.Logger {
 }
 
 // New создаёт zap-логер
-func New() (*zap.Logger, bool, error) {
-	mode := strings.ToLower(strings.TrimSpace(os.Getenv("LOG_MODE")))
-	if mode == "" {
-		mode = "prod"
+func New(modes ...string) (*zap.Logger, bool, error) {
+	mode := "prod"
+	if len(modes) > 0 {
+		mode = strings.ToLower(strings.TrimSpace(modes[0]))
 	}
 
 	var config zap.Config

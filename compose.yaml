@@ -3,14 +3,14 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        GIT_BRANCH: ${GIT_BRANCH:-unknown}
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}
     container_name: kvmm-backend
     env_file:
       - ./deploy/.env
     expose:
       - "8080"
-    environment:
-      MEDIA_DIR: /data/media
-      MEDIA_PUBLIC_URL: /api/media
     volumes:
       - media_data:/data/media
     restart: unless-stopped

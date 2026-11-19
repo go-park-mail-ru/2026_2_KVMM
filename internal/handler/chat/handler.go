@@ -11,14 +11,19 @@ import (
 
 // ChatHandler обрабатывает запросы к чатам и сообщениям
 type ChatHandler struct {
-	useCase  *chusecase.UseCase
-	sessions *sessionusecase.UseCase
-	hub      *chatHub
+	useCase       *chusecase.UseCase
+	sessions      *sessionusecase.UseCase
+	hub           *chatHub
+	allowedOrigin string
 }
 
 // NewChatHandler создаёт обработчик чатов
-func NewChatHandler(useCase *chusecase.UseCase, sessions *sessionusecase.UseCase) *ChatHandler {
-	return &ChatHandler{useCase: useCase, sessions: sessions, hub: newChatHub()}
+func NewChatHandler(useCase *chusecase.UseCase, sessions *sessionusecase.UseCase, origins ...string) *ChatHandler {
+	allowedOrigin := "http://localhost:8001"
+	if len(origins) > 0 && origins[0] != "" {
+		allowedOrigin = origins[0]
+	}
+	return &ChatHandler{useCase: useCase, sessions: sessions, hub: newChatHub(), allowedOrigin: allowedOrigin}
 }
 
 func (h *ChatHandler) writeError(w http.ResponseWriter, err error) {
