@@ -1,24 +1,4 @@
-.PHONY: help restart swagger test-coverage deploy
-
-help:
-	@echo "---------------------------------------------------------------------------------"
-	@echo "KVMM Makefile"
-	@echo ""
-	@echo "	make restart"
-	@echo "		Rebuild Docker images and restart all containers"
-	@echo ""
-	@echo "	make swagger"
-	@echo "		Generate Swagger API documentation"
-	@echo ""
-	@echo "	make test-coverage"
-	@echo "		Run tests and generate a coverage report"
-	@echo ""
-	@echo "	make deploy FRONT_BRANCH=<branch> BACK_BRANCH=<branch>"
-	@echo "		Update frontend and backend, check .env,"
-	@echo "		rebuild Docker and start the application"
-	@echo "		Examples:"
-	@echo "			make deploy FRONT_BRANCH=develop BACK_BRANCH=feature/auth"
-	@echo "---------------------------------------------------------------------------------"
+.PHONY: restart swagger test-coverage deploy migrate-up migrate-dowm
 
 # Restart containers with rebuilding of images
 restart:
@@ -69,68 +49,13 @@ mocks:
 	gofmt -w internal/mocks
 
 # Run database migrations
-db-migrate:
-	migrate \
-		-path ./db/migrations \
-		-database "$(DATABASE_URL)" \
-		up
+-include deploy/.env
+MIGRATIONS_PATH ?= ./db/migrations
 
-# Deploy
-FRONT_DIR := /home/ubuntu/kvmm/FRONT_2026_2_KVMM
-BACK_DIR := /home/ubuntu/kvmm/BACK_2026_2_KVMM
-deploy:
-	@if [ -z "$(FRONT_BRANCH)" ]; then \
-		echo "Error: FRONT_BRANCH is not specified"; \
-		echo "Usage: make deploy FRONT_BRANCH=<branch> BACK_BRANCH=<branch>"; \
-		exit 1; \
-	fi
-	@if [ -z "$(BACK_BRANCH)" ]; then \
-		echo "Error: BACK_BRANCH is not specified"; \
-		echo "Usage: make deploy FRONT_BRANCH=<branch> BACK_BRANCH=<branch>"; \
-		exit 1; \
-	fi
+DATABASE_LOCAL_HOST_URL ?= postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@localhost:$(POSTGRES_PORT)/$(POSTGRES_DB)?sslmode=disable
 
-	@echo "======================================"
-	@echo "Deploy"
-	@echo "Frontend branch: $(FRONT_BRANCH)"
-	@echo "Backend branch:	$(BACK_BRANCH)"
-	@echo "======================================"
+migrate-up:
+	migrate -path $(MIGRATIONS_PATH) -database "$(DATABASE_LOCAL_HOST_URL)" up
 
-	@echo ">>> Updating frontend..."
-	cd $(FRONT_DIR) && \
-	git checkout $(FRONT_BRANCH) && \
-	git pull origin $(FRONT_BRANCH)
-
-	@echo ">>> Updating backend..."
-	cd $(BACK_DIR) && \
-	git checkout $(BACK_BRANCH) && \
-	git pull origin $(BACK_BRANCH)
-
-	@echo ">>> Checking .env..."
-	@if [ -f "$(BACK_DIR)/deploy/.env" ]; then \
-		echo "======================================"; \
-		echo "Backend .env:"; \
-		echo "======================================"; \
-		cat "$(BACK_DIR)/deploy/.env"; \
-		echo "======================================"; \
-	else \
-		echo "======================================"; \
-		echo "ERROR: .env file not found!"; \
-		exit 1; \
-	fi
-
-	@echo ">>> Building and starting Docker..."
-	cd $(BACK_DIR) && \
-	GIT_BRANCH=$$(git branch --show-current) GIT_COMMIT=$$(git rev-parse HEAD) \
-	$(COMPOSE) up -d --build
-
-	@echo ">>> Removing unused Docker images..."
-	docker image prune -f
-
-	@echo ">>> Docker status..."
-	cd $(BACK_DIR) && \
-	$(COMPOSE) ps
-
-	@echo "======================================"
-	@echo "Deploy completed!"
-	@echo "======================================"
+migrate-down:
+	migrate -path $(MIGRATIONS_PATH) -database "$(DATABASE_LOCAL_HOST_URL)" down

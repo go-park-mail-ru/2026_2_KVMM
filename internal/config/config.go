@@ -99,7 +99,7 @@ type LogConfig struct {
 	Redis       RedisLogConfig `json:"redis"`
 }
 
-// SMTPLogConfig содержит SMTP-настройки без секретных значений
+// SMTPLogConfig содержит SMTP-настройки
 type SMTPLogConfig struct {
 	Host     string `json:"host"`
 	Port     string `json:"port"`
@@ -194,7 +194,13 @@ func Load() (Config, error) {
 	if err := settings.Unmarshal(&cfg); err != nil {
 		return Config{}, fmt.Errorf("decode config %s: %w", configPath, err)
 	}
-	cfg.DatabaseURL = settings.GetString("database_url")
+	cfg.DatabaseURL = fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
+		settings.GetString("postgres.user"),
+		settings.GetString("postgres.password"),
+		settings.GetString("postgres.host"),
+		settings.GetString("postgres.port"),
+		settings.GetString("postgres.db"),
+	)
 	cfg.SMTP.Host = settings.GetString("smtp.host")
 	cfg.SMTP.Port = settings.GetString("smtp.port")
 	cfg.SMTP.Username = settings.GetString("smtp.username")
@@ -231,14 +237,18 @@ func Load() (Config, error) {
 // bindEnvironment связывает приватные переменные окружения с настройками Viper
 func bindEnvironment(settings *viper.Viper) error {
 	bindings := map[string]string{
-		"database_url":   "DATABASE_URL",
-		"smtp.host":      "SMTP_HOST",
-		"smtp.port":      "SMTP_PORT",
-		"smtp.username":  "SMTP_USERNAME",
-		"smtp.password":  "SMTP_PASSWORD",
-		"smtp.from":      "SMTP_FROM",
-		"smtp.from_name": "SMTP_FROM_NAME",
-		"redis.password": "REDIS_PASSWORD",
+		"postgres.db":       "POSTGRES_DB",
+		"postgres.user":     "POSTGRES_USER",
+		"postgres.password": "POSTGRES_PASSWORD",
+		"postgres.host":     "POSTGRES_HOST",
+		"postgres.port":     "POSTGRES_PORT",
+		"smtp.host":         "SMTP_HOST",
+		"smtp.port":         "SMTP_PORT",
+		"smtp.username":     "SMTP_USERNAME",
+		"smtp.password":     "SMTP_PASSWORD",
+		"smtp.from":         "SMTP_FROM",
+		"smtp.from_name":    "SMTP_FROM_NAME",
+		"redis.password":    "REDIS_PASSWORD",
 	}
 	for key, environment := range bindings {
 		if err := settings.BindEnv(key, environment); err != nil {
