@@ -21,10 +21,6 @@ import (
 // @Failure 500 {object} domain.ErrorResponse
 // @Router /api/relationships/suggestions [get]
 func (h *FriendsHandler) Suggestions(w http.ResponseWriter, r *http.Request) {
-	if !helpers.MethodAllowed(w, r, http.MethodGet) {
-		return
-	}
-
 	cursor, limit, err := helpers.Pagination(r, 10)
 	if err != nil {
 		helpers.WriteError(w, http.StatusBadRequest, "invalid_pagination", err.Error())

@@ -10,8 +10,8 @@ const docTemplate = `{
         "schemas": {
             "domain.AcceptRelationshipRequest": {
                 "properties": {
-                    "profile_id": {
-                        "type": "integer"
+                    "profile_uid": {
+                        "type": "string"
                     },
                     "relationships_type": {
                         "enum": [
@@ -24,7 +24,7 @@ const docTemplate = `{
                     }
                 },
                 "required": [
-                    "profile_id",
+                    "profile_uid",
                     "relationships_type"
                 ],
                 "type": "object"
@@ -65,9 +65,9 @@ const docTemplate = `{
                         "example": "2026-01-01T12:00:00Z",
                         "type": "string"
                     },
-                    "id": {
-                        "example": 1,
-                        "type": "integer"
+                    "uid": {
+                        "example": "550e8400-e29b-41d4-a716-446655440000",
+                        "type": "string"
                     },
                     "url": {
                         "example": "/api/media/avatars/abc.png",
@@ -90,8 +90,8 @@ const docTemplate = `{
             },
             "domain.CancleRelationshipRequest": {
                 "properties": {
-                    "profile_id": {
-                        "type": "integer"
+                    "profile_uid": {
+                        "type": "string"
                     },
                     "relationships_type": {
                         "enum": [
@@ -104,7 +104,7 @@ const docTemplate = `{
                     }
                 },
                 "required": [
-                    "profile_id",
+                    "profile_uid",
                     "relationships_type"
                 ],
                 "type": "object"
@@ -128,10 +128,6 @@ const docTemplate = `{
                         "example": "2026-01-01T12:00:00Z",
                         "type": "string"
                     },
-                    "id": {
-                        "example": 1,
-                        "type": "integer"
-                    },
                     "last_message": {
                         "$ref": "#/components/schemas/domain.Message"
                     },
@@ -145,6 +141,10 @@ const docTemplate = `{
                     "streak_days": {
                         "example": 5,
                         "type": "integer"
+                    },
+                    "uid": {
+                        "example": "550e8400-e29b-41d4-a716-446655440000",
+                        "type": "string"
                     }
                 },
                 "type": "object"
@@ -159,8 +159,8 @@ const docTemplate = `{
                         "uniqueItems": false
                     },
                     "cursor": {
-                        "example": 0,
-                        "type": "integer"
+                        "example": "550e8400-e29b-41d4-a716-446655440000",
+                        "type": "string"
                     },
                     "has_more": {
                         "example": true,
@@ -171,8 +171,8 @@ const docTemplate = `{
                         "type": "integer"
                     },
                     "next_cursor": {
-                        "example": 10,
-                        "type": "integer"
+                        "example": "550e8400-e29b-41d4-a716-446655440000",
+                        "type": "string"
                     }
                 },
                 "type": "object"
@@ -197,13 +197,13 @@ const docTemplate = `{
             },
             "domain.CreateChatRequest": {
                 "properties": {
-                    "profile_id": {
-                        "example": 2,
-                        "type": "integer"
+                    "profile_uid": {
+                        "example": "550e8400-e29b-41d4-a716-446655440000",
+                        "type": "string"
                     }
                 },
                 "required": [
-                    "profile_id"
+                    "profile_uid"
                 ],
                 "type": "object"
             },
@@ -226,9 +226,9 @@ const docTemplate = `{
             },
             "domain.CreateRelationshipRequest": {
                 "properties": {
-                    "profile_id_slave": {
-                        "example": 2,
-                        "type": "integer"
+                    "profile_uid_slave": {
+                        "example": "550e8400-e29b-41d4-a716-446655440000",
+                        "type": "string"
                     },
                     "relationships_type": {
                         "enum": [
@@ -241,7 +241,7 @@ const docTemplate = `{
                     }
                 },
                 "required": [
-                    "profile_id_slave",
+                    "profile_uid_slave",
                     "relationships_type"
                 ],
                 "type": "object"
@@ -284,8 +284,8 @@ const docTemplate = `{
             "domain.FeedResponse": {
                 "properties": {
                     "cursor": {
-                        "example": 10,
-                        "type": "integer"
+                        "example": "550e8400-e29b-41d4-a716-446655440000",
+                        "type": "string"
                     },
                     "has_more": {
                         "example": true,
@@ -296,8 +296,8 @@ const docTemplate = `{
                         "type": "integer"
                     },
                     "next_cursor": {
-                        "example": 20,
-                        "type": "integer"
+                        "example": "550e8400-e29b-41d4-a716-446655440000",
+                        "type": "string"
                     },
                     "posts": {
                         "items": {
@@ -374,13 +374,13 @@ const docTemplate = `{
             },
             "domain.Message": {
                 "properties": {
-                    "author_id": {
-                        "example": 1,
-                        "type": "integer"
+                    "author_uid": {
+                        "example": "550e8400-e29b-41d4-a716-446655440000",
+                        "type": "string"
                     },
-                    "chat_id": {
-                        "example": 1,
-                        "type": "integer"
+                    "chat_uid": {
+                        "example": "550e8400-e29b-41d4-a716-446655440000",
+                        "type": "string"
                     },
                     "created_at": {
                         "example": "2026-01-01T12:00:00Z",
@@ -389,21 +389,21 @@ const docTemplate = `{
                     "deleted_at": {
                         "type": "string"
                     },
-                    "id": {
-                        "example": 1,
-                        "type": "integer"
-                    },
                     "message_text": {
                         "example": "Привет!",
                         "type": "string"
                     },
                     "reply_from": {
-                        "example": 7,
-                        "type": "integer"
+                        "example": "550e8400-e29b-41d4-a716-446655440000",
+                        "type": "string"
                     },
                     "repost_from": {
-                        "example": 5,
-                        "type": "integer"
+                        "example": "550e8400-e29b-41d4-a716-446655440000",
+                        "type": "string"
+                    },
+                    "uid": {
+                        "example": "550e8400-e29b-41d4-a716-446655440000",
+                        "type": "string"
                     },
                     "updated_at": {
                         "example": "2026-01-01T12:05:00Z",
@@ -414,13 +414,13 @@ const docTemplate = `{
             },
             "domain.MessagesResponse": {
                 "properties": {
-                    "chat_id": {
-                        "example": 1,
-                        "type": "integer"
+                    "chat_uid": {
+                        "example": "550e8400-e29b-41d4-a716-446655440000",
+                        "type": "string"
                     },
                     "cursor": {
-                        "example": 0,
-                        "type": "integer"
+                        "example": "550e8400-e29b-41d4-a716-446655440000",
+                        "type": "string"
                     },
                     "has_more": {
                         "example": true,
@@ -438,8 +438,8 @@ const docTemplate = `{
                         "uniqueItems": false
                     },
                     "next_cursor": {
-                        "example": 10,
-                        "type": "integer"
+                        "example": "550e8400-e29b-41d4-a716-446655440000",
+                        "type": "string"
                     },
                     "parents": {
                         "description": "если у какого одного или нескольих сообщений есть родители\n(RepostFrom, ReplyFrom) то они будут в этом масиве",
@@ -457,12 +457,9 @@ const docTemplate = `{
                     "author": {
                         "$ref": "#/components/schemas/domain.Author"
                     },
-                    "author_community_id": {
-                        "type": "integer"
-                    },
-                    "author_profile_id": {
-                        "example": 1,
-                        "type": "integer"
+                    "author_profile_uid": {
+                        "example": "550e8400-e29b-41d4-a716-446655440000",
+                        "type": "string"
                     },
                     "comments_count": {
                         "example": 0,
@@ -474,10 +471,6 @@ const docTemplate = `{
                     },
                     "deleted_at": {
                         "type": "string"
-                    },
-                    "id": {
-                        "example": 1,
-                        "type": "integer"
                     },
                     "likes_count": {
                         "example": 0,
@@ -501,6 +494,10 @@ const docTemplate = `{
                     "reposts_count": {
                         "example": 0,
                         "type": "integer"
+                    },
+                    "uid": {
+                        "example": "550e8400-e29b-41d4-a716-446655440000",
+                        "type": "string"
                     },
                     "updated_at": {
                         "type": "string"
@@ -554,10 +551,6 @@ const docTemplate = `{
                         "$ref": "#/components/schemas/domain.Gender",
                         "example": "male"
                     },
-                    "id": {
-                        "example": 1,
-                        "type": "integer"
-                    },
                     "nickname": {
                         "example": "ivan_petrov",
                         "type": "string"
@@ -576,6 +569,10 @@ const docTemplate = `{
                     },
                     "surname": {
                         "example": "Иванов",
+                        "type": "string"
+                    },
+                    "uid": {
+                        "example": "550e8400-e29b-41d4-a716-446655440000",
                         "type": "string"
                     },
                     "updated_at": {
@@ -597,13 +594,13 @@ const docTemplate = `{
                     "profile": {
                         "$ref": "#/components/schemas/domain.ShortProfile"
                     },
-                    "profile_id_master": {
-                        "example": 1,
-                        "type": "integer"
+                    "profile_uid_master": {
+                        "example": "550e8400-e29b-41d4-a716-446655440000",
+                        "type": "string"
                     },
-                    "profile_id_slave": {
-                        "example": 2,
-                        "type": "integer"
+                    "profile_uid_slave": {
+                        "example": "550e8400-e29b-41d4-a716-446655440000",
+                        "type": "string"
                     },
                     "relationships_status": {
                         "$ref": "#/components/schemas/domain.RelationshipStatus",
@@ -793,9 +790,9 @@ const docTemplate = `{
             },
             "domain.SendMessageRequest": {
                 "properties": {
-                    "chat_id": {
-                        "example": 1,
-                        "type": "integer"
+                    "chat_uid": {
+                        "example": "550e8400-e29b-41d4-a716-446655440000",
+                        "type": "string"
                     },
                     "message_text": {
                         "example": "Привет!",
@@ -803,16 +800,16 @@ const docTemplate = `{
                         "type": "string"
                     },
                     "reply_from": {
-                        "example": 7,
-                        "type": "integer"
+                        "example": "550e8400-e29b-41d4-a716-446655440000",
+                        "type": "string"
                     },
                     "repost_from": {
-                        "example": 5,
-                        "type": "integer"
+                        "example": "550e8400-e29b-41d4-a716-446655440000",
+                        "type": "string"
                     }
                 },
                 "required": [
-                    "chat_id",
+                    "chat_uid",
                     "message_text"
                 ],
                 "type": "object"
@@ -822,10 +819,6 @@ const docTemplate = `{
                     "avatar_urls": {
                         "example": "/api/media/avatar1.png",
                         "type": "string"
-                    },
-                    "id": {
-                        "example": 1,
-                        "type": "integer"
                     },
                     "nickname": {
                         "example": "ivan_petrov",
@@ -842,25 +835,29 @@ const docTemplate = `{
                     "surname": {
                         "example": "Иванов",
                         "type": "string"
+                    },
+                    "uid": {
+                        "example": "550e8400-e29b-41d4-a716-446655440000",
+                        "type": "string"
                     }
                 },
                 "type": "object"
             },
             "domain.UpdatePostRequest": {
                 "properties": {
-                    "post_id": {
-                        "example": 1,
-                        "type": "integer"
-                    },
                     "post_text": {
                         "example": "Обновлённый текст",
                         "maxLength": 2048,
                         "type": "string"
+                    },
+                    "post_uid": {
+                        "example": "550e8400-e29b-41d4-a716-446655440000",
+                        "type": "string"
                     }
                 },
                 "required": [
-                    "post_id",
-                    "post_text"
+                    "post_text",
+                    "post_uid"
                 ],
                 "type": "object"
             },
@@ -932,8 +929,8 @@ const docTemplate = `{
             "domain.UserPostsResponse": {
                 "properties": {
                     "cursor": {
-                        "example": 0,
-                        "type": "integer"
+                        "example": "550e8400-e29b-41d4-a716-446655440000",
+                        "type": "string"
                     },
                     "has_more": {
                         "example": true,
@@ -944,8 +941,8 @@ const docTemplate = `{
                         "type": "integer"
                     },
                     "next_cursor": {
-                        "example": 10,
-                        "type": "integer"
+                        "example": "550e8400-e29b-41d4-a716-446655440000",
+                        "type": "string"
                     },
                     "posts": {
                         "items": {
@@ -954,9 +951,9 @@ const docTemplate = `{
                         "type": "array",
                         "uniqueItems": false
                     },
-                    "profile_id": {
-                        "example": 1,
-                        "type": "integer"
+                    "profile_uid": {
+                        "example": "550e8400-e29b-41d4-a716-446655440000",
+                        "type": "string"
                     }
                 },
                 "type": "object"
@@ -1748,12 +1745,11 @@ const docTemplate = `{
                 "description": "Возвращает чаты, в которых состоит текущий пользователь",
                 "parameters": [
                     {
-                        "description": "Указатель на начальный элемент для чатов",
+                        "description": "UUID последнего чата предыдущей страницы",
                         "in": "query",
                         "name": "cursor",
                         "schema": {
-                            "default": 0,
-                            "type": "integer"
+                            "type": "string"
                         }
                     },
                     {
@@ -1825,21 +1821,20 @@ const docTemplate = `{
                 "description": "Возвращает сообщения указанного чата в хронологическом порядке",
                 "parameters": [
                     {
-                        "description": "id чата",
+                        "description": "Внешний UUID чата",
                         "in": "query",
-                        "name": "chat_id",
+                        "name": "chat_uid",
                         "required": true,
                         "schema": {
-                            "type": "integer"
+                            "type": "string"
                         }
                     },
                     {
-                        "description": "Указатель на начальный элемент для сообщений",
+                        "description": "UUID последнего сообщения предыдущей страницы",
                         "in": "query",
                         "name": "cursor",
                         "schema": {
-                            "default": 0,
-                            "type": "integer"
+                            "type": "string"
                         }
                     },
                     {
@@ -2018,7 +2013,7 @@ const docTemplate = `{
         },
         "/api/chats/ws": {
             "get": {
-                "description": "Выполняет WebSocket upgrade. Session cookie передаётся автоматически. Первым сообщением необходимо отправить ` + "`" + `{\"type\":\"auth\",\"csrf_token\":\"TOKEN\"}` + "`" + `. После авторизации сервер загружает все чаты пользователя через пагинацию и подписывает соединение на них. Один аккаунт может иметь несколько одновременных подключений с разных устройств. Сообщение отправляется как ` + "`" + `{\"type\":\"message\",\"chat_id\":1,\"message\":{\"message_text\":\"Привет!\"}}` + "`" + `. Ошибки авторизации, CSRF и проверки доступа после Upgrade отправляются как WebSocket-события с ` + "`" + `type: \"error\"` + "`" + `.",
+                "description": "Выполняет WebSocket upgrade. Session cookie передаётся автоматически. Первым сообщением необходимо отправить ` + "`" + `{\"type\":\"auth\",\"csrf_token\":\"TOKEN\"}` + "`" + `. После авторизации сервер загружает все чаты пользователя через пагинацию и подписывает соединение на них. Один аккаунт может иметь несколько одновременных подключений с разных устройств. Сообщение отправляется как ` + "`" + `{\"type\":\"message\",\"chat_uid\":\"UUID\",\"message\":{\"message_text\":\"Привет!\"}}` + "`" + `. Ошибки авторизации, CSRF и проверки доступа после Upgrade отправляются как WebSocket-события с ` + "`" + `type: \"error\"` + "`" + `.",
                 "responses": {
                     "101": {
                         "content": {
@@ -2067,12 +2062,11 @@ const docTemplate = `{
                 "description": "Возвращает посты в обратном хронологическом порядке",
                 "parameters": [
                     {
-                        "description": "Указатель на начальный элемент для постов",
+                        "description": "UUID последнего поста предыдущей страницы",
                         "in": "query",
                         "name": "cursor",
                         "schema": {
-                            "default": 0,
-                            "type": "integer"
+                            "type": "string"
                         }
                     },
                     {
@@ -2228,12 +2222,12 @@ const docTemplate = `{
                         }
                     },
                     {
-                        "description": "ID публикации",
+                        "description": "Внешний UUID публикации",
                         "in": "query",
-                        "name": "post_id",
+                        "name": "post_uid",
                         "required": true,
                         "schema": {
-                            "type": "integer"
+                            "type": "string"
                         }
                     }
                 ],
@@ -2417,21 +2411,20 @@ const docTemplate = `{
                 "description": "Возвращает публикации указанного пользователя в обратном хронологическом порядке",
                 "parameters": [
                     {
-                        "description": "ID пользователя",
+                        "description": "Внешний UUID пользователя",
                         "in": "query",
-                        "name": "profile_id",
+                        "name": "profile_uid",
                         "required": true,
                         "schema": {
-                            "type": "integer"
+                            "type": "string"
                         }
                     },
                     {
-                        "description": "Указатель на начальный элемент для публикаций",
+                        "description": "UUID последней публикации предыдущей страницы",
                         "in": "query",
                         "name": "cursor",
                         "schema": {
-                            "default": 0,
-                            "type": "integer"
+                            "type": "string"
                         }
                     },
                     {
@@ -2647,7 +2640,7 @@ const docTemplate = `{
                 ]
             }
         },
-        "/api/profile/avatars/{id}": {
+        "/api/profile/avatars/{uid}": {
             "delete": {
                 "description": "Удаляет выбранную аватарку текущего пользователя",
                 "parameters": [
@@ -2661,12 +2654,12 @@ const docTemplate = `{
                         }
                     },
                     {
-                        "description": "ID аватарки",
+                        "description": "uid",
                         "in": "path",
-                        "name": "id",
+                        "name": "uid",
                         "required": true,
                         "schema": {
-                            "type": "integer"
+                            "type": "string"
                         }
                     }
                 ],
@@ -2738,19 +2731,18 @@ const docTemplate = `{
         },
         "/api/profile/search": {
             "get": {
-                "description": "Возвращает публичные данные. Можно передать profile_id или login",
+                "description": "Возвращает публичные данные. Можно передать uid или login",
                 "parameters": [
                     {
-                        "description": "ID пользователя",
+                        "description": "uid",
                         "in": "query",
-                        "name": "profile_id",
+                        "name": "uid",
                         "schema": {
-                            "minimum": 1,
-                            "type": "integer"
+                            "type": "string"
                         }
                     },
                     {
-                        "description": "Логин, email или номер телефона",
+                        "description": "Логин, email или номер телефона, UUID",
                         "in": "query",
                         "name": "login",
                         "schema": {
@@ -3247,6 +3239,11 @@ const docTemplate = `{
                         "in": "query",
                         "name": "relationships_status",
                         "schema": {
+                            "enum": [
+                                "request",
+                                "accepted",
+                                "canceled"
+                            ],
                             "type": "string"
                         }
                     },
@@ -3256,6 +3253,10 @@ const docTemplate = `{
                         "in": "query",
                         "name": "relationships_type",
                         "schema": {
+                            "enum": [
+                                "friendship",
+                                "family"
+                            ],
                             "type": "string"
                         }
                     },
@@ -3351,6 +3352,10 @@ const docTemplate = `{
                         "in": "query",
                         "name": "relationships_type",
                         "schema": {
+                            "enum": [
+                                "friendship",
+                                "family"
+                            ],
                             "type": "string"
                         }
                     },

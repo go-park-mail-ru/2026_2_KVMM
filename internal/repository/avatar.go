@@ -69,14 +69,14 @@ const avatarCountQuery = `
 const createMediaQuery = `
 	INSERT INTO media (media_path)
 	VALUES ($1)
-	RETURNING id, created_at`
+	RETURNING id, uid, created_at`
 
 const createProfileAvatarQuery = `
 	INSERT INTO profile_avatar (profile_id, media_id)
 	VALUES ($1, $2)`
 
 const listAvatarsQuery = `
-	SELECT m.id, m.media_path, pa.created_at
+	SELECT m.id, m.uid, m.media_path, pa.created_at
 	FROM profile_avatar pa
 	JOIN media m ON m.id = pa.media_id
 	WHERE pa.profile_id = $1
@@ -89,7 +89,7 @@ const readAvatarForDeleteQuery = `
 	FROM profile_avatar pa
 	JOIN media m ON m.id = pa.media_id
 	WHERE pa.profile_id = $1
-		AND pa.media_id = $2
+		AND m.uid = $2::uuid
 		AND pa.deleted_at IS NULL
 		AND m.deleted_at IS NULL
 	FOR UPDATE OF pa, m`
@@ -178,7 +178,8 @@ func (r *AvatarRepository) Create(
 	}
 
 	var avatar domain.Avatar
-	if err = tx.QueryRow(ctx, createMediaQuery, publicPath).Scan(&avatar.ID, &avatar.CreatedAt); err != nil {
+	var uid pgtype.UUID
+	if err = tx.QueryRow(ctx, createMediaQuery, publicPath).Scan(&avatar.ID, &uid, &avatar.CreatedAt); err != nil {
 		return domain.Avatar{}, normalizeAvatarError(err)
 	}
 	if _, err = tx.Exec(ctx, createProfileAvatarQuery, profileID, avatar.ID); err != nil {
@@ -189,6 +190,7 @@ func (r *AvatarRepository) Create(
 		return domain.Avatar{}, err
 	}
 	removeFile = false
+	avatar.UID = uuidString(uid)
 	avatar.URL = publicPath
 	return avatar, nil
 }
@@ -208,13 +210,15 @@ func (r *AvatarRepository) List(ctx context.Context, profileID int64) (domain.Av
 	for rows.Next() {
 		var (
 			avatar    domain.Avatar
+			uid       pgtype.UUID
 			mediaPath pgtype.Text
 			createdAt pgtype.Timestamptz
 		)
-		if err := rows.Scan(&avatar.ID, &mediaPath, &createdAt); err != nil {
+		if err := rows.Scan(&avatar.ID, &uid, &mediaPath, &createdAt); err != nil {
 			return domain.AvatarsResponse{}, err
 		}
 		avatar.URL = mediaPath.String
+		avatar.UID = uuidString(uid)
 		avatar.CreatedAt = createdAt.Time
 		response.Avatars = append(response.Avatars, avatar)
 	}
@@ -222,6 +226,37 @@ func (r *AvatarRepository) List(ctx context.Context, profileID int64) (domain.Av
 		return domain.AvatarsResponse{}, err
 	}
 	return response, nil
+}
+
+// DeleteByUID выполняет soft delete аватарки по UUID
+func (r *AvatarRepository) DeleteByUID(ctx context.Context, profileID int64, avatarUID string) error {
+	if profileID <= 0 || strings.TrimSpace(avatarUID) == "" {
+		return ErrAvatarNotFound
+	}
+
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	var mediaID int64
+	if err := tx.QueryRow(ctx, readAvatarForDeleteQuery, profileID, strings.TrimSpace(avatarUID)).Scan(&mediaID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrAvatarNotFound
+		}
+		return err
+	}
+	if _, err := tx.Exec(ctx, deleteProfileAvatarQuery, profileID, mediaID); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, deleteMediaQuery, mediaID); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+	return nil
 }
 
 // Delete выполняет soft удаление аватарки

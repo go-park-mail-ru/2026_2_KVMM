@@ -26,16 +26,16 @@ import (
 // @Failure 500 {object} domain.ErrorResponse
 // @Router /api/relationships/create [post]
 func (h *FriendsHandler) Create(w http.ResponseWriter, r *http.Request) {
-	if !helpers.MethodAllowed(w, r, http.MethodPost) {
-		return
-	}
-
 	var req domain.CreateRelationshipRequest
 	if err := helpers.DecodeJSON(w, r, &req); err != nil {
 		helpers.WriteError(w, http.StatusBadRequest, "validation_error", err.Error())
 		return
 	}
-	relationship, err := h.useCase.Create(
+	if !helpers.IsUUID(req.ProfileUIDSlave) {
+		helpers.WriteError(w, http.StatusBadRequest, "validation_error", "profile_uid_slave must be a valid UUID")
+		return
+	}
+	relationship, err := h.useCase.CreateByUID(
 		r.Context(),
 		helpers.SessionCookie(r),
 		r.Header.Get("X-CSRF-Token"),

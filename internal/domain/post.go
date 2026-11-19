@@ -13,10 +13,12 @@ const (
 
 // Post — публикация пользователя в ленте
 type Post struct {
-	ID                int64      `json:"id" example:"1"`
+	ID                int64      `json:"-"`
+	UID               string     `json:"uid" example:"550e8400-e29b-41d4-a716-446655440000"`
 	PostText          *string    `json:"post_text,omitempty" example:"Привет, мир!"`
-	AuthorProfileID   *int64     `json:"author_profile_id,omitempty" example:"1"`
-	AuthorCommunityID *int64     `json:"author_community_id,omitempty"`
+	AuthorProfileID   *int64     `json:"-"`
+	AuthorProfileUID  *string    `json:"author_profile_uid,omitempty" example:"550e8400-e29b-41d4-a716-446655440000"`
+	AuthorCommunityID *int64     `json:"-"`
 	Author            Author     `json:"author"`
 	CreatedAt         time.Time  `json:"created_at" example:"2026-01-01T12:00:00Z"`
 	UpdatedAt         *time.Time `json:"updated_at,omitempty"`
@@ -30,7 +32,8 @@ type Post struct {
 
 // Post — публикация пользователя в ленте
 type PostUpdateRequest struct {
-	ID        int64    `json:"id" example:"1"`
+	ID        int64    `json:"-"`
+	UID       string   `json:"uid,omitempty" example:"550e8400-e29b-41d4-a716-446655440000"`
 	PostText  *string  `json:"post_text,omitempty" example:"Привет, мир!"`
 	MediaURLs []string `json:"media_urls,omitempty"`
 }
@@ -51,16 +54,20 @@ type CreatePostRequest struct {
 
 // UpdatePostRequest новый текст публикации.
 type UpdatePostRequest struct {
-	PostID   int64   `json:"post_id" example:"1" validate:"required,gt=0"`
+	PostID   int64   `json:"-"`
+	PostUID  string  `json:"post_uid" example:"550e8400-e29b-41d4-a716-446655440000" validate:"required"`
 	PostText *string `json:"post_text" example:"Обновлённый текст" validate:"required,max=2048"`
 }
 
 // UserPostsResponse страница публикаций конкретного пользователя
 type UserPostsResponse struct {
-	Posts      []Post `json:"posts"`
-	ProfileID  int64  `json:"profile_id" example:"1"`
-	Cursor     int64  `json:"cursor" example:"0"`
-	Limit      int    `json:"limit" example:"10"`
-	HasMore    bool   `json:"has_more" example:"true"`
-	NextCursor int64  `json:"next_cursor,omitempty" example:"10"`
+	Posts         []Post `json:"posts"`
+	ProfileID     int64  `json:"-"`
+	ProfileUID    string `json:"profile_uid" example:"550e8400-e29b-41d4-a716-446655440000"`
+	Cursor        int64  `json:"-"`
+	CursorUID     string `json:"cursor,omitempty" example:"550e8400-e29b-41d4-a716-446655440000"`
+	Limit         int    `json:"limit" example:"10"`
+	HasMore       bool   `json:"has_more" example:"true"`
+	NextCursor    int64  `json:"-"`
+	NextCursorUID string `json:"next_cursor,omitempty" example:"550e8400-e29b-41d4-a716-446655440000"`
 }

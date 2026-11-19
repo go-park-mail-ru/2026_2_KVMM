@@ -11,22 +11,19 @@ import (
 // @Summary Лента публикаций
 // @Description Возвращает посты в обратном хронологическом порядке
 // @Tags feed
-// @Param cursor query int false "Указатель на начальный элемент для постов" default(0)
+// @Param cursor query string false "UUID последнего поста предыдущей страницы"
 // @Param limit query int false "Размер страницы (максимум 10)" default(10) maximum(10)
 // @Produce json
 // @Success 200 {object} domain.FeedResponse
 // @Failure 500 {object} domain.ErrorResponse
 // @Router /api/feed [get]
 func (h *FeedHandler) List(w http.ResponseWriter, r *http.Request) {
-	if !helpers.MethodAllowed(w, r, http.MethodGet) {
-		return
-	}
-	cursor, limit, err := helpers.Pagination(r, 10)
+	cursor, limit, err := helpers.UUIDPagination(r, 10)
 	if err != nil {
 		helpers.WriteError(w, http.StatusBadRequest, "invalid_pagination", err.Error())
 		return
 	}
-	response, err := h.useCase.List(r.Context(), int64(cursor), limit)
+	response, err := h.useCase.ListByUID(r.Context(), cursor, limit)
 	if err != nil {
 		helpers.WriteInternalError(w, "feed.list", err)
 		return

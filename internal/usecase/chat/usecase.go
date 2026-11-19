@@ -21,6 +21,9 @@ var (
 
 type chatRepository interface {
 	Create(context.Context, int64, int64) (domain.Chat, error)
+	CreateByUUID(context.Context, int64, string) (domain.Chat, error)
+	ListChatsByUUID(context.Context, int64, string, int) (domain.ChatsResponse, error)
+	IsParticipantByUUID(context.Context, string, int64) error
 	ListChats(context.Context, int64, int64, int) (domain.ChatsResponse, error)
 	IsParticipant(context.Context, int64, int64) error
 }
@@ -28,6 +31,8 @@ type chatRepository interface {
 type messageRepository interface {
 	Create(context.Context, repository.CreateMessageParams) (domain.Message, error)
 	ListMessages(context.Context, int64, int64, int) (domain.MessagesResponse, error)
+	ListMessagesByUUID(context.Context, string, string, int) (domain.MessagesResponse, error)
+	CreateByUUID(context.Context, repository.CreateMessageByUUIDParams) (domain.Message, error)
 }
 
 // UseCase содержит бизнес-логику личных чатов и сообщений
@@ -60,6 +65,19 @@ func (u *UseCase) Create(
 	return chat, err
 }
 
+// CreateByUID создаёт личный чат с пользователем, указанным внешним UUID
+func (u *UseCase) CreateByUID(ctx context.Context, sessionToken, csrfToken string, req domain.CreateChatRequest) (domain.Chat, error) {
+	userID, err := u.sessions.Authorize(sessionToken, csrfToken)
+	if err != nil {
+		return domain.Chat{}, err
+	}
+	chat, err := u.chats.CreateByUUID(ctx, userID, req.ProfileUID)
+	if err != nil {
+		logging.LogUseCaseErrorContext(ctx, "chat", "create chat", err)
+	}
+	return chat, err
+}
+
 // List возвращает чаты текущего пользователя
 func (u *UseCase) List(
 	ctx context.Context,
@@ -77,6 +95,23 @@ func (u *UseCase) List(
 		logging.LogUseCaseErrorContext(ctx, "chat", "list chats", err)
 	}
 	return response, err
+}
+
+// ListByUID возвращает чаты с UUID/курсором
+func (u *UseCase) ListByUID(ctx context.Context, sessionToken, csrfToken, cursorUID string, limit int) (domain.ChatsResponse, error) {
+	userID, err := u.sessions.Authorize(sessionToken, csrfToken)
+	if err != nil {
+		return domain.ChatsResponse{}, err
+	}
+	response, err := u.chats.ListChatsByUUID(ctx, userID, cursorUID, limit)
+	if err != nil {
+		return domain.ChatsResponse{}, err
+	}
+	response.CursorUID = cursorUID
+	if len(response.Chats) > 0 {
+		response.NextCursorUID = response.Chats[len(response.Chats)-1].UID
+	}
+	return response, nil
 }
 
 // Messages возвращает сообщения чата и связанные родительские сообщения
@@ -103,6 +138,22 @@ func (u *UseCase) Messages(
 	return response, err
 }
 
+// MessagesByUID возвращает сообщения чата с UUID/курсором
+func (u *UseCase) MessagesByUID(ctx context.Context, sessionToken, csrfToken, chatUID, cursorUID string, limit int) (domain.MessagesResponse, error) {
+	userID, err := u.sessions.Authorize(sessionToken, csrfToken)
+	if err != nil {
+		return domain.MessagesResponse{}, err
+	}
+	if err := u.chats.IsParticipantByUUID(ctx, chatUID, userID); err != nil {
+		return domain.MessagesResponse{}, err
+	}
+	response, err := u.messages.ListMessagesByUUID(ctx, chatUID, cursorUID, limit)
+	if err != nil {
+		return domain.MessagesResponse{}, err
+	}
+	return response, nil
+}
+
 // Send отправляет сообщение в чат
 func (u *UseCase) Send(
 	ctx context.Context,
@@ -127,6 +178,32 @@ func (u *UseCase) Send(
 		RepostFrom:  req.RepostFrom,
 		ReplyFrom:   req.ReplyFrom,
 	})
+	if err != nil {
+		logging.LogUseCaseErrorContext(ctx, "chat", "send message", err)
+	}
+	return message, err
+}
+
+// SendByUID отправляет сообщение, используя внешние UUID чата и сообщений.
+func (u *UseCase) SendByUID(ctx context.Context, sessionToken, csrfToken string, req domain.SendMessageRequest) (domain.Message, error) {
+	userID, err := u.sessions.Authorize(sessionToken, csrfToken)
+	if err != nil {
+		return domain.Message{}, err
+	}
+	if req.MessageText == nil || strings.TrimSpace(*req.MessageText) == "" {
+		return domain.Message{}, repository.ErrEmptyMessage
+	}
+	if len([]rune(*req.MessageText)) > 256 {
+		return domain.Message{}, repository.ErrMessageTooLong
+	}
+	params := repository.CreateMessageByUUIDParams{ChatUID: req.ChatUID, AuthorID: userID, MessageText: req.MessageText}
+	if req.RepostFromUID != nil {
+		params.RepostFromUID = *req.RepostFromUID
+	}
+	if req.ReplyFromUID != nil {
+		params.ReplyFromUID = *req.ReplyFromUID
+	}
+	message, err := u.messages.CreateByUUID(ctx, params)
 	if err != nil {
 		logging.LogUseCaseErrorContext(ctx, "chat", "send message", err)
 	}

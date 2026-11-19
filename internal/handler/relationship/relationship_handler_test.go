@@ -43,9 +43,9 @@ func TestRelationshipHandlers(t *testing.T) {
 	relationships.EXPECT().Types(ctx, int64(7)).Return(domain.RelationshipTypes{}, nil)
 	relationships.EXPECT().Requests(ctx, int64(7), "", int64(0), 10).Return(domain.RelationshipsResponse{}, nil)
 	relationships.EXPECT().Suggestions(ctx, int64(7), int64(0), 10).Return(domain.RelationshipSuggestionsResponse{}, nil)
-	relationships.EXPECT().Create(ctx, int64(7), gomock.Any()).Return(domain.ProfileRelationship{}, nil)
-	relationships.EXPECT().Accept(ctx, int64(7), gomock.Any()).Return(domain.ProfileRelationship{}, nil)
-	relationships.EXPECT().Cancel(ctx, int64(7), gomock.Any()).Return(domain.ProfileRelationship{}, nil)
+	relationships.EXPECT().AcceptByUUID(ctx, int64(7), "550e8400-e29b-41d4-a716-446655440000", "friendship").Return(domain.ProfileRelationship{}, nil)
+	relationships.EXPECT().CancelByUUID(ctx, int64(7), "550e8400-e29b-41d4-a716-446655440000", "friendship").Return(domain.ProfileRelationship{}, nil)
+	relationships.EXPECT().CreateByUUID(ctx, int64(7), "550e8400-e29b-41d4-a716-446655440000", "friendship").Return(domain.ProfileRelationship{}, nil)
 
 	w := httptest.NewRecorder()
 	h.List(w, relationshipGet("/api/relationships/list?limit=1"))
@@ -67,13 +67,13 @@ func TestRelationshipHandlers(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("Suggestions() status = %d", w.Code)
 	}
-	body := `{"profile_id_slave":2,"relationships_type":"friendship"}`
+	body := `{"profile_uid_slave":"550e8400-e29b-41d4-a716-446655440000","relationships_type":"friendship"}`
 	w = httptest.NewRecorder()
 	h.Create(w, relationshipRequest(http.MethodPost, "/api/relationships/create", body))
 	if w.Code != http.StatusCreated {
 		t.Fatalf("Create() status = %d", w.Code)
 	}
-	body = `{"profile_id":2,"relationships_type":"friendship"}`
+	body = `{"profile_uid":"550e8400-e29b-41d4-a716-446655440000","relationships_type":"friendship"}`
 	w = httptest.NewRecorder()
 	h.Accept(w, relationshipRequest(http.MethodPatch, "/api/relationships/accept", body))
 	if w.Code != http.StatusOK {

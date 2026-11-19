@@ -56,7 +56,7 @@ func TestPostUseCaseErrors(t *testing.T) {
 	foreignID := int64(8)
 	post := domain.Post{ID: 1, AuthorProfileID: &foreignID}
 
-	longText := make([]rune, 257)
+	longText := make([]rune, 2057)
 	for i := range longText {
 		longText[i] = 'a'
 	}

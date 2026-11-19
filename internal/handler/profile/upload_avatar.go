@@ -28,9 +28,6 @@ const avatarFormField = "avatar"
 // @Failure 500 {object} domain.ErrorResponse
 // @Router /api/profile/avatar [post]
 func (h *ProfileHandler) UploadAvatar(w http.ResponseWriter, r *http.Request) {
-	if !helpers.MethodAllowed(w, r, http.MethodPost) {
-		return
-	}
 
 	r.Body = http.MaxBytesReader(w, r.Body, int64(domain.MaxAvatarSize)+1024*1024)
 	file, _, err := r.FormFile(avatarFormField)

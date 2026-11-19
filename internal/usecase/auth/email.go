@@ -219,7 +219,7 @@ func randomPassword() (string, error) {
 	return string(password), nil
 }
 
-// generatedEmailNickname создаёт уникальный nickname из локальной части email.
+// generatedEmailNickname создаёт уникальный nickname из локальной части email
 func (u *UseCase) generatedEmailNickname(ctx context.Context, email string) (string, error) {
 	local := email
 	if atPos := strings.IndexByte(email, '@'); atPos != -1 {

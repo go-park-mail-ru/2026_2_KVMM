@@ -40,6 +40,30 @@ const relationshipColumns = `
 const relationshipPairLockQuery = `
 	SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`
 
+// AcceptByUUID подтверждает запрос по UUID второго профиля
+func (r *RelationshipRepository) AcceptByUUID(ctx context.Context, profileID int64, profileUID, typeName string) (domain.ProfileRelationship, error) {
+	relationship, err := scanRelationship(r.pool.QueryRow(ctx, acceptRelationshipByUUIDQuery, profileUID, profileID, strings.TrimSpace(typeName)))
+	if err != nil {
+		return domain.ProfileRelationship{}, normalizeRelationshipError(err)
+	}
+	if err := r.attachRelationshipProfile(ctx, &relationship, profileID); err != nil {
+		return domain.ProfileRelationship{}, err
+	}
+	return relationship, nil
+}
+
+// CancelByUUID закрывает связь по UUID второго профиля
+func (r *RelationshipRepository) CancelByUUID(ctx context.Context, profileID int64, profileUID, typeName string) (domain.ProfileRelationship, error) {
+	relationship, err := scanRelationship(r.pool.QueryRow(ctx, cancelRelationshipByUUIDQuery, profileID, profileUID, strings.TrimSpace(typeName)))
+	if err != nil {
+		return domain.ProfileRelationship{}, normalizeRelationshipError(err)
+	}
+	if err := r.attachRelationshipProfile(ctx, &relationship, profileID); err != nil {
+		return domain.ProfileRelationship{}, err
+	}
+	return relationship, nil
+}
+
 const relationshipPairQuery = `
 	SELECT ` + relationshipColumns + `
 	FROM profile_relationship
@@ -57,6 +81,61 @@ const createRelationshipQuery = `
 	)
 	VALUES ($1, $2, 'request', $3)
 	RETURNING ` + relationshipColumns
+
+const relationshipPairByUUIDQuery = `
+	SELECT ` + relationshipColumns + `
+	FROM profile_relationship
+	WHERE (profile_id_master = $1 AND profile_id_slave = (
+		SELECT id FROM profile WHERE uid = $2::uuid AND deleted_at IS NULL
+	))
+	   OR (profile_id_master = (
+		SELECT id FROM profile WHERE uid = $2::uuid AND deleted_at IS NULL
+	   ) AND profile_id_slave = $1)
+	ORDER BY deleted_at NULLS FIRST, created_at DESC
+	FOR UPDATE`
+
+const updateRelationshipRequestByUUIDQuery = `
+	UPDATE profile_relationship
+	SET relationships_status = 'request',
+		relationships_type = $3,
+		created_at = CURRENT_TIMESTAMP,
+		updated_at = CURRENT_TIMESTAMP,
+		deleted_at = NULL
+	WHERE profile_id_master = $1
+	  AND profile_id_slave = (
+		SELECT id FROM profile WHERE uid = $2::uuid AND deleted_at IS NULL
+	  )
+	RETURNING ` + relationshipColumns
+
+const archiveRelationshipPairByUUIDQuery = `
+	UPDATE profile_relationship
+	SET deleted_at = CURRENT_TIMESTAMP,
+		updated_at = CURRENT_TIMESTAMP
+	WHERE ((profile_id_master = $1 AND profile_id_slave = (
+			SELECT id FROM profile WHERE uid = $2::uuid
+		))
+	    OR (profile_id_master = (SELECT id FROM profile WHERE uid = $2::uuid)
+			AND profile_id_slave = $1))
+		AND deleted_at IS NULL`
+
+const createRelationshipByUUIDQuery = `
+	INSERT INTO profile_relationship (
+		profile_id_master,
+		profile_id_slave,
+		relationships_status,
+		relationships_type
+	)
+	SELECT $1, p.id, 'request', $2
+	FROM profile p
+	WHERE p.uid = $3::uuid
+	  AND p.deleted_at IS NULL
+	RETURNING ` + relationshipColumns
+
+const countActiveProfilesByUUIDForRelationshipQuery = `
+	SELECT COUNT(*)
+	FROM profile
+	WHERE deleted_at IS NULL
+	  AND (id = $1 OR uid = $2::uuid)`
 
 const updateRelationshipRequestQuery = `
 	UPDATE profile_relationship
@@ -138,6 +217,7 @@ const suggestionCandidatesQuery = `
 const shortProfilesQuery = `
 	SELECT
 		p.id,
+		p.uid,
 		p.nickname,
 		p.profile_name,
 		p.surname,
@@ -181,6 +261,17 @@ const acceptRelationshipQuery = `
 		AND deleted_at IS NULL
 	RETURNING ` + relationshipColumns
 
+const acceptRelationshipByUUIDQuery = `
+	UPDATE profile_relationship
+	SET relationships_status = 'accepted',
+		updated_at = CURRENT_TIMESTAMP
+	WHERE profile_id_master = (SELECT id FROM profile WHERE uid = $1::uuid)
+		AND profile_id_slave = $2
+		AND relationships_type = $3
+		AND relationships_status = 'request'
+		AND deleted_at IS NULL
+	RETURNING ` + relationshipColumns
+
 const cancelRelationshipQuery = `
 	UPDATE profile_relationship
 	SET relationships_status = 'canceled',
@@ -193,6 +284,92 @@ const cancelRelationshipQuery = `
 			OR (profile_id_master = $2 AND profile_id_slave = $1)
 		)
 	RETURNING ` + relationshipColumns
+
+const cancelRelationshipByUUIDQuery = `
+	UPDATE profile_relationship
+	SET relationships_status = 'canceled',
+		updated_at = CURRENT_TIMESTAMP
+	WHERE deleted_at IS NULL
+		AND relationships_status <> 'canceled'
+		AND relationships_type = $3
+		AND (
+			(profile_id_master = $1 AND profile_id_slave = (SELECT id FROM profile WHERE uid = $2::uuid))
+			OR (profile_id_master = (SELECT id FROM profile WHERE uid = $2::uuid) AND profile_id_slave = $1)
+		)
+	RETURNING ` + relationshipColumns
+
+// CreateByUUID создаёт запрос на связь, используя UUID второго профиля
+
+func (r *RelationshipRepository) CreateByUUID(
+	ctx context.Context,
+	masterID int64,
+	profileUID string,
+	typeName string,
+) (domain.ProfileRelationship, error) {
+	typeName = strings.TrimSpace(typeName)
+	profileUID = strings.TrimSpace(profileUID)
+	if masterID <= 0 || profileUID == "" || typeName == "" || len([]rune(typeName)) > 32 {
+		return domain.ProfileRelationship{}, ErrInvalidRelationship
+	}
+
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return domain.ProfileRelationship{}, err
+	}
+	defer tx.Rollback(ctx)
+
+	lockKey := fmt.Sprintf("profile-relationship:%d:%s", masterID, profileUID)
+	if _, err = tx.Exec(ctx, relationshipPairLockQuery, lockKey); err != nil {
+		return domain.ProfileRelationship{}, err
+	}
+
+	var profileCount int
+	if err = tx.QueryRow(ctx, countActiveProfilesByUUIDForRelationshipQuery, masterID, profileUID).Scan(&profileCount); err != nil {
+		return domain.ProfileRelationship{}, err
+	}
+	if profileCount != 2 {
+		return domain.ProfileRelationship{}, ErrProfileNotFound
+	}
+
+	rows, err := tx.Query(ctx, relationshipPairByUUIDQuery, masterID, profileUID)
+	if err != nil {
+		return domain.ProfileRelationship{}, err
+	}
+	for rows.Next() {
+		relationship, scanErr := scanRelationship(rows)
+		if scanErr != nil {
+			rows.Close()
+			return domain.ProfileRelationship{}, scanErr
+		}
+		if relationship.DeletedAt == nil && relationship.RelationshipsStatus != domain.RelationshipCanceled {
+			rows.Close()
+			return domain.ProfileRelationship{}, ErrRelationshipConflict
+		}
+	}
+	if err = rows.Err(); err != nil {
+		rows.Close()
+		return domain.ProfileRelationship{}, err
+	}
+	rows.Close()
+
+	created, err := scanRelationship(tx.QueryRow(ctx, updateRelationshipRequestByUUIDQuery, masterID, profileUID, typeName))
+	if errors.Is(err, pgx.ErrNoRows) {
+		if _, err = tx.Exec(ctx, archiveRelationshipPairByUUIDQuery, masterID, profileUID); err != nil {
+			return domain.ProfileRelationship{}, err
+		}
+		created, err = scanRelationship(tx.QueryRow(ctx, createRelationshipByUUIDQuery, masterID, typeName, profileUID))
+	}
+	if err != nil {
+		return domain.ProfileRelationship{}, normalizeRelationshipError(err)
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return domain.ProfileRelationship{}, err
+	}
+	if err := r.attachRelationshipProfile(ctx, &created, masterID); err != nil {
+		return domain.ProfileRelationship{}, err
+	}
+	return created, nil
+}
 
 type suggestionCandidate struct {
 	ProfileID   int64
@@ -457,6 +634,7 @@ func (r *RelationshipRepository) loadShortProfiles(ctx context.Context, profileI
 	for rows.Next() {
 		var (
 			profile     domain.ShortProfile
+			uid         pgtype.UUID
 			profileName pgtype.Text
 			surname     pgtype.Text
 			patronymic  pgtype.Text
@@ -464,6 +642,7 @@ func (r *RelationshipRepository) loadShortProfiles(ctx context.Context, profileI
 		)
 		if err := rows.Scan(
 			&profile.ID,
+			&uid,
 			&profile.Nickname,
 			&profileName,
 			&surname,
@@ -472,6 +651,7 @@ func (r *RelationshipRepository) loadShortProfiles(ctx context.Context, profileI
 		); err != nil {
 			return nil, err
 		}
+		profile.UID = uuidString(uid)
 		profile.ProfileName = textPointer(profileName)
 		profile.Surname = textPointer(surname)
 		profile.Patronymic = textPointer(patronymic)

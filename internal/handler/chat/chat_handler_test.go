@@ -26,6 +26,11 @@ func newChatHandler(t *testing.T) *ChatHandler {
 
 	session.EXPECT().Read("session").Return(int64(7), "csrf", nil).AnyTimes()
 	session.EXPECT().ValidateCSRF("session", "csrf").Return(nil).AnyTimes()
+	chats.EXPECT().CreateByUUID(gomock.Any(), int64(7), gomock.Any()).Return(domain.Chat{ID: 1, UID: "550e8400-e29b-41d4-a716-446655440000"}, nil).AnyTimes()
+	chats.EXPECT().ListChatsByUUID(gomock.Any(), int64(7), gomock.Any(), gomock.Any()).Return(domain.ChatsResponse{Chats: []domain.Chat{{ID: 1, UID: "550e8400-e29b-41d4-a716-446655440000"}}}, nil).AnyTimes()
+	chats.EXPECT().IsParticipantByUUID(gomock.Any(), gomock.Any(), int64(7)).Return(nil).AnyTimes()
+	messages.EXPECT().ListMessagesByUUID(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(domain.MessagesResponse{ChatUID: "550e8400-e29b-41d4-a716-446655440000"}, nil).AnyTimes()
+	messages.EXPECT().CreateByUUID(gomock.Any(), gomock.Any()).Return(domain.Message{ID: 1, ChatID: 1, ChatUID: "550e8400-e29b-41d4-a716-446655440000"}, nil).AnyTimes()
 	chats.EXPECT().IsParticipant(gomock.Any(), int64(1), int64(7)).Return(nil).AnyTimes()
 	messages.EXPECT().ListMessages(gomock.Any(), int64(1), gomock.Any(), gomock.Any()).Return(
 		domain.MessagesResponse{ChatID: 1}, nil,
@@ -33,7 +38,7 @@ func newChatHandler(t *testing.T) *ChatHandler {
 	messages.EXPECT().Create(gomock.Any(), gomock.Any()).Return(domain.Message{ID: 1, ChatID: 1}, nil).AnyTimes()
 	chats.EXPECT().Create(gomock.Any(), int64(7), int64(2)).Return(domain.Chat{ID: 1}, nil).AnyTimes()
 	chats.EXPECT().ListChats(gomock.Any(), int64(7), gomock.Any(), gomock.Any()).Return(
-		domain.ChatsResponse{Chats: []domain.Chat{{ID: 1}}}, nil,
+		domain.ChatsResponse{Chats: []domain.Chat{{ID: 1, UID: "550e8400-e29b-41d4-a716-446655440000"}}}, nil,
 	).AnyTimes()
 
 	sessions := sessionusecase.New(session)
@@ -50,7 +55,7 @@ func chatRequest(method, path, body string) *http.Request {
 func TestChatHandlers(t *testing.T) {
 	h := newChatHandler(t)
 	w := httptest.NewRecorder()
-	h.Create(w, chatRequest(http.MethodPost, "/api/chats/create", `{"profile_id":2}`))
+	h.Create(w, chatRequest(http.MethodPost, "/api/chats/create", `{"profile_uid":"550e8400-e29b-41d4-a716-446655440000"}`))
 	if w.Code != http.StatusCreated {
 		t.Fatalf("Create() status = %d", w.Code)
 	}
@@ -62,13 +67,13 @@ func TestChatHandlers(t *testing.T) {
 	}
 
 	w = httptest.NewRecorder()
-	h.Messages(w, chatRequest(http.MethodGet, "/api/chats/messages?chat_id=1", ""))
+	h.Messages(w, chatRequest(http.MethodGet, "/api/chats/messages?chat_uid=550e8400-e29b-41d4-a716-446655440000", ""))
 	if w.Code != http.StatusOK {
 		t.Fatalf("Messages() status = %d", w.Code)
 	}
 
 	w = httptest.NewRecorder()
-	h.Send(w, chatRequest(http.MethodPost, "/api/chats/send", `{"chat_id":1,"message_text":"hello"}`))
+	h.Send(w, chatRequest(http.MethodPost, "/api/chats/send", `{"chat_uid":"550e8400-e29b-41d4-a716-446655440000","message_text":"hello"}`))
 	if w.Code != http.StatusCreated {
 		t.Fatalf("Send() status = %d", w.Code)
 	}
@@ -77,7 +82,7 @@ func TestChatHandlers(t *testing.T) {
 func TestChatHandlerValidation(t *testing.T) {
 	h := newChatHandler(t)
 	w := httptest.NewRecorder()
-	h.Messages(w, chatRequest(http.MethodGet, "/api/chats/messages?chat_id=bad", ""))
+	h.Messages(w, chatRequest(http.MethodGet, "/api/chats/messages?chat_uid=bad", ""))
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("invalid chat id status = %d", w.Code)
 	}

@@ -31,7 +31,8 @@ const profileColumns = `
     bio,
     created_at,
     updated_at,
-    deleted_at`
+    deleted_at,
+    uid`
 
 const updateProfileQuery = `
 	UPDATE profile SET %s
@@ -73,6 +74,12 @@ const readByLoginAuthQuery = `
 const readProfileByIDQuery = `
 	SELECT ` + profileColumns +
 	` FROM profile WHERE id = $1 AND deleted_at IS NULL`
+
+const searchProfileByUUIDQuery = `
+	SELECT ` + profileColumns + `
+	FROM profile
+	WHERE uid = $1::uuid
+		AND deleted_at IS NULL`
 
 const deleteProfileQuery = `
 	UPDATE profile SET deleted_at = NOW() 
@@ -142,6 +149,19 @@ func (r *ProfileRepository) ReadByID(
 	id int64,
 ) (domain.Profile, error) {
 	profile, _, err := scanProfile(r.pool.QueryRow(ctx, readProfileByIDQuery, id), false)
+	return profile, normalizeProfileError(err)
+}
+
+// SearchByUUID возвращает публичный профиль по UUID
+func (r *ProfileRepository) SearchByUUID(
+	ctx context.Context,
+	uuid string,
+) (domain.Profile, error) {
+	profile, _, err := scanProfile(r.pool.QueryRow(
+		ctx,
+		searchProfileByUUIDQuery,
+		strings.TrimSpace(uuid),
+	), false)
 	return profile, normalizeProfileError(err)
 }
 
@@ -302,6 +322,7 @@ func scanProfileValues(
 		createdAt    pgtype.Timestamptz
 		updatedAt    pgtype.Timestamptz
 		deletedAt    pgtype.Timestamptz
+		uid          pgtype.UUID
 		passwordHash pgtype.Text
 	)
 
@@ -323,6 +344,7 @@ func scanProfileValues(
 		&createdAt,
 		&updatedAt,
 		&deletedAt,
+		&uid,
 	)
 	if avatarURL != nil {
 		dest = append(dest, avatarURL)
@@ -349,6 +371,7 @@ func scanProfileValues(
 		CreatedAt:   createdAt.Time,
 		UpdatedAt:   timestampPointer(updatedAt),
 		DeletedAt:   timestampPointer(deletedAt),
+		UID:         uuidString(uid),
 	}
 
 	var hash string

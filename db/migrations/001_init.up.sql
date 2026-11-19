@@ -1,3 +1,5 @@
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 CREATE TYPE role_enum AS ENUM (
     'admin',
     'moderator',
@@ -21,6 +23,7 @@ CREATE TYPE gender_enum AS ENUM (
 -- Пользователи
 CREATE TABLE profile (
     id BIGINT GENERATED ALWAYS AS IDENTITY,
+    uid UUID NOT NULL DEFAULT gen_random_uuid(),
     nickname TEXT NOT NULL
         CHECK (LENGTH(nickname) BETWEEN 4 AND 32),
 
@@ -49,6 +52,9 @@ CREATE TABLE profile (
 
 CREATE UNIQUE INDEX profile_nickname_unique
     ON profile (LOWER(nickname));
+
+CREATE UNIQUE INDEX profile_uid_unique
+    ON profile (uid);
 
 CREATE UNIQUE INDEX profile_email_unique
     ON profile (LOWER(email));
@@ -83,6 +89,7 @@ CREATE TABLE community (
 -- Публикации пользователей и сообществ
 CREATE TABLE post (
     id BIGINT GENERATED ALWAYS AS IDENTITY,
+    uid UUID NOT NULL DEFAULT gen_random_uuid(),
 
     post_text TEXT NULL
         CHECK (LENGTH(post_text) <= 2048),
@@ -118,10 +125,14 @@ CREATE TABLE post (
         ON DELETE NO ACTION
 );
 
+CREATE UNIQUE INDEX post_uid_unique
+    ON post (uid);
+
 
 -- Медиафайлы
 CREATE TABLE media (
     id BIGINT GENERATED ALWAYS AS IDENTITY,
+    uid UUID NOT NULL DEFAULT gen_random_uuid(),
     media_path TEXT NOT NULL, -- path
     description TEXT NULL,
 
@@ -131,6 +142,9 @@ CREATE TABLE media (
 
     PRIMARY KEY (id)
 );
+
+CREATE UNIQUE INDEX media_uid_unique
+    ON media (uid);
 
 
 -- Аватары сообществ
@@ -229,10 +243,14 @@ CREATE UNIQUE INDEX profile_like_active_unique
 -- Чаты
 CREATE TABLE chat (
     id BIGINT GENERATED ALWAYS AS IDENTITY,
+    uid UUID NOT NULL DEFAULT gen_random_uuid(),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     PRIMARY KEY (id)
 );
+
+CREATE UNIQUE INDEX chat_uid_unique
+    ON chat (uid);
 
 
 -- Участники чатов
@@ -259,6 +277,7 @@ CREATE TABLE chat_profile (
 -- Сообщения в чатах
 CREATE TABLE message (
     id BIGINT GENERATED ALWAYS AS IDENTITY,
+    uid UUID NOT NULL DEFAULT gen_random_uuid(),
     chat_id BIGINT NOT NULL,
 
     message_text TEXT NULL
@@ -294,6 +313,9 @@ CREATE TABLE message (
         ON UPDATE NO ACTION
         ON DELETE NO ACTION
 );
+
+CREATE UNIQUE INDEX message_uid_unique
+    ON message (uid);
 
 
 -- Медиафайлы сообщений

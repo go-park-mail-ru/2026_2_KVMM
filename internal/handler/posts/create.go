@@ -27,9 +27,6 @@ import (
 // @Failure 500 {object} domain.ErrorResponse
 // @Router /api/posts/create [post]
 func (h *PostHandler) Create(w http.ResponseWriter, r *http.Request) {
-	if !helpers.MethodAllowed(w, r, http.MethodPost) {
-		return
-	}
 	var req domain.CreatePostRequest
 	if err := helpers.DecodeJSON(w, r, &req); err != nil {
 		helpers.WriteError(w, http.StatusBadRequest, "validation_error", err.Error())

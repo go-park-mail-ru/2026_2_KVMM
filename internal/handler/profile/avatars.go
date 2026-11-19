@@ -20,9 +20,6 @@ import (
 // @Failure 500 {object} domain.ErrorResponse
 // @Router /api/profile/avatars [get]
 func (h *ProfileHandler) ListAvatars(w http.ResponseWriter, r *http.Request) {
-	if !helpers.MethodAllowed(w, r, http.MethodGet) {
-		return
-	}
 	response, err := h.useCase.ListAvatars(r.Context(), helpers.SessionCookie(r))
 	if err != nil {
 		h.writeAvatarError(w, err)

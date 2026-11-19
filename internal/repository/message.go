@@ -29,6 +29,7 @@ func NewMessageRepository(pool dbPool) *MessageRepository {
 
 const messageColumns = `
 	id,
+	uid,
 	chat_id,
 	author_id,
 	message_text,
@@ -75,6 +76,33 @@ const checkReplyChatQuery = `
 		AND deleted_at IS NULL
 	FOR UPDATE`
 
+const requireParticipantByUUIDQuery = `
+	SELECT cp.profile_id
+	FROM chat c
+	JOIN chat_profile cp ON cp.chat_id = c.id
+	WHERE c.uid = $1::uuid
+		AND cp.profile_id = $2
+		AND cp.deleted_at IS NULL
+	FOR UPDATE OF cp`
+
+const checkRepostAccessByUUIDQuery = `
+	SELECT m.id
+	FROM message m
+	JOIN chat_profile cp ON cp.chat_id = m.chat_id
+	WHERE m.uid = $1::uuid
+		AND m.deleted_at IS NULL
+		AND cp.profile_id = $2
+		AND cp.deleted_at IS NULL
+	FOR UPDATE OF m, cp`
+
+const checkReplyChatByUUIDQuery = `
+	SELECT m.id
+	FROM message m
+	WHERE m.uid = $1::uuid
+		AND m.chat_id = (SELECT id FROM chat WHERE uid = $2::uuid)
+		AND m.deleted_at IS NULL
+	FOR UPDATE`
+
 const listMessagesQuery = `
 	SELECT ` + messageColumns + `
 	FROM message
@@ -91,6 +119,35 @@ const parentMessagesQuery = `
 		AND deleted_at IS NULL
 	ORDER BY id`
 
+const listMessagesByUUIDQuery = `
+	SELECT ` + messageColumns + `
+	FROM message
+	WHERE chat_id = (SELECT id FROM chat WHERE uid = $1::uuid)
+		AND deleted_at IS NULL
+		AND ($2 = '' OR id < (
+			SELECT id FROM message WHERE uid = NULLIF($2, '')::uuid
+		))
+	ORDER BY id DESC
+	LIMIT $3`
+
+const createMessageByUUIDQuery = `
+	INSERT INTO message (
+		chat_id,
+		author_id,
+		message_text,
+		repost_from,
+		reply_from
+	)
+	SELECT
+		c.id,
+		$2,
+		$3,
+		CASE WHEN $4 = '' THEN NULL ELSE (SELECT id FROM message WHERE uid = $4::uuid) END,
+		CASE WHEN $5 = '' THEN NULL ELSE (SELECT id FROM message WHERE uid = $5::uuid) END
+	FROM chat c
+	WHERE c.uid = $1::uuid
+	RETURNING ` + messageColumns
+
 // CreateMessageParams содержит данные для создания сообщения.
 type CreateMessageParams struct {
 	ChatID      int64
@@ -100,9 +157,112 @@ type CreateMessageParams struct {
 	ReplyFrom   *int64
 }
 
+// CreateMessageByUUIDParams содержит внешние UUID чата и родительских сообщений.
+type CreateMessageByUUIDParams struct {
+	ChatUID       string
+	AuthorID      int64
+	MessageText   *string
+	RepostFromUID string
+	ReplyFromUID  string
+}
+
+// CreateByUUID создаёт сообщение, используя UUID непосредственно в SQL.
+func (r *MessageRepository) CreateByUUID(ctx context.Context, params CreateMessageByUUIDParams) (domain.Message, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return domain.Message{}, err
+	}
+	defer tx.Rollback(ctx)
+	var participantID int64
+	if err := tx.QueryRow(ctx, requireParticipantByUUIDQuery, params.ChatUID, params.AuthorID).Scan(&participantID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.Message{}, ErrNotChatParticipant
+		}
+		return domain.Message{}, err
+	}
+	if params.RepostFromUID != "" {
+		var sourceID int64
+		if err := tx.QueryRow(ctx, checkRepostAccessByUUIDQuery, params.RepostFromUID, params.AuthorID).Scan(&sourceID); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return domain.Message{}, ErrRepostForbidden
+			}
+			return domain.Message{}, err
+		}
+	}
+	if params.ReplyFromUID != "" {
+		var replyID int64
+		if err := tx.QueryRow(ctx, checkReplyChatByUUIDQuery, params.ReplyFromUID, params.ChatUID).Scan(&replyID); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return domain.Message{}, ErrReplyForbidden
+			}
+			return domain.Message{}, err
+		}
+	}
+	message, err := scanMessage(tx.QueryRow(ctx, createMessageByUUIDQuery, params.ChatUID, params.AuthorID, nullableString(params.MessageText), params.RepostFromUID, params.ReplyFromUID))
+	if err != nil {
+		return domain.Message{}, normalizeMessageError(err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return domain.Message{}, err
+	}
+	message.ChatUID = params.ChatUID
+	if params.RepostFromUID != "" {
+		value := params.RepostFromUID
+		message.RepostFromUID = &value
+	}
+	if params.ReplyFromUID != "" {
+		value := params.ReplyFromUID
+		message.ReplyFromUID = &value
+	}
+	return message, nil
+}
+
+// ListMessagesByUUID возвращает сообщения чата без предварительного поиска его ID.
+func (r *MessageRepository) ListMessagesByUUID(ctx context.Context, chatUID, cursorUID string, limit int) (domain.MessagesResponse, error) {
+	limit = normalizeLimit(limit, 100)
+	response := domain.MessagesResponse{Messages: make([]domain.Message, 0), Parents: make([]domain.Message, 0), ChatUID: chatUID, CursorUID: cursorUID, Limit: limit}
+	rows, err := r.pool.Query(ctx, listMessagesByUUIDQuery, chatUID, cursorUID, limit+1)
+	if err != nil {
+		return response, err
+	}
+	for rows.Next() {
+		message, scanErr := scanMessage(rows)
+		if scanErr != nil {
+			rows.Close()
+			return response, scanErr
+		}
+		message.ChatUID = chatUID
+		response.Messages = append(response.Messages, message)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return response, err
+	}
+	rows.Close()
+	response.HasMore = len(response.Messages) > limit
+	if response.HasMore {
+		response.Messages = response.Messages[:limit]
+	}
+	if len(response.Messages) > 0 {
+		response.NextCursorUID = response.Messages[len(response.Messages)-1].UID
+	}
+	parentIDs := collectParentIDs(response.Messages)
+	if len(parentIDs) > 0 {
+		response.Parents, err = r.readParentMessages(ctx, parentIDs)
+		if err != nil {
+			return response, err
+		}
+		for i := range response.Parents {
+			response.Parents[i].ChatUID = chatUID
+		}
+	}
+	return response, nil
+}
+
 func scanMessage(row rowScanner) (domain.Message, error) {
 	var (
 		message   domain.Message
+		uid       pgtype.UUID
 		text      pgtype.Text
 		repost    pgtype.Int8
 		reply     pgtype.Int8
@@ -113,6 +273,7 @@ func scanMessage(row rowScanner) (domain.Message, error) {
 
 	err := row.Scan(
 		&message.ID,
+		&uid,
 		&message.ChatID,
 		&message.AuthorID,
 		&text,
@@ -127,6 +288,7 @@ func scanMessage(row rowScanner) (domain.Message, error) {
 	}
 
 	message.MessageText = textPointer(text)
+	message.UID = uuidString(uid)
 	message.RepostFrom = int64Pointer(repost)
 	message.ReplyFrom = int64Pointer(reply)
 	message.CreatedAt = createdAt.Time

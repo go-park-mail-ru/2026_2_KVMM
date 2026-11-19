@@ -71,6 +71,20 @@ func (mr *MockpostRepositoryMockRecorder) Delete(arg0, arg1 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockpostRepository)(nil).Delete), arg0, arg1)
 }
 
+// DeleteByUUID mocks base method.
+func (m *MockpostRepository) DeleteByUUID(arg0 context.Context, arg1 string, arg2 int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteByUUID", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteByUUID indicates an expected call of DeleteByUUID
+func (mr *MockpostRepositoryMockRecorder) DeleteByUUID(arg0, arg1, arg2 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteByUUID", reflect.TypeOf((*MockpostRepository)(nil).DeleteByUUID), arg0, arg1, arg2)
+}
+
 // ReadByID mocks base method.
 func (m *MockpostRepository) ReadByID(arg0 context.Context, arg1 int64) (domain.Post, error) {
 	m.ctrl.T.Helper()
@@ -103,6 +117,23 @@ func (mr *MockpostRepositoryMockRecorder) ReadProfilePosts(arg0, arg1, arg2, arg
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadProfilePosts", reflect.TypeOf((*MockpostRepository)(nil).ReadProfilePosts), arg0, arg1, arg2, arg3)
 }
 
+// ReadProfilePostsByUUID mocks base method.
+func (m *MockpostRepository) ReadProfilePostsByUUID(arg0 context.Context, arg1, arg2 string, arg3 int) ([]domain.Post, string, bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReadProfilePostsByUUID", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].([]domain.Post)
+	ret1, _ := ret[1].(string)
+	ret2, _ := ret[2].(bool)
+	ret3, _ := ret[3].(error)
+	return ret0, ret1, ret2, ret3
+}
+
+// ReadProfilePostsByUUID indicates an expected call of ReadProfilePostsByUUID
+func (mr *MockpostRepositoryMockRecorder) ReadProfilePostsByUUID(arg0, arg1, arg2, arg3 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadProfilePostsByUUID", reflect.TypeOf((*MockpostRepository)(nil).ReadProfilePostsByUUID), arg0, arg1, arg2, arg3)
+}
+
 // Update mocks base method.
 func (m *MockpostRepository) Update(arg0 context.Context, arg1 int64, arg2 repository.UpdatePostParams) (domain.Post, error) {
 	m.ctrl.T.Helper()
@@ -116,4 +147,19 @@ func (m *MockpostRepository) Update(arg0 context.Context, arg1 int64, arg2 repos
 func (mr *MockpostRepositoryMockRecorder) Update(arg0, arg1, arg2 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockpostRepository)(nil).Update), arg0, arg1, arg2)
+}
+
+// UpdateByUUID mocks base method.
+func (m *MockpostRepository) UpdateByUUID(arg0 context.Context, arg1 string, arg2 int64, arg3 repository.UpdatePostParams) (domain.Post, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateByUUID", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(domain.Post)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpdateByUUID indicates an expected call of UpdateByUUID
+func (mr *MockpostRepositoryMockRecorder) UpdateByUUID(arg0, arg1, arg2, arg3 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateByUUID", reflect.TypeOf((*MockpostRepository)(nil).UpdateByUUID), arg0, arg1, arg2, arg3)
 }

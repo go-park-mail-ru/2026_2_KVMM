@@ -8,6 +8,7 @@ import (
 
 	"kvmm/internal/domain"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/pashagolub/pgxmock/v4"
 )
 
@@ -27,9 +28,9 @@ func relationshipRows(masterID, slaveID int64, status, typeName string) *pgxmock
 }
 
 func shortProfileRows(ids ...int64) *pgxmock.Rows {
-	rows := pgxmock.NewRows([]string{"id", "nickname", "profile_name", "surname", "patronymic", "avatar_url"})
+	rows := pgxmock.NewRows([]string{"id", "uid", "nickname", "profile_name", "surname", "patronymic", "avatar_url"})
 	for _, id := range ids {
-		rows.AddRow(id, "user", "User", "Example", nil, "/api/media/avatar.png")
+		rows.AddRow(id, pgtype.UUID{Bytes: [16]byte{1}, Valid: true}, "user", "User", "Example", nil, "/api/media/avatar.png")
 	}
 	return rows
 }
@@ -67,7 +68,7 @@ func TestRelationshipRepositoryCreateListAndTypes(t *testing.T) {
 		WithArgs(pgxmock.AnyArg()).
 		WillReturnRows(shortProfileRows(2))
 	created, err := repository.Create(ctx, 1, domain.CreateRelationshipRequest{
-		ProfileIDSlave: 2, RelationshipsType: "friendship",
+		ProfileIDSlave: 2, RelationshipsType: " friendship ",
 	})
 	if err != nil || created.ProfileIDMaster != 1 || created.Profile.Nickname != "user" {
 		t.Fatalf("Create() = %+v, %v", created, err)
@@ -84,7 +85,7 @@ func TestRelationshipRepositoryCreateListAndTypes(t *testing.T) {
 		WillReturnRows(shortProfileRows(2))
 	response, err := repository.List(ctx, 1, domain.ListRelationshipsRequest{
 		RelationshipsStatus: domain.RelationshipAccept,
-		RelationshipsType:   "friendship",
+		RelationshipsType:   " friendship ",
 		Limit:               1,
 	})
 	if err != nil || len(response.Relationships) != 1 || response.Relationships[0].Profile.ID != 2 {
@@ -97,7 +98,7 @@ func TestRelationshipRepositoryCreateListAndTypes(t *testing.T) {
 			"profile_id_master", "profile_id_slave", "relationships_status", "relationships_type",
 			"created_at", "updated_at", "deleted_at",
 		}))
-	response, err = repository.Requests(ctx, 1, "family", 0, 10)
+	response, err = repository.Requests(ctx, 1, " family ", 0, 10)
 	if err != nil || len(response.Relationships) != 0 {
 		t.Fatalf("Requests() = %+v, %v", response, err)
 	}
@@ -145,7 +146,7 @@ func TestRelationshipRepositorySuggestionsAndActions(t *testing.T) {
 	mock.ExpectQuery(queryPattern(shortProfilesQuery)).
 		WithArgs(pgxmock.AnyArg()).
 		WillReturnRows(shortProfileRows(1))
-	accepted, err := repository.Accept(ctx, 2, domain.AcceptRelationshipRequest{ProfileID: 1, RelationshipsType: "friendship"})
+	accepted, err := repository.Accept(ctx, 2, domain.AcceptRelationshipRequest{ProfileID: 1, RelationshipsType: " friendship "})
 	if err != nil || accepted.Profile.ID != 1 {
 		t.Fatalf("Accept() = %+v, %v", accepted, err)
 	}

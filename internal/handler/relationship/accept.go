@@ -26,16 +26,16 @@ import (
 // @Failure 500 {object} domain.ErrorResponse
 // @Router /api/relationships/accept [patch]
 func (h *FriendsHandler) Accept(w http.ResponseWriter, r *http.Request) {
-	if !helpers.MethodAllowed(w, r, http.MethodPatch) {
-		return
-	}
-
 	var req domain.AcceptRelationshipRequest
 	if err := helpers.DecodeJSON(w, r, &req); err != nil {
 		helpers.WriteError(w, http.StatusBadRequest, "validation_error", err.Error())
 		return
 	}
-	relationship, err := h.useCase.Accept(
+	if !helpers.IsUUID(req.ProfileUID) {
+		helpers.WriteError(w, http.StatusBadRequest, "validation_error", "profile_uid must be a valid UUID")
+		return
+	}
+	relationship, err := h.useCase.AcceptByUID(
 		r.Context(),
 		helpers.SessionCookie(r),
 		r.Header.Get("X-CSRF-Token"),

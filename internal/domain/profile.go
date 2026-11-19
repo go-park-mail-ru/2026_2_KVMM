@@ -14,7 +14,8 @@ const (
 
 // Profile — публичные данные пользователя
 type Profile struct {
-	ID          int64      `json:"id" example:"1"`
+	ID          int64      `json:"-"`
+	UID         string     `json:"uid" example:"550e8400-e29b-41d4-a716-446655440000"`
 	Nickname    string     `json:"nickname" example:"ivan_petrov"`
 	Email       *string    `json:"email,omitempty" example:"ivan@example.com"`
 	PhoneNumber *string    `json:"phone_number,omitempty" example:"+79999999999"`
@@ -28,6 +29,16 @@ type Profile struct {
 	CreatedAt   time.Time  `json:"created_at" example:"2026-01-01T12:00:00Z"`
 	UpdatedAt   *time.Time `json:"updated_at,omitempty" example:"2026-01-02T12:00:00Z"`
 	DeletedAt   *time.Time `json:"deleted_at,omitempty"`
+}
+
+type ShortProfile struct {
+	ID          int64   `json:"-" example:"1"`
+	UID         string  `json:"uid" example:"550e8400-e29b-41d4-a716-446655440000"`
+	Nickname    string  `json:"nickname" example:"ivan_petrov"`
+	ProfileName *string `json:"profile_name,omitempty" example:"Иван"`
+	Surname     *string `json:"surname,omitempty" example:"Иванов"`
+	Patronymic  *string `json:"patronymic,omitempty" example:"Иванович"`
+	AvatarURL   *string `json:"avatar_urls,omitempty" example:"/api/media/avatar1.png"`
 }
 
 // UpdateProfileRequest — поля, которые можно изменить в профиле
@@ -48,7 +59,7 @@ type UpdateProfileRequest struct {
 	Bio      *string `json:"bio,omitempty" example:"hi!" validate:"omitempty,max=256"`
 }
 
-// UploadAvatarRequest содержит бинарник новой аватарки
+// UploadAvatarRequest содержит бинарные данные новой аватарки
 type UploadAvatarRequest struct {
 	Data        []byte
 	ContentType string
@@ -56,7 +67,8 @@ type UploadAvatarRequest struct {
 
 // Avatar описывает загруженную аватарку пользователя
 type Avatar struct {
-	ID        int64     `json:"id" example:"1"`
+	ID        int64     `json:"-"`
+	UID       string    `json:"uid" example:"550e8400-e29b-41d4-a716-446655440000"`
 	URL       string    `json:"url" example:"/api/media/avatars/abc.png"`
 	CreatedAt time.Time `json:"created_at" example:"2026-01-01T12:00:00Z"`
 }

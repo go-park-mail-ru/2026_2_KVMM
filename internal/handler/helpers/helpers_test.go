@@ -32,13 +32,6 @@ func TestPaginationAndPositiveQuery(t *testing.T) {
 
 func TestMethodAndCookies(t *testing.T) {
 	w := httptest.NewRecorder()
-	if MethodAllowed(w, httptest.NewRequest(http.MethodGet, "/", nil), http.MethodPost) {
-		t.Fatal("MethodAllowed() returned true for wrong method")
-	}
-	if w.Code != http.StatusMethodNotAllowed {
-		t.Fatalf("method status = %d", w.Code)
-	}
-	w = httptest.NewRecorder()
 	SetSessionCookie(w, "session")
 	if len(w.Result().Cookies()) != 1 {
 		t.Fatal("session cookie was not set")

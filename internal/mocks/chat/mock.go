@@ -57,6 +57,21 @@ func (mr *MockchatRepositoryMockRecorder) Create(arg0, arg1, arg2 any) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockchatRepository)(nil).Create), arg0, arg1, arg2)
 }
 
+// CreateByUUID mocks base method.
+func (m *MockchatRepository) CreateByUUID(arg0 context.Context, arg1 int64, arg2 string) (domain.Chat, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateByUUID", arg0, arg1, arg2)
+	ret0, _ := ret[0].(domain.Chat)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateByUUID indicates an expected call of CreateByUUID
+func (mr *MockchatRepositoryMockRecorder) CreateByUUID(arg0, arg1, arg2 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateByUUID", reflect.TypeOf((*MockchatRepository)(nil).CreateByUUID), arg0, arg1, arg2)
+}
+
 // IsParticipant mocks base method.
 func (m *MockchatRepository) IsParticipant(arg0 context.Context, arg1, arg2 int64) error {
 	m.ctrl.T.Helper()
@@ -69,6 +84,20 @@ func (m *MockchatRepository) IsParticipant(arg0 context.Context, arg1, arg2 int6
 func (mr *MockchatRepositoryMockRecorder) IsParticipant(arg0, arg1, arg2 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsParticipant", reflect.TypeOf((*MockchatRepository)(nil).IsParticipant), arg0, arg1, arg2)
+}
+
+// IsParticipantByUUID mocks base method.
+func (m *MockchatRepository) IsParticipantByUUID(arg0 context.Context, arg1 string, arg2 int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsParticipantByUUID", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// IsParticipantByUUID indicates an expected call of IsParticipantByUUID
+func (mr *MockchatRepositoryMockRecorder) IsParticipantByUUID(arg0, arg1, arg2 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsParticipantByUUID", reflect.TypeOf((*MockchatRepository)(nil).IsParticipantByUUID), arg0, arg1, arg2)
 }
 
 // ListChats mocks base method.
@@ -84,6 +113,21 @@ func (m *MockchatRepository) ListChats(arg0 context.Context, arg1, arg2 int64, a
 func (mr *MockchatRepositoryMockRecorder) ListChats(arg0, arg1, arg2, arg3 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListChats", reflect.TypeOf((*MockchatRepository)(nil).ListChats), arg0, arg1, arg2, arg3)
+}
+
+// ListChatsByUUID mocks base method.
+func (m *MockchatRepository) ListChatsByUUID(arg0 context.Context, arg1 int64, arg2 string, arg3 int) (domain.ChatsResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListChatsByUUID", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(domain.ChatsResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListChatsByUUID indicates an expected call of ListChatsByUUID
+func (mr *MockchatRepositoryMockRecorder) ListChatsByUUID(arg0, arg1, arg2, arg3 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListChatsByUUID", reflect.TypeOf((*MockchatRepository)(nil).ListChatsByUUID), arg0, arg1, arg2, arg3)
 }
 
 // MockmessageRepository is a mock of messageRepository interface.
@@ -125,6 +169,21 @@ func (mr *MockmessageRepositoryMockRecorder) Create(arg0, arg1 any) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockmessageRepository)(nil).Create), arg0, arg1)
 }
 
+// CreateByUUID mocks base method.
+func (m *MockmessageRepository) CreateByUUID(arg0 context.Context, arg1 repository.CreateMessageByUUIDParams) (domain.Message, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateByUUID", arg0, arg1)
+	ret0, _ := ret[0].(domain.Message)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateByUUID indicates an expected call of CreateByUUID
+func (mr *MockmessageRepositoryMockRecorder) CreateByUUID(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateByUUID", reflect.TypeOf((*MockmessageRepository)(nil).CreateByUUID), arg0, arg1)
+}
+
 // ListMessages mocks base method.
 func (m *MockmessageRepository) ListMessages(arg0 context.Context, arg1, arg2 int64, arg3 int) (domain.MessagesResponse, error) {
 	m.ctrl.T.Helper()
@@ -138,4 +197,19 @@ func (m *MockmessageRepository) ListMessages(arg0 context.Context, arg1, arg2 in
 func (mr *MockmessageRepositoryMockRecorder) ListMessages(arg0, arg1, arg2, arg3 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMessages", reflect.TypeOf((*MockmessageRepository)(nil).ListMessages), arg0, arg1, arg2, arg3)
+}
+
+// ListMessagesByUUID mocks base method.
+func (m *MockmessageRepository) ListMessagesByUUID(arg0 context.Context, arg1, arg2 string, arg3 int) (domain.MessagesResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListMessagesByUUID", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(domain.MessagesResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListMessagesByUUID indicates an expected call of ListMessagesByUUID
+func (mr *MockmessageRepositoryMockRecorder) ListMessagesByUUID(arg0, arg1, arg2, arg3 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMessagesByUUID", reflect.TypeOf((*MockmessageRepository)(nil).ListMessagesByUUID), arg0, arg1, arg2, arg3)
 }

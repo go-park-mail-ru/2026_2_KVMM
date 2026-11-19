@@ -42,7 +42,7 @@ func TestProfileHandlers(t *testing.T) {
 	session.EXPECT().ValidateCSRF("session", "csrf").Return(nil).Times(3)
 	profiles.EXPECT().Update(ctx, int64(7), gomock.Any()).Return(domain.Profile{ID: 7}, nil)
 	avatars.EXPECT().List(ctx, int64(7)).Return(domain.AvatarsResponse{Avatars: []domain.Avatar{{ID: 1}}}, nil)
-	avatars.EXPECT().Delete(ctx, int64(7), int64(1)).Return(nil)
+	avatars.EXPECT().DeleteByUID(ctx, int64(7), "550e8400-e29b-41d4-a716-446655440000").Return(nil)
 	avatars.EXPECT().Create(ctx, int64(7), gomock.Any()).Return(domain.Avatar{ID: 1}, nil)
 
 	w := httptest.NewRecorder()
@@ -55,8 +55,8 @@ func TestProfileHandlers(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("ListAvatars() status = %d", w.Code)
 	}
-	request := profileRequest(http.MethodDelete, "/api/profile/avatars/1", nil)
-	request.SetPathValue("id", "1")
+	request := profileRequest(http.MethodDelete, "/api/profile/avatars/550e8400-e29b-41d4-a716-446655440000", nil)
+	request.SetPathValue("uid", "550e8400-e29b-41d4-a716-446655440000")
 	w = httptest.NewRecorder()
 	h.DeleteAvatar(w, request)
 	if w.Code != http.StatusNoContent {
@@ -114,16 +114,25 @@ func TestProfileSearchHandler(t *testing.T) {
 		t.Fatalf("Search() avatar body = %s", body)
 	}
 
-	profiles.EXPECT().ReadByID(gomock.Any(), int64(1)).Return(domain.Profile{
-		ID:       1,
-		Nickname: "alice",
-	}, nil)
 	w = httptest.NewRecorder()
 	request = profileRequest(http.MethodGet, "/api/profile/search?profile_id=1", nil)
 	request.Header.Del("X-CSRF-Token")
 	h.Search(w, request)
-	if w.Code != http.StatusOK {
-		t.Fatalf("Search(profile_id) status = %d", w.Code)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("Search(profile_id) status = %d, want bad request", w.Code)
+	}
+
+	profiles.EXPECT().SearchByUUID(gomock.Any(), "550e8400-e29b-41d4-a716-446655440000").Return(domain.Profile{
+		ID:       1,
+		Nickname: "alice",
+		UID:      "550e8400-e29b-41d4-a716-446655440000",
+	}, nil)
+	w = httptest.NewRecorder()
+	request = profileRequest(http.MethodGet, "/api/profile/search?uid=550e8400-e29b-41d4-a716-446655440000", nil)
+	request.Header.Del("X-CSRF-Token")
+	h.Search(w, request)
+	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), `"uid":"550e8400-e29b-41d4-a716-446655440000"`) {
+		t.Fatalf("Search(uid) status = %d body = %s", w.Code, w.Body.String())
 	}
 }
 
@@ -136,7 +145,7 @@ func TestProfileHandlerValidationAndErrors(t *testing.T) {
 		t.Fatalf("empty update status = %d", w.Code)
 	}
 	request := profileRequest(http.MethodDelete, "/api/profile/avatars/bad", nil)
-	request.SetPathValue("id", "bad")
+	request.SetPathValue("uid", "bad")
 	w = httptest.NewRecorder()
 	h.DeleteAvatar(w, request)
 	if w.Code != http.StatusBadRequest {

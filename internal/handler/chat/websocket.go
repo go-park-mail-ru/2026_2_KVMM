@@ -37,9 +37,10 @@ type chatClient struct {
 	userID int64
 	conn   *websocket.Conn
 
-	writeMu sync.Mutex
-	chatsMu sync.RWMutex
-	chats   map[int64]struct{}
+	writeMu  sync.Mutex
+	chatsMu  sync.RWMutex
+	chats    map[int64]struct{}
+	chatUIDs map[string]int64
 }
 
 type chatHub struct {
@@ -117,6 +118,22 @@ func (c *chatClient) subscribe(chatID int64) {
 	c.chats[chatID] = struct{}{}
 }
 
+// subscribeUID добавляет чат во внутреннюю карту подписок по UUID
+func (c *chatClient) subscribeUID(uid string, chatID int64) {
+	c.chatsMu.Lock()
+	defer c.chatsMu.Unlock()
+	c.chats[chatID] = struct{}{}
+	c.chatUIDs[uid] = chatID
+}
+
+// chatIDByUID возвращает внутренний ID подписанного чата.
+func (c *chatClient) chatIDByUID(uid string) (int64, bool) {
+	c.chatsMu.RLock()
+	defer c.chatsMu.RUnlock()
+	chatID, ok := c.chatUIDs[uid]
+	return chatID, ok
+}
+
 // subscribed проверяет подписку пользователя на чат
 func (c *chatClient) subscribed(chatID int64) bool {
 	c.chatsMu.RLock()
@@ -136,7 +153,7 @@ func (c *chatClient) write(payload []byte) error {
 // Один пользователь может одновременно подключиться с нескольких устройств
 // WebSocket godoc
 // @Summary Подключение к чатам через WebSocket
-// @Description Выполняет WebSocket upgrade. Session cookie передаётся автоматически. Первым сообщением необходимо отправить `{"type":"auth","csrf_token":"TOKEN"}`. После авторизации сервер загружает все чаты пользователя через пагинацию и подписывает соединение на них. Один аккаунт может иметь несколько одновременных подключений с разных устройств. Сообщение отправляется как `{"type":"message","chat_id":1,"message":{"message_text":"Привет!"}}`. Ошибки авторизации, CSRF и проверки доступа после Upgrade отправляются как WebSocket-события с `type: "error"`.
+// @Description Выполняет WebSocket upgrade. Session cookie передаётся автоматически. Первым сообщением необходимо отправить `{"type":"auth","csrf_token":"TOKEN"}`. После авторизации сервер загружает все чаты пользователя через пагинацию и подписывает соединение на них. Один аккаунт может иметь несколько одновременных подключений с разных устройств. Сообщение отправляется как `{"type":"message","chat_uid":"UUID","message":{"message_text":"Привет!"}}`. Ошибки авторизации, CSRF и проверки доступа после Upgrade отправляются как WebSocket-события с `type: "error"`.
 // @Tags chats
 // @Security SessionCookie
 // @Produce json
@@ -162,7 +179,7 @@ func (h *ChatHandler) WebSocket(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var authRequest domain.ChatWebSocketAuthRequest
-	if err := conn.ReadJSON(&authRequest); err != nil || authRequest.Type != "auth" {
+	if err := readWebSocketJSON(conn, &authRequest); err != nil || authRequest.Type != "auth" {
 		if err := writeWebSocketEvent(conn, domain.ChatWebSocketEvent{
 			Type: "error",
 			Error: &domain.ErrorResponse{
@@ -191,9 +208,10 @@ func (h *ChatHandler) WebSocket(w http.ResponseWriter, r *http.Request) {
 	csrfToken := authRequest.CSRFToken
 
 	client := &chatClient{
-		userID: userID,
-		conn:   conn,
-		chats:  make(map[int64]struct{}),
+		userID:   userID,
+		conn:     conn,
+		chats:    make(map[int64]struct{}),
+		chatUIDs: make(map[string]int64),
 	}
 	h.hub.add(client)
 	defer h.hub.remove(client)
@@ -207,8 +225,12 @@ func (h *ChatHandler) WebSocket(w http.ResponseWriter, r *http.Request) {
 
 	for {
 		var request domain.ChatWebSocketRequest
-		if err := conn.ReadJSON(&request); err != nil {
+		if err := readWebSocketJSON(conn, &request); err != nil {
 			logging.Logger().Debug("WebSocket request read failed", zap.Error(err))
+			_ = h.writeClientEvent(client, domain.ChatWebSocketEvent{
+				Type:  "error",
+				Error: &domain.ErrorResponse{Code: "bad_request", Message: "invalid WebSocket request"},
+			})
 			return
 		}
 
@@ -218,7 +240,7 @@ func (h *ChatHandler) WebSocket(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		default:
-			if err := h.writeWebSocketError(client, request.ChatID, errUnknownEvent); err != nil {
+			if err := h.writeWebSocketError(client, request.ChatUID, errUnknownEvent); err != nil {
 				return
 			}
 		}
@@ -232,10 +254,10 @@ func (h *ChatHandler) subscribeAllChats(
 	sessionToken string,
 	csrfToken string,
 ) error {
-	cursor := int64(0)
-	chatIDs := make([]int64, 0)
+	cursor := ""
+	chatUIDs := make([]string, 0)
 	for {
-		response, err := h.useCase.List(
+		response, err := h.useCase.ListByUID(
 			r.Context(),
 			sessionToken,
 			csrfToken,
@@ -243,30 +265,30 @@ func (h *ChatHandler) subscribeAllChats(
 			websocketChatPageLimit,
 		)
 		if err != nil {
-			return h.writeWebSocketError(client, 0, err)
+			return h.writeWebSocketError(client, "", err)
 		}
 
 		for _, chat := range response.Chats {
 			if chat.ID > 0 {
-				chatIDs = append(chatIDs, chat.ID)
-				client.subscribe(chat.ID)
+				chatUIDs = append(chatUIDs, chat.UID)
+				client.subscribeUID(chat.UID, chat.ID)
 			}
 		}
 
 		if !response.HasMore {
 			break
 		}
-		if response.NextCursor <= cursor {
-			return h.writeWebSocketError(client, 0, errors.New("invalid chats pagination"))
+		if response.NextCursorUID == "" || response.NextCursorUID == cursor {
+			return h.writeWebSocketError(client, "", errors.New("invalid chats pagination"))
 		}
-		cursor = response.NextCursor
+		cursor = response.NextCursorUID
 	}
 
 	event := domain.ChatWebSocketEvent{Type: "subscribed"}
-	if len(chatIDs) == 1 {
-		event.ChatID = chatIDs[0]
+	if len(chatUIDs) == 1 {
+		event.ChatUID = chatUIDs[0]
 	} else {
-		event.ChatIDs = chatIDs
+		event.ChatUIDs = chatUIDs
 	}
 	return h.writeClientEvent(client, event)
 }
@@ -279,37 +301,54 @@ func (h *ChatHandler) sendMessage(
 	csrfToken string,
 	request domain.ChatWebSocketRequest,
 ) error {
-	if !client.subscribed(request.ChatID) {
-		return h.writeWebSocketError(client, request.ChatID, errChatNotSubscribed)
+	if !helpers.IsUUID(request.ChatUID) {
+		return h.writeWebSocketError(client, request.ChatUID, errors.New("chat_uid must be a valid UUID"))
+	}
+	chatID, ok := client.chatIDByUID(request.ChatUID)
+	if !ok {
+		return h.writeWebSocketError(client, request.ChatUID, errChatNotSubscribed)
 	}
 
-	sendRequest := domain.SendMessageRequest{ChatID: request.ChatID}
+	sendRequest := domain.SendMessageRequest{ChatUID: request.ChatUID}
 	if request.Message != nil {
 		sendRequest.MessageText = request.Message.MessageText
 		sendRequest.RepostFrom = request.Message.RepostFrom
 		sendRequest.ReplyFrom = request.Message.ReplyFrom
+		sendRequest.RepostFromUID = request.Message.RepostFromUID
+		sendRequest.ReplyFromUID = request.Message.ReplyFromUID
 	}
-	message, err := h.useCase.Send(r.Context(), sessionToken, csrfToken, sendRequest)
+	message, err := h.useCase.SendByUID(r.Context(), sessionToken, csrfToken, sendRequest)
 	if err != nil {
-		return h.writeWebSocketError(client, request.ChatID, err)
+		return h.writeWebSocketError(client, request.ChatUID, err)
 	}
 
-	if err := h.hub.broadcast(request.ChatID, domain.ChatWebSocketEvent{
+	if err := h.hub.broadcast(chatID, domain.ChatWebSocketEvent{
 		Type:    "message",
-		ChatID:  request.ChatID,
+		ChatUID: request.ChatUID,
 		Message: &message,
 	}); err != nil {
-		return h.writeWebSocketError(client, request.ChatID, err)
+		return h.writeWebSocketError(client, request.ChatUID, err)
 	}
 	return nil
 }
 
+// readWebSocketJSON декодирует событие и отклоняет неизвестные поля
+func readWebSocketJSON(conn *websocket.Conn, value any) error {
+	_, reader, err := conn.NextReader()
+	if err != nil {
+		return err
+	}
+	decoder := json.NewDecoder(reader)
+	decoder.DisallowUnknownFields()
+	return decoder.Decode(value)
+}
+
 // writeWebSocketError отправляет ошибку в формате WebSocket-события
-func (h *ChatHandler) writeWebSocketError(client *chatClient, chatID int64, err error) error {
+func (h *ChatHandler) writeWebSocketError(client *chatClient, chatUID string, err error) error {
 	return h.writeClientEvent(client, domain.ChatWebSocketEvent{
-		Type:   "error",
-		ChatID: chatID,
-		Error:  websocketError(err),
+		Type:    "error",
+		ChatUID: chatUID,
+		Error:   websocketError(err),
 	})
 }
 

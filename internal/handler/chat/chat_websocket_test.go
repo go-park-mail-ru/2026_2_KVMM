@@ -35,14 +35,14 @@ func TestWebSocketAuthenticationSubscriptionAndMessage(t *testing.T) {
 	if err := connection.ReadJSON(&event); err != nil || event.Type != "connected" {
 		t.Fatalf("connected event = %+v, %v", event, err)
 	}
-	if err := connection.ReadJSON(&event); err != nil || event.Type != "subscribed" || event.ChatID != 1 {
+	if err := connection.ReadJSON(&event); err != nil || event.Type != "subscribed" || event.ChatUID != "550e8400-e29b-41d4-a716-446655440000" {
 		t.Fatalf("subscribed event = %+v, %v", event, err)
 	}
 
 	text := "hello"
 	if err := connection.WriteJSON(domain.ChatWebSocketRequest{
 		Type:    "message",
-		ChatID:  1,
+		ChatUID: "550e8400-e29b-41d4-a716-446655440000",
 		Message: &domain.Message{MessageText: &text},
 	}); err != nil {
 		t.Fatal(err)
@@ -61,8 +61,8 @@ func TestWebSocketHelpers(t *testing.T) {
 	}
 
 	hub := newChatHub()
-	first := &chatClient{userID: 1, chats: make(map[int64]struct{})}
-	second := &chatClient{userID: 1, chats: make(map[int64]struct{})}
+	first := &chatClient{userID: 1, chats: make(map[int64]struct{}), chatUIDs: make(map[string]int64)}
+	second := &chatClient{userID: 1, chats: make(map[int64]struct{}), chatUIDs: make(map[string]int64)}
 	hub.add(first)
 	hub.add(second)
 	hub.mu.RLock()

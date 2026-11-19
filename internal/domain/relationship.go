@@ -17,8 +17,10 @@ const (
 
 // ProfileRelationship — направленная связь между профилями
 type ProfileRelationship struct {
-	ProfileIDMaster     int64              `json:"profile_id_master" example:"1"`
-	ProfileIDSlave      int64              `json:"profile_id_slave" example:"2"`
+	ProfileIDMaster     int64              `json:"-"`
+	ProfileUIDMaster    string             `json:"profile_uid_master,omitempty" example:"550e8400-e29b-41d4-a716-446655440000"`
+	ProfileIDSlave      int64              `json:"-"`
+	ProfileUIDSlave     string             `json:"profile_uid_slave,omitempty" example:"550e8400-e29b-41d4-a716-446655440000"`
 	Profile             ShortProfile       `json:"profile"`
 	RelationshipsStatus RelationshipStatus `json:"relationships_status" example:"request" enums:"request,accepted,canceled"`
 	RelationshipsType   string             `json:"relationships_type" example:"friendship" enums:"friendship,family"`
@@ -29,7 +31,8 @@ type ProfileRelationship struct {
 
 // CreateRelationshipRequest — отправка запроса на произвольный вид связи
 type CreateRelationshipRequest struct {
-	ProfileIDSlave    int64  `json:"profile_id_slave" example:"2" validate:"required,gt=0"`
+	ProfileIDSlave    int64  `json:"-"`
+	ProfileUIDSlave   string `json:"profile_uid_slave" example:"550e8400-e29b-41d4-a716-446655440000" validate:"required"`
 	RelationshipsType string `json:"relationships_type" example:"friendship" enums:"friendship,family" validate:"required,max=32"`
 }
 
@@ -43,13 +46,15 @@ type ListRelationshipsRequest struct {
 
 // CancleRelationshipRequest — удаление связи или отмена исходящего запроса
 type CancleRelationshipRequest struct {
-	ProfileID         int64  `json:"profile_id" validate:"required,gt=0"`
+	ProfileID         int64  `json:"-"`
+	ProfileUID        string `json:"profile_uid" validate:"required"`
 	RelationshipsType string `json:"relationships_type" example:"friendship" enums:"friendship,family" validate:"required,max=32"`
 }
 
 // AcceptRelationshipRequest — подтверждение входящего запроса на связь
 type AcceptRelationshipRequest struct {
-	ProfileID         int64  `json:"profile_id" validate:"required,gt=0"`
+	ProfileID         int64  `json:"-"`
+	ProfileUID        string `json:"profile_uid" validate:"required"`
 	RelationshipsType string `json:"relationships_type" example:"friendship" enums:"friendship,family" validate:"required,max=32"`
 }
 
@@ -80,13 +85,4 @@ type RelationshipSuggestionsResponse struct {
 // RelationshipTypes — типы отношений пользователя
 type RelationshipTypes struct {
 	RelationshipsTypes []string `json:"relationships_types" validate:"required" example:"friendship,family"`
-}
-
-type ShortProfile struct {
-	ID          int64   `json:"id" example:"1"`
-	Nickname    string  `json:"nickname" example:"ivan_petrov"`
-	ProfileName *string `json:"profile_name,omitempty" example:"Иван"`
-	Surname     *string `json:"surname,omitempty" example:"Иванов"`
-	Patronymic  *string `json:"patronymic,omitempty" example:"Иванович"`
-	AvatarURL   *string `json:"avatar_urls,omitempty" example:"/api/media/avatar1.png"`
 }

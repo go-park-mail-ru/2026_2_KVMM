@@ -16,7 +16,6 @@ var (
 type session struct {
 	userID    int64
 	csrfToken string
-	// TODO: feat: Добавить гео данаые сессии через GeoLite2
 }
 
 // SessionRepository хранит активные сессии приложения

@@ -74,7 +74,7 @@ func NewRouter(deps Dependencies) http.Handler {
 	router.HandleFunc("/api/profile/search", profileHandler.Search).Methods(http.MethodGet)
 	router.HandleFunc("/api/profile/avatar", profileHandler.UploadAvatar).Methods(http.MethodPost)
 	router.HandleFunc("/api/profile/avatars", profileHandler.ListAvatars).Methods(http.MethodGet)
-	router.HandleFunc("/api/profile/avatars/{id}", profileHandler.DeleteAvatar).Methods(http.MethodDelete)
+	router.HandleFunc("/api/profile/avatars/{uid}", profileHandler.DeleteAvatar).Methods(http.MethodDelete)
 
 	router.HandleFunc("/api/chats/list", chatHandler.List).Methods(http.MethodGet)
 	router.HandleFunc("/api/chats/messages", chatHandler.Messages).Methods(http.MethodGet)

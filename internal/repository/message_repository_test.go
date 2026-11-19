@@ -9,12 +9,13 @@ import (
 	"kvmm/internal/domain"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/pashagolub/pgxmock/v4"
 )
 
 func messageRows(ids ...int64) *pgxmock.Rows {
 	rows := pgxmock.NewRows([]string{
-		"id", "chat_id", "author_id", "message_text", "repost_from", "reply_from",
+		"id", "uid", "chat_id", "author_id", "message_text", "repost_from", "reply_from",
 		"created_at", "updated_at", "deleted_at",
 	})
 	for _, id := range ids {
@@ -26,6 +27,7 @@ func messageRows(ids ...int64) *pgxmock.Rows {
 		}
 		rows.AddRow(
 			id,
+			pgtype.UUID{Bytes: [16]byte{1}, Valid: true},
 			1,
 			2,
 			"message",

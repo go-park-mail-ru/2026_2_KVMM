@@ -45,9 +45,6 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 {object} domain.ErrorResponse
 // @Router /api/auth/logout [post]
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
-	if !helpers.MethodAllowed(w, r, http.MethodPost) {
-		return
-	}
 	session := helpers.SessionCookie(r)
 	if err := h.useCase.Logout(session, r.Header.Get("X-CSRF-Token")); err != nil {
 		switch {

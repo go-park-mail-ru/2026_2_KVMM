@@ -26,9 +26,6 @@ import (
 // @Failure 500 {object} domain.ErrorResponse
 // @Router /api/profile/update [patch]
 func (h *ProfileHandler) Update(w http.ResponseWriter, r *http.Request) {
-	if !helpers.MethodAllowed(w, r, http.MethodPatch) {
-		return
-	}
 	session := helpers.SessionCookie(r)
 	var req domain.UpdateProfileRequest
 	if err := helpers.DecodeJSON(w, r, &req); err != nil {

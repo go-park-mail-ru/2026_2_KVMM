@@ -22,9 +22,6 @@ import (
 // @Failure 503 {object} domain.ErrorResponse
 // @Router /api/auth/register/email/send/code [post]
 func (h *AuthHandler) RequestRegisterCode(w http.ResponseWriter, r *http.Request) {
-	if !helpers.MethodAllowed(w, r, http.MethodPost) {
-		return
-	}
 	var req domain.RegisterEmailCodeRequest
 	if err := helpers.DecodeJSON(w, r, &req); err != nil {
 		helpers.WriteError(w, http.StatusBadRequest, "validation_error", err.Error())
@@ -54,9 +51,6 @@ func (h *AuthHandler) RequestRegisterCode(w http.ResponseWriter, r *http.Request
 // @Failure 500 {object} domain.ErrorResponse
 // @Router /api/auth/register/email/code [post]
 func (h *AuthHandler) RegisterByEmail(w http.ResponseWriter, r *http.Request) {
-	if !helpers.MethodAllowed(w, r, http.MethodPost) {
-		return
-	}
 	var req domain.RegisterByEmailRequest
 	if err := helpers.DecodeJSON(w, r, &req); err != nil {
 		helpers.WriteError(w, http.StatusBadRequest, "validation_error", err.Error())
@@ -88,9 +82,6 @@ func (h *AuthHandler) RegisterByEmail(w http.ResponseWriter, r *http.Request) {
 // @Failure 503 {object} domain.ErrorResponse
 // @Router /api/auth/login/email/send/code [post]
 func (h *AuthHandler) RequestLoginCode(w http.ResponseWriter, r *http.Request) {
-	if !helpers.MethodAllowed(w, r, http.MethodPost) {
-		return
-	}
 	var req domain.EmailCodeRequest
 	if err := helpers.DecodeJSON(w, r, &req); err != nil {
 		helpers.WriteError(w, http.StatusBadRequest, "validation_error", err.Error())
@@ -119,9 +110,6 @@ func (h *AuthHandler) RequestLoginCode(w http.ResponseWriter, r *http.Request) {
 // @Failure 401 {object} domain.ErrorResponse
 // @Router /api/auth/login/email/code [post]
 func (h *AuthHandler) LoginByEmail(w http.ResponseWriter, r *http.Request) {
-	if !helpers.MethodAllowed(w, r, http.MethodPost) {
-		return
-	}
 	var req domain.LoginByEmailRequest
 	if err := helpers.DecodeJSON(w, r, &req); err != nil {
 		helpers.WriteError(w, http.StatusBadRequest, "validation_error", err.Error())
@@ -157,9 +145,6 @@ func (h *AuthHandler) LoginByEmail(w http.ResponseWriter, r *http.Request) {
 // @Failure 503 {object} domain.ErrorResponse
 // @Router /api/auth/email/change [post]
 func (h *AuthHandler) RequestEmailChange(w http.ResponseWriter, r *http.Request) {
-	if !helpers.MethodAllowed(w, r, http.MethodPost) {
-		return
-	}
 	var req domain.ChangeEmailRequest
 	if err := helpers.DecodeJSON(w, r, &req); err != nil {
 		helpers.WriteError(w, http.StatusBadRequest, "validation_error", err.Error())
@@ -192,9 +177,6 @@ func (h *AuthHandler) RequestEmailChange(w http.ResponseWriter, r *http.Request)
 // @Failure 409 {object} domain.ErrorResponse
 // @Router /api/auth/email/confirm [post]
 func (h *AuthHandler) ConfirmEmail(w http.ResponseWriter, r *http.Request) {
-	if !helpers.MethodAllowed(w, r, http.MethodPost) {
-		return
-	}
 	var req domain.ConfirmEmailRequest
 	if err := helpers.DecodeJSON(w, r, &req); err != nil {
 		helpers.WriteError(w, http.StatusBadRequest, "validation_error", err.Error())

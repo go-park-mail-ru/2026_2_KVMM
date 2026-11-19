@@ -25,16 +25,25 @@ import (
 // @Failure 500 {object} domain.ErrorResponse
 // @Router /api/chats/send [post]
 func (h *ChatHandler) Send(w http.ResponseWriter, r *http.Request) {
-	if !helpers.MethodAllowed(w, r, http.MethodPost) {
-		return
-	}
 	var req domain.SendMessageRequest
 	if err := helpers.DecodeJSON(w, r, &req); err != nil {
 		helpers.WriteError(w, http.StatusBadRequest, "validation_error", err.Error())
 		return
 	}
+	if !helpers.IsUUID(req.ChatUID) {
+		helpers.WriteError(w, http.StatusBadRequest, "validation_error", "chat_uid must be a valid UUID")
+		return
+	}
+	if req.RepostFromUID != nil && !helpers.IsUUID(*req.RepostFromUID) {
+		helpers.WriteError(w, http.StatusBadRequest, "validation_error", "repost_from must be a valid UUID")
+		return
+	}
+	if req.ReplyFromUID != nil && !helpers.IsUUID(*req.ReplyFromUID) {
+		helpers.WriteError(w, http.StatusBadRequest, "validation_error", "reply_from must be a valid UUID")
+		return
+	}
 
-	message, err := h.useCase.Send(r.Context(), helpers.SessionCookie(r), r.Header.Get("X-CSRF-Token"), req)
+	message, err := h.useCase.SendByUID(r.Context(), helpers.SessionCookie(r), r.Header.Get("X-CSRF-Token"), req)
 	if err != nil {
 		h.writeError(w, err)
 		return

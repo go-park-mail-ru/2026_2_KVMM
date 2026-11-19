@@ -27,6 +27,7 @@ var (
 
 type profileRepository interface {
 	ReadByID(context.Context, int64) (domain.Profile, error)
+	SearchByUUID(context.Context, string) (domain.Profile, error)
 	ReadByLogin(context.Context, string) (domain.Profile, error)
 	Update(context.Context, int64, repository.UpdateProfileParams) (domain.Profile, error)
 }
@@ -35,6 +36,7 @@ type avatarRepository interface {
 	Create(context.Context, int64, domain.UploadAvatarRequest) (domain.Avatar, error)
 	List(context.Context, int64) (domain.AvatarsResponse, error)
 	Delete(context.Context, int64, int64) error
+	DeleteByUID(context.Context, int64, string) error
 }
 
 // UseCase содержит бизнес-логику изменения профиля
@@ -82,6 +84,23 @@ func (u *UseCase) SearchByID(
 	profile, err := u.profiles.ReadByID(ctx, id)
 	if err != nil {
 		logging.LogUseCaseErrorContext(ctx, "profile", "search profile by id", err)
+		return domain.Profile{}, err
+	}
+	return u.attachAvatars(ctx, profile)
+}
+
+// SearchByUUID возвращает публичный профиль пользователя по UUID
+func (u *UseCase) SearchByUUID(
+	ctx context.Context,
+	sessionToken string,
+	uuid string,
+) (domain.Profile, error) {
+	if _, _, err := u.sessions.Read(sessionToken); err != nil {
+		return domain.Profile{}, err
+	}
+	profile, err := u.profiles.SearchByUUID(ctx, strings.TrimSpace(uuid))
+	if err != nil {
+		logging.LogUseCaseErrorContext(ctx, "profile", "search profile by uuid", err)
 		return domain.Profile{}, err
 	}
 	return u.attachAvatars(ctx, profile)
@@ -198,6 +217,24 @@ func (u *UseCase) DeleteAvatar(
 		return err
 	}
 	err = u.avatars.Delete(ctx, userID, avatarID)
+	if err != nil {
+		logging.LogUseCaseErrorContext(ctx, "profile", "delete avatar", err)
+	}
+	return err
+}
+
+// DeleteAvatarByUID удаляет аватарку текущего пользователя по UUID
+func (u *UseCase) DeleteAvatarByUID(
+	ctx context.Context,
+	sessionToken string,
+	csrfToken string,
+	avatarUID string,
+) error {
+	userID, err := u.sessions.Authorize(sessionToken, csrfToken)
+	if err != nil {
+		return err
+	}
+	err = u.avatars.DeleteByUID(ctx, userID, avatarUID)
 	if err != nil {
 		logging.LogUseCaseErrorContext(ctx, "profile", "delete avatar", err)
 	}

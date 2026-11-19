@@ -9,13 +9,14 @@ import (
 	"kvmm/internal/domain"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/pashagolub/pgxmock/v4"
 )
 
 func chatRows(ids ...int64) *pgxmock.Rows {
-	rows := pgxmock.NewRows([]string{"id", "created_at"})
+	rows := pgxmock.NewRows([]string{"id", "uid", "created_at"})
 	for _, id := range ids {
-		rows.AddRow(id, time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC))
+		rows.AddRow(id, pgtype.UUID{Bytes: [16]byte{1}, Valid: true}, time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC))
 	}
 	return rows
 }
@@ -24,7 +25,7 @@ func chatParticipantRows(chatID, profileID int64, nickname string) *pgxmock.Rows
 	return pgxmock.NewRows([]string{
 		"chat_id", "id", "nickname", "email", "phone_number", "profile_name", "surname",
 		"patronymic", "gender", "birthday", "bio", "created_at", "updated_at", "deleted_at",
-		"avatar_url",
+		"uid", "avatar_url",
 	}).AddRow(
 		chatID,
 		profileID,
@@ -40,16 +41,18 @@ func chatParticipantRows(chatID, profileID int64, nickname string) *pgxmock.Rows
 		time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC),
 		nil,
 		nil,
+		pgtype.UUID{Bytes: [16]byte{1}, Valid: true},
 		"/api/media/avatars/bob.png",
 	)
 }
 
 func chatMessageRows(chatID, messageID int64) *pgxmock.Rows {
 	return pgxmock.NewRows([]string{
-		"id", "chat_id", "author_id", "message_text", "repost_from", "reply_from",
+		"id", "uid", "chat_id", "author_id", "message_text", "repost_from", "reply_from",
 		"created_at", "updated_at", "deleted_at",
 	}).AddRow(
 		messageID,
+		pgtype.UUID{Bytes: [16]byte{1}, Valid: true},
 		chatID,
 		2,
 		"message",

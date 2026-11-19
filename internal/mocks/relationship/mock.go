@@ -56,6 +56,21 @@ func (mr *MockrelationshipRepositoryMockRecorder) Accept(arg0, arg1, arg2 any) *
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Accept", reflect.TypeOf((*MockrelationshipRepository)(nil).Accept), arg0, arg1, arg2)
 }
 
+// AcceptByUUID mocks base method.
+func (m *MockrelationshipRepository) AcceptByUUID(arg0 context.Context, arg1 int64, arg2, arg3 string) (domain.ProfileRelationship, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AcceptByUUID", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(domain.ProfileRelationship)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// AcceptByUUID indicates an expected call of AcceptByUUID
+func (mr *MockrelationshipRepositoryMockRecorder) AcceptByUUID(arg0, arg1, arg2, arg3 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AcceptByUUID", reflect.TypeOf((*MockrelationshipRepository)(nil).AcceptByUUID), arg0, arg1, arg2, arg3)
+}
+
 // Cancel mocks base method.
 func (m *MockrelationshipRepository) Cancel(arg0 context.Context, arg1 int64, arg2 domain.CancleRelationshipRequest) (domain.ProfileRelationship, error) {
 	m.ctrl.T.Helper()
@@ -71,6 +86,21 @@ func (mr *MockrelationshipRepositoryMockRecorder) Cancel(arg0, arg1, arg2 any) *
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Cancel", reflect.TypeOf((*MockrelationshipRepository)(nil).Cancel), arg0, arg1, arg2)
 }
 
+// CancelByUUID mocks base method.
+func (m *MockrelationshipRepository) CancelByUUID(arg0 context.Context, arg1 int64, arg2, arg3 string) (domain.ProfileRelationship, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CancelByUUID", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(domain.ProfileRelationship)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CancelByUUID indicates an expected call of CancelByUUID
+func (mr *MockrelationshipRepositoryMockRecorder) CancelByUUID(arg0, arg1, arg2, arg3 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CancelByUUID", reflect.TypeOf((*MockrelationshipRepository)(nil).CancelByUUID), arg0, arg1, arg2, arg3)
+}
+
 // Create mocks base method.
 func (m *MockrelationshipRepository) Create(arg0 context.Context, arg1 int64, arg2 domain.CreateRelationshipRequest) (domain.ProfileRelationship, error) {
 	m.ctrl.T.Helper()
@@ -84,6 +114,21 @@ func (m *MockrelationshipRepository) Create(arg0 context.Context, arg1 int64, ar
 func (mr *MockrelationshipRepositoryMockRecorder) Create(arg0, arg1, arg2 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockrelationshipRepository)(nil).Create), arg0, arg1, arg2)
+}
+
+// CreateByUUID mocks base method.
+func (m *MockrelationshipRepository) CreateByUUID(arg0 context.Context, arg1 int64, arg2, arg3 string) (domain.ProfileRelationship, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateByUUID", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(domain.ProfileRelationship)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateByUUID indicates an expected call of CreateByUUID
+func (mr *MockrelationshipRepositoryMockRecorder) CreateByUUID(arg0, arg1, arg2, arg3 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateByUUID", reflect.TypeOf((*MockrelationshipRepository)(nil).CreateByUUID), arg0, arg1, arg2, arg3)
 }
 
 // List mocks base method.

@@ -74,11 +74,6 @@ func TestAuthHandlerValidationAndMethod(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	h := NewAuthHandler(authusecase.New(authmock.NewMockprofileRepository(ctrl), authmock.NewMocksessionRepository(ctrl)))
 	w := httptest.NewRecorder()
-	h.Login(w, httptest.NewRequest(http.MethodGet, "/api/auth/login", nil))
-	if w.Code != http.StatusMethodNotAllowed {
-		t.Fatalf("method status = %d", w.Code)
-	}
-	w = httptest.NewRecorder()
 	h.Register(w, requestWithJSON(http.MethodPost, "/api/auth/register", map[string]any{"nickname": "x"}))
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("validation status = %d", w.Code)

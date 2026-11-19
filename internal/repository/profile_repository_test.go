@@ -10,6 +10,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/pashagolub/pgxmock/v4"
 )
 
@@ -36,16 +37,16 @@ func profileRows(id int64, nickname string, passwordHash ...string) *pgxmock.Row
 	createdAt := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 	row := pgxmock.NewRows([]string{
 		"id", "nickname", "email", "phone_number", "profile_name", "surname",
-		"patronymic", "gender", "birthday", "bio", "created_at", "updated_at", "deleted_at",
+		"patronymic", "gender", "birthday", "bio", "created_at", "updated_at", "deleted_at", "uid",
 	})
 	values := []any{
 		id, nickname, "user@example.com", nil, "User", "Example", nil, "male", nil,
-		"bio", createdAt, nil, nil,
+		"bio", createdAt, nil, nil, pgtype.UUID{Bytes: [16]byte{1}, Valid: true},
 	}
 	if len(passwordHash) > 0 {
 		return pgxmock.NewRows([]string{
 			"id", "nickname", "email", "phone_number", "profile_name", "surname",
-			"patronymic", "gender", "birthday", "bio", "created_at", "updated_at", "deleted_at", "password_hash",
+			"patronymic", "gender", "birthday", "bio", "created_at", "updated_at", "deleted_at", "uid", "password_hash",
 		}).AddRow(append(values, passwordHash[0])...)
 	}
 	return row.AddRow(values...)
@@ -73,6 +74,13 @@ func TestProfileRepositoryCRUD(t *testing.T) {
 		WillReturnRows(profileRows(1, "alice"))
 	if profile, err := repository.ReadByID(ctx, 1); err != nil || profile.ID != 1 {
 		t.Fatalf("ReadByID() = %+v, %v", profile, err)
+	}
+
+	mock.ExpectQuery(queryPattern(searchProfileByUUIDQuery)).
+		WithArgs("550e8400-e29b-41d4-a716-446655440000").
+		WillReturnRows(profileRows(1, "alice"))
+	if profile, err := repository.SearchByUUID(ctx, "550e8400-e29b-41d4-a716-446655440000"); err != nil || profile.UID == "" {
+		t.Fatalf("SearchByUUID() = %+v, %v", profile, err)
 	}
 
 	mock.ExpectQuery(queryPattern(readProfileByLoginQuery)).

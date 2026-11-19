@@ -16,8 +16,8 @@ import (
 // @Accept json
 // @Produce json
 // @Param X-CSRF-Token header string false "CSRF-токен, если требуется политикой приложения"
-// @Param relationships_status query string false "Статус связи" request,accepted,canceled
-// @Param relationships_type query string false "Вид связи" friendship,family example(friendship)
+// @Param relationships_status query string false "Статус связи" Enums(request,accepted,canceled)
+// @Param relationships_type query string false "Вид связи" Enums(friendship,family) example(friendship)
 // @Param cursor query int false "Указатель на начальный элемент для записей" default(0)
 // @Param limit query int false "Размер страницы (максимум 10)" default(10) maximum(10)
 // @Success 200 {object} domain.RelationshipsResponse
@@ -26,10 +26,6 @@ import (
 // @Failure 500 {object} domain.ErrorResponse
 // @Router /api/relationships/list [get]
 func (h *FriendsHandler) List(w http.ResponseWriter, r *http.Request) {
-	if !helpers.MethodAllowed(w, r, http.MethodGet) {
-		return
-	}
-
 	cursor, limit, err := helpers.Pagination(r, 10)
 	if err != nil {
 		helpers.WriteError(w, http.StatusBadRequest, "invalid_pagination", err.Error())
@@ -63,9 +59,6 @@ func (h *FriendsHandler) List(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 {object} domain.ErrorResponse
 // @Router /api/relationships/typeslist [get]
 func (h *FriendsHandler) TypesList(w http.ResponseWriter, r *http.Request) {
-	if !helpers.MethodAllowed(w, r, http.MethodGet) {
-		return
-	}
 	response, err := h.useCase.Types(r.Context(), helpers.SessionCookie(r))
 	if err != nil {
 		h.writeError(w, err)

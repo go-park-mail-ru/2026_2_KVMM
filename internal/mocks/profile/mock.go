@@ -72,6 +72,21 @@ func (mr *MockprofileRepositoryMockRecorder) ReadByLogin(arg0, arg1 any) *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadByLogin", reflect.TypeOf((*MockprofileRepository)(nil).ReadByLogin), arg0, arg1)
 }
 
+// SearchByUUID mocks base method.
+func (m *MockprofileRepository) SearchByUUID(arg0 context.Context, arg1 string) (domain.Profile, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SearchByUUID", arg0, arg1)
+	ret0, _ := ret[0].(domain.Profile)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SearchByUUID indicates an expected call of SearchByUUID
+func (mr *MockprofileRepositoryMockRecorder) SearchByUUID(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SearchByUUID", reflect.TypeOf((*MockprofileRepository)(nil).SearchByUUID), arg0, arg1)
+}
+
 // Update mocks base method.
 func (m *MockprofileRepository) Update(arg0 context.Context, arg1 int64, arg2 repository.UpdateProfileParams) (domain.Profile, error) {
 	m.ctrl.T.Helper()
@@ -138,6 +153,20 @@ func (m *MockavatarRepository) Delete(arg0 context.Context, arg1, arg2 int64) er
 func (mr *MockavatarRepositoryMockRecorder) Delete(arg0, arg1, arg2 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockavatarRepository)(nil).Delete), arg0, arg1, arg2)
+}
+
+// DeleteByUID mocks base method.
+func (m *MockavatarRepository) DeleteByUID(arg0 context.Context, arg1 int64, arg2 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteByUID", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteByUID indicates an expected call of DeleteByUID.
+func (mr *MockavatarRepositoryMockRecorder) DeleteByUID(arg0, arg1, arg2 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteByUID", reflect.TypeOf((*MockavatarRepository)(nil).DeleteByUID), arg0, arg1, arg2)
 }
 
 // List mocks base method.

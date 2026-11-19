@@ -13,8 +13,8 @@ import (
 // @Tags chats
 // @Security SessionCookie
 // @Produce json
-// @Param chat_id query int true "id чата"
-// @Param cursor query int false "Указатель на начальный элемент для сообщений" default(0)
+// @Param chat_uid query string true "Внешний UUID чата"
+// @Param cursor query string false "UUID последнего сообщения предыдущей страницы"
 // @Param limit query int false "Размер страницы (максимум 10)" default(10) maximum(10)
 // @Success 200 {object} domain.MessagesResponse
 // @Failure 400 {object} domain.ErrorResponse
@@ -23,20 +23,21 @@ import (
 // @Failure 500 {object} domain.ErrorResponse
 // @Router /api/chats/messages [get]
 func (h *ChatHandler) Messages(w http.ResponseWriter, r *http.Request) {
-	if !helpers.MethodAllowed(w, r, http.MethodGet) {
+	if r.URL.Query().Get("chat_id") != "" {
+		helpers.WriteError(w, http.StatusBadRequest, "validation_error", "use chat_uid")
 		return
 	}
-	chatID, err := helpers.PositiveQueryInt64(r, "chat_id")
+	chatUID, err := helpers.UUIDQuery(r, "chat_uid")
 	if err != nil {
-		helpers.WriteError(w, http.StatusBadRequest, "invalid_chat_id", err.Error())
+		helpers.WriteError(w, http.StatusBadRequest, "invalid_chat_uid", err.Error())
 		return
 	}
-	cursor, limit, err := helpers.Pagination(r, 10)
+	cursor, limit, err := helpers.UUIDPagination(r, 10)
 	if err != nil {
 		helpers.WriteError(w, http.StatusBadRequest, "invalid_pagination", err.Error())
 		return
 	}
-	response, err := h.useCase.Messages(r.Context(), helpers.SessionCookie(r), r.Header.Get("X-CSRF-Token"), chatID, int64(cursor), limit)
+	response, err := h.useCase.MessagesByUID(r.Context(), helpers.SessionCookie(r), r.Header.Get("X-CSRF-Token"), chatUID, cursor, limit)
 	if err != nil {
 		h.writeError(w, err)
 		return

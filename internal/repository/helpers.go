@@ -52,6 +52,14 @@ func timestampPointer(value pgtype.Timestamptz) *time.Time {
 	return &result
 }
 
+// uuidString преобразует UUID PostgreSQL в строку
+func uuidString(value pgtype.UUID) string {
+	if !value.Valid {
+		return ""
+	}
+	return value.String()
+}
+
 func nullableInt64(value *int64) any {
 	if value == nil {
 		return nil

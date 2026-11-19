@@ -10,17 +10,19 @@ import (
 	"kvmm/internal/domain"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/pashagolub/pgxmock/v4"
 )
 
 func postRows(ids ...int64) *pgxmock.Rows {
 	rows := pgxmock.NewRows([]string{
-		"id", "post_text", "author_profile_id", "author_community_id", "created_at",
+		"id", "uid", "post_text", "author_profile_id", "author_community_id", "created_at",
 		"updated_at", "deleted_at",
 	})
 	for _, id := range ids {
 		rows.AddRow(
 			id,
+			pgtype.UUID{Bytes: [16]byte{1}, Valid: true},
 			"post text",
 			id,
 			nil,
@@ -63,7 +65,7 @@ func TestPostRepositoryCRUD(t *testing.T) {
 		t.Fatalf("Create(with two authors) error = %v", err)
 	}
 
-	mock.ExpectQuery(queryPattern("INSERT INTO post (\n\t\t\tpost_text,\n\t\t\tauthor_profile_id,\n\t\t\tauthor_community_id\n\t\t)\n\t\tVALUES ($1, $2, $3)\n\t\tRETURNING \n\tid,\n\tpost_text,\n\tauthor_profile_id,\n\tauthor_community_id,\n\tcreated_at,\n\tupdated_at,\n\tdeleted_at")).
+	mock.ExpectQuery("(?s)INSERT INTO post .*RETURNING .*uid,").
 		WithArgs(text, authorID, nil).
 		WillReturnRows(postRows(1))
 	mock.ExpectQuery(queryPattern(postAuthorsQuery)).

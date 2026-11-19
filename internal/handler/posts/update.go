@@ -25,16 +25,13 @@ import (
 // @Failure 500 {object} domain.ErrorResponse
 // @Router /api/posts/update [patch]
 func (h *PostHandler) Update(w http.ResponseWriter, r *http.Request) {
-	if !helpers.MethodAllowed(w, r, http.MethodPatch) {
-		return
-	}
 	var req domain.UpdatePostRequest
 	if err := helpers.DecodeJSON(w, r, &req); err != nil {
 		helpers.WriteError(w, http.StatusBadRequest, "validation_error", err.Error())
 		return
 	}
 
-	post, err := h.useCase.Update(r.Context(), helpers.SessionCookie(r), r.Header.Get("X-CSRF-Token"), req)
+	post, err := h.useCase.UpdateByUID(r.Context(), helpers.SessionCookie(r), r.Header.Get("X-CSRF-Token"), req)
 	if err != nil {
 		h.writeError(w, err)
 		return

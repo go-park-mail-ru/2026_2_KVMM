@@ -19,6 +19,7 @@ var (
 
 const postColumns = `
 	post.id,
+	post.uid,
 	post.post_text,
 	post.author_profile_id,
 	post.author_community_id,
@@ -57,12 +58,52 @@ const postAuthorAvatarsQuery = `
 
 const postReturningColumns = `
 	id,
+	uid,
 	post_text,
 	author_profile_id,
 	author_community_id,
 	created_at,
 	updated_at,
 	deleted_at`
+
+const updatePostByUUIDQuery = `
+	UPDATE post
+	SET post_text = $1, updated_at = NOW()
+	WHERE uid = $2::uuid
+		AND author_profile_id = $3
+		AND deleted_at IS NULL
+	RETURNING ` + postReturningColumns
+
+const deletePostByUUIDQuery = `
+	UPDATE post
+	SET deleted_at = NOW()
+	WHERE uid = $1::uuid
+		AND author_profile_id = $2
+		AND deleted_at IS NULL`
+
+const readProfilePostsByUUIDQuery = `
+	SELECT ` + postColumns + `
+	FROM post
+	WHERE post.author_profile_id = (
+		SELECT id FROM profile WHERE uid = $1::uuid AND deleted_at IS NULL
+	)
+		AND post.deleted_at IS NULL
+		AND ($2 = '' OR post.id < (
+			SELECT id FROM post WHERE uid = NULLIF($2, '')::uuid
+		))
+	ORDER BY post.id DESC
+	LIMIT $3`
+
+const readFeedPostsByUUIDQuery = `
+	SELECT ` + postColumns + `
+	FROM post
+	WHERE post.deleted_at IS NULL
+		AND ($1 = '' OR post.id < (
+			SELECT id FROM post WHERE uid = NULLIF($1, '')::uuid
+		))
+		AND post.author_profile_id IS NOT NULL
+	ORDER BY post.id DESC
+	LIMIT $2`
 
 // PostRepository выполняет sql-операции с таблицей profile
 type PostRepository struct {
@@ -144,6 +185,97 @@ func (r *PostRepository) ReadByID(
 		return domain.Post{}, err
 	}
 	return posts[0], nil
+}
+
+// UpdateByUUID изменяет пост текущего пользователя напрямую по UUID
+func (r *PostRepository) UpdateByUUID(ctx context.Context, uid string, authorID int64, params UpdatePostParams) (domain.Post, error) {
+	post, err := scanPost(r.pool.QueryRow(ctx, updatePostByUUIDQuery, nullableString(params.PostText), uid, authorID))
+	if err != nil {
+		return domain.Post{}, normalizePostError(err)
+	}
+	posts := []domain.Post{post}
+	if err := r.attachPostAuthors(ctx, posts); err != nil {
+		return domain.Post{}, err
+	}
+	return posts[0], nil
+}
+
+// DeleteByUUID помечает пост текущего пользователя удалённым напрямую по UUID
+func (r *PostRepository) DeleteByUUID(ctx context.Context, uid string, authorID int64) error {
+	command, err := r.pool.Exec(ctx, deletePostByUUIDQuery, uid, authorID)
+	if err != nil {
+		return err
+	}
+	if command.RowsAffected() == 0 {
+		return ErrPostNotFound
+	}
+	return nil
+}
+
+// ReadProfilePostsByUUID возвращает посты профиля с UUID-курсором без предварительного поиска ID.
+func (r *PostRepository) ReadProfilePostsByUUID(ctx context.Context, profileUID, cursorUID string, limit int) ([]domain.Post, string, bool, error) {
+	limit = normalizeLimit(limit, 10)
+	rows, err := r.pool.Query(ctx, readProfilePostsByUUIDQuery, profileUID, cursorUID, limit+1)
+	if err != nil {
+		return nil, "", false, err
+	}
+	defer rows.Close()
+	posts := make([]domain.Post, 0, limit)
+	for rows.Next() {
+		post, scanErr := scanPost(rows)
+		if scanErr != nil {
+			return nil, "", false, scanErr
+		}
+		posts = append(posts, post)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, "", false, err
+	}
+	hasMore := len(posts) > limit
+	if hasMore {
+		posts = posts[:limit]
+	}
+	var nextUID string
+	if len(posts) > 0 {
+		nextUID = posts[len(posts)-1].UID
+	}
+	if err := r.attachPostAuthors(ctx, posts); err != nil {
+		return nil, "", false, err
+	}
+	return posts, nextUID, hasMore, nil
+}
+
+// ReadFeedPostsByUUID возвращает ленту с UUID-курсором без предварительного поиска ID.
+func (r *PostRepository) ReadFeedPostsByUUID(ctx context.Context, cursorUID string, limit int) ([]domain.Post, string, bool, error) {
+	limit = normalizeLimit(limit, 100)
+	rows, err := r.pool.Query(ctx, readFeedPostsByUUIDQuery, cursorUID, limit+1)
+	if err != nil {
+		return nil, "", false, err
+	}
+	defer rows.Close()
+	posts := make([]domain.Post, 0, limit)
+	for rows.Next() {
+		post, scanErr := scanPost(rows)
+		if scanErr != nil {
+			return nil, "", false, scanErr
+		}
+		posts = append(posts, post)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, "", false, err
+	}
+	hasMore := len(posts) > limit
+	if hasMore {
+		posts = posts[:limit]
+	}
+	var nextUID string
+	if len(posts) > 0 {
+		nextUID = posts[len(posts)-1].UID
+	}
+	if err := r.attachPostAuthors(ctx, posts); err != nil {
+		return nil, "", false, err
+	}
+	return posts, nextUID, hasMore, nil
 }
 
 // ReadProfilePosts возвращает посты профиля с курсорной пагинацией
@@ -448,6 +580,7 @@ func (r *PostRepository) Delete(
 func scanPost(row rowScanner) (domain.Post, error) {
 	var (
 		id                  int64
+		uid                 pgtype.UUID
 		post_text           pgtype.Text
 		author_profile_id   pgtype.Int8
 		author_community_id pgtype.Int8
@@ -458,6 +591,7 @@ func scanPost(row rowScanner) (domain.Post, error) {
 
 	dest := []any{
 		&id,
+		&uid,
 		&post_text,
 		&author_profile_id,
 		&author_community_id,
@@ -472,6 +606,7 @@ func scanPost(row rowScanner) (domain.Post, error) {
 
 	post := domain.Post{
 		ID:                id,
+		UID:               uuidString(uid),
 		PostText:          textPointer(post_text),
 		AuthorProfileID:   int64Pointer(author_profile_id),
 		AuthorCommunityID: int64Pointer(author_community_id),

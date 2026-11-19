@@ -57,8 +57,39 @@ const countActiveProfilesQuery = `
 	WHERE id = ANY($1::BIGINT[])
 		AND deleted_at IS NULL`
 
+const countActiveProfilesByUUIDForChatQuery = `
+	SELECT COUNT(*)
+	FROM profile
+	WHERE deleted_at IS NULL
+		AND (id = $1 OR uid = $2::uuid)`
+
+const findPrivateChatByUUIDQuery = `
+	SELECT cp1.chat_id
+	FROM chat_profile cp1
+	JOIN chat_profile cp2 ON cp2.chat_id = cp1.chat_id
+	WHERE cp1.profile_id = $1
+		AND cp2.profile_id = (
+			SELECT id FROM profile WHERE uid = $2::uuid AND deleted_at IS NULL
+		)
+		AND (
+			SELECT COUNT(*)
+			FROM chat_profile cp
+			WHERE cp.chat_id = cp1.chat_id
+		) = 2
+	ORDER BY cp1.chat_id
+	LIMIT 1`
+
+const upsertParticipantsByUUIDQuery = `
+	INSERT INTO chat_profile (profile_id, chat_id, deleted_at)
+	SELECT p.id, $2, NULL
+	FROM profile p
+	WHERE p.deleted_at IS NULL
+		AND (p.id = $1 OR p.uid = $3::uuid)
+	ON CONFLICT (profile_id, chat_id)
+	DO UPDATE SET deleted_at = NULL`
+
 const readChatQuery = `
-	SELECT id, created_at
+	SELECT id, uid, created_at
 	FROM chat
 	WHERE id = $1`
 
@@ -72,7 +103,7 @@ const checkParticipantQuery = `
 	)`
 
 const listChatsQuery = `
-	SELECT c.id, c.created_at
+	SELECT c.id, c.uid, c.created_at
 	FROM chat c
 	JOIN chat_profile cp ON cp.chat_id = c.id
 	WHERE cp.profile_id = $1
@@ -80,6 +111,28 @@ const listChatsQuery = `
 		AND ($2 = 0 OR c.id < $2)
 	ORDER BY c.id DESC
 	LIMIT $3`
+
+const listChatsByUUIDQuery = `
+	SELECT c.id, c.uid, c.created_at
+	FROM chat c
+	JOIN chat_profile cp ON cp.chat_id = c.id
+	WHERE cp.profile_id = $1
+		AND cp.deleted_at IS NULL
+		AND ($2 = '' OR c.id < (
+			SELECT id FROM chat WHERE uid = NULLIF($2, '')::uuid
+		))
+	ORDER BY c.id DESC
+	LIMIT $3`
+
+const checkParticipantByUUIDQuery = `
+	SELECT EXISTS (
+		SELECT 1
+		FROM chat c
+		JOIN chat_profile cp ON cp.chat_id = c.id
+		WHERE c.uid = $1::uuid
+			AND cp.profile_id = $2
+			AND cp.deleted_at IS NULL
+	)`
 
 const readParticipantsQuery = `
 	SELECT ` + profileColumns + `
@@ -109,6 +162,7 @@ const readParticipantsBatchQuery = `
 		p.created_at,
 		p.updated_at,
 		p.deleted_at,
+		p.uid,
 		avatar.media_path AS avatar_url
 	FROM chat_profile cp
 	JOIN profile p ON p.id = cp.profile_id
@@ -211,13 +265,16 @@ func (r *ChatRepository) Create(
 	}
 
 	var chat domain.Chat
+	var uid pgtype.UUID
 	err = r.pool.QueryRow(ctx, readChatQuery, chatID).Scan(
 		&chat.ID,
+		&uid,
 		&chat.CreatedAt,
 	)
 	if err != nil {
 		return domain.Chat{}, err
 	}
+	chat.UID = uuidString(uid)
 
 	chat.Participants, err = r.readParticipants(ctx, chatID)
 	if err != nil {
@@ -225,6 +282,126 @@ func (r *ChatRepository) Create(
 	}
 
 	return chat, nil
+}
+
+// CreateByUUID создаёт личный чат с пользователем, указанным внешним UUID
+func (r *ChatRepository) CreateByUUID(ctx context.Context, profileID int64, profileUID string) (domain.Chat, error) {
+	if profileID <= 0 || profileUID == "" {
+		return domain.Chat{}, ErrProfileNotFound
+	}
+
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return domain.Chat{}, err
+	}
+	defer tx.Rollback(ctx)
+
+	lockKey := fmt.Sprintf("private-chat:%d:%s", profileID, profileUID)
+	if _, err = tx.Exec(ctx, acquirePrivateChatLockQuery, lockKey); err != nil {
+		return domain.Chat{}, err
+	}
+
+	var profileCount int
+	if err = tx.QueryRow(ctx, countActiveProfilesByUUIDForChatQuery, profileID, profileUID).Scan(&profileCount); err != nil {
+		return domain.Chat{}, err
+	}
+	if profileCount != 2 {
+		return domain.Chat{}, ErrProfileNotFound
+	}
+
+	var chatID int64
+	err = tx.QueryRow(ctx, findPrivateChatByUUIDQuery, profileID, profileUID).Scan(&chatID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return domain.Chat{}, err
+	}
+	if errors.Is(err, pgx.ErrNoRows) {
+		if err = tx.QueryRow(ctx, createChatQuery).Scan(&chatID); err != nil {
+			return domain.Chat{}, err
+		}
+	}
+	if _, err = tx.Exec(ctx, upsertParticipantsByUUIDQuery, profileID, chatID, profileUID); err != nil {
+		return domain.Chat{}, err
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return domain.Chat{}, err
+	}
+
+	var chat domain.Chat
+	var uid pgtype.UUID
+	if err = r.pool.QueryRow(ctx, readChatQuery, chatID).Scan(&chat.ID, &uid, &chat.CreatedAt); err != nil {
+		return domain.Chat{}, err
+	}
+	chat.UID = uuidString(uid)
+	chat.Participants, err = r.readParticipants(ctx, chatID)
+	if err != nil {
+		return domain.Chat{}, err
+	}
+	return chat, nil
+}
+
+// ListChatsByUUID возвращает чаты с UUID-курсором без отдельного чтения ID курсора.
+func (r *ChatRepository) ListChatsByUUID(ctx context.Context, profileID int64, cursorUID string, limit int) (domain.ChatsResponse, error) {
+	limit = normalizeLimit(limit, 100)
+	response := domain.ChatsResponse{Chats: make([]domain.Chat, 0), Limit: limit, CursorUID: cursorUID}
+	rows, err := r.pool.Query(ctx, listChatsByUUIDQuery, profileID, cursorUID, limit+1)
+	if err != nil {
+		return response, err
+	}
+	for rows.Next() {
+		var chat domain.Chat
+		var uid pgtype.UUID
+		if err := rows.Scan(&chat.ID, &uid, &chat.CreatedAt); err != nil {
+			rows.Close()
+			return response, err
+		}
+		chat.UID = uuidString(uid)
+		response.Chats = append(response.Chats, chat)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return response, err
+	}
+	rows.Close()
+	response.HasMore = len(response.Chats) > limit
+	if response.HasMore {
+		response.Chats = response.Chats[:limit]
+	}
+	if len(response.Chats) > 0 {
+		response.NextCursorUID = response.Chats[len(response.Chats)-1].UID
+	}
+	chatIDs := make([]int64, 0, len(response.Chats))
+	for _, chat := range response.Chats {
+		chatIDs = append(chatIDs, chat.ID)
+	}
+	participants, err := r.readParticipantsBatch(ctx, chatIDs)
+	if err != nil {
+		return response, err
+	}
+	lastMessages, err := r.readLastMessagesBatch(ctx, chatIDs)
+	if err != nil {
+		return response, err
+	}
+	for i := range response.Chats {
+		chat := &response.Chats[i]
+		chat.Participants = participants[chat.ID]
+		chat.LastMessage = lastMessages[chat.ID]
+		if chat.LastMessage != nil {
+			chat.LastMessage.ChatUID = chat.UID
+		}
+	}
+	return response, nil
+}
+
+// IsParticipantByUUID проверяет участие пользователя в чате по UUID чата.
+func (r *ChatRepository) IsParticipantByUUID(ctx context.Context, chatUID string, profileID int64) error {
+	var exists bool
+	if err := r.pool.QueryRow(ctx, checkParticipantByUUIDQuery, chatUID, profileID).Scan(&exists); err != nil {
+		return err
+	}
+	if !exists {
+		return ErrNotChatParticipant
+	}
+	return nil
 }
 
 // ListChats возвращает чаты пользователя с курсорной пагинацией по ID
@@ -260,10 +437,12 @@ func (r *ChatRepository) ListChats(
 
 	for rows.Next() {
 		var chat domain.Chat
-		if err = rows.Scan(&chat.ID, &chat.CreatedAt); err != nil {
+		var uid pgtype.UUID
+		if err = rows.Scan(&chat.ID, &uid, &chat.CreatedAt); err != nil {
 			rows.Close()
 			return response, err
 		}
+		chat.UID = uuidString(uid)
 		response.Chats = append(response.Chats, chat)
 	}
 
@@ -294,6 +473,9 @@ func (r *ChatRepository) ListChats(
 		chat := &response.Chats[i]
 		chat.Participants = participants[chat.ID]
 		chat.LastMessage = lastMessages[chat.ID]
+		if chat.LastMessage != nil {
+			chat.LastMessage.ChatUID = chat.UID
+		}
 	}
 
 	return response, nil

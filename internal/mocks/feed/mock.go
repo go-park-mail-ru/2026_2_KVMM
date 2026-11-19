@@ -57,3 +57,20 @@ func (mr *MockpostRepositoryMockRecorder) ReadFeedPosts(arg0, arg1, arg2 any) *g
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadFeedPosts", reflect.TypeOf((*MockpostRepository)(nil).ReadFeedPosts), arg0, arg1, arg2)
 }
+
+// ReadFeedPostsByUUID mocks base method.
+func (m *MockpostRepository) ReadFeedPostsByUUID(arg0 context.Context, arg1 string, arg2 int) ([]domain.Post, string, bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReadFeedPostsByUUID", arg0, arg1, arg2)
+	ret0, _ := ret[0].([]domain.Post)
+	ret1, _ := ret[1].(string)
+	ret2, _ := ret[2].(bool)
+	ret3, _ := ret[3].(error)
+	return ret0, ret1, ret2, ret3
+}
+
+// ReadFeedPostsByUUID indicates an expected call of ReadFeedPostsByUUID
+func (mr *MockpostRepositoryMockRecorder) ReadFeedPostsByUUID(arg0, arg1, arg2 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadFeedPostsByUUID", reflect.TypeOf((*MockpostRepository)(nil).ReadFeedPostsByUUID), arg0, arg1, arg2)
+}

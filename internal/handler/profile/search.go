@@ -14,12 +14,12 @@ import (
 // Search ищет публичный профиль по ID, логину, email или номеру телефона
 // Search godoc
 // @Summary Найти пользователя
-// @Description Возвращает публичные данные. Можно передать profile_id или login
+// @Description Возвращает публичные данные. Можно передать uid или login
 // @Tags profile
 // @Produce json
 // @Security SessionCookie
-// @Param profile_id query int false "ID пользователя" minimum(1)
-// @Param login query string false "Логин, email или номер телефона"
+// @Param uid query string false "uid"
+// @Param login query string false "Логин, email или номер телефона, UUID"
 // @Success 200 {object} domain.Profile
 // @Failure 400 {object} domain.ErrorResponse
 // @Failure 401 {object} domain.ErrorResponse
@@ -27,30 +27,32 @@ import (
 // @Failure 500 {object} domain.ErrorResponse
 // @Router /api/profile/search [get]
 func (h *ProfileHandler) Search(w http.ResponseWriter, r *http.Request) {
-	if !helpers.MethodAllowed(w, r, http.MethodGet) {
+	query := r.URL.Query()
+	if query.Get("profile_id") != "" {
+		helpers.WriteError(w, http.StatusBadRequest, "validation_error", "profile_id is no longer accepted; use uid")
 		return
 	}
-
-	query := r.URL.Query()
-	if profileID := strings.TrimSpace(query.Get("profile_id")); profileID != "" {
-		id, err := strconv.ParseInt(profileID, 10, 64)
-		if err != nil || id <= 0 {
-			helpers.WriteError(w, http.StatusBadRequest, "validation_error", "profile_id must be a positive integer")
+	if uid := strings.TrimSpace(query.Get("uid")); uid != "" {
+		if !helpers.IsUUID(uid) {
+			helpers.WriteError(w, http.StatusBadRequest, "validation_error", "uid must be a valid UUID")
 			return
 		}
 		h.writeSearchResult(w, func() (domain.Profile, error) {
-			return h.useCase.SearchByID(
+			return h.useCase.SearchByUUID(
 				r.Context(),
 				helpers.SessionCookie(r),
-				id,
+				uid,
 			)
 		})
 		return
 	}
-
 	login := strings.TrimSpace(query.Get("login"))
 	if login == "" {
 		helpers.WriteError(w, http.StatusBadRequest, "validation_error", "login is required")
+		return
+	}
+	if _, err := strconv.ParseInt(login, 10, 64); err == nil {
+		helpers.WriteError(w, http.StatusBadRequest, "validation_error", "numeric profile IDs are not accepted; use uid")
 		return
 	}
 	h.writeSearchResult(w, func() (domain.Profile, error) {

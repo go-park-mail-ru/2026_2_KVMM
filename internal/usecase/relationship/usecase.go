@@ -19,6 +19,9 @@ var (
 
 type relationshipRepository interface {
 	Create(context.Context, int64, domain.CreateRelationshipRequest) (domain.ProfileRelationship, error)
+	CreateByUUID(context.Context, int64, string, string) (domain.ProfileRelationship, error)
+	AcceptByUUID(context.Context, int64, string, string) (domain.ProfileRelationship, error)
+	CancelByUUID(context.Context, int64, string, string) (domain.ProfileRelationship, error)
 	List(context.Context, int64, domain.ListRelationshipsRequest) (domain.RelationshipsResponse, error)
 	Requests(context.Context, int64, string, int64, int) (domain.RelationshipsResponse, error)
 	Types(context.Context, int64) (domain.RelationshipTypes, error)
@@ -56,6 +59,22 @@ func (u *UseCase) Create(
 		return domain.ProfileRelationship{}, err
 	}
 	relationship, err := u.relationships.Create(ctx, userID, req)
+	if err != nil {
+		logging.LogUseCaseErrorContext(ctx, "relationship", "create relationship", err)
+	}
+	return relationship, err
+}
+
+// CreateByUID отправляет запрос на связь по UUID пользователя
+func (u *UseCase) CreateByUID(ctx context.Context, sessionToken, csrfToken string, req domain.CreateRelationshipRequest) (domain.ProfileRelationship, error) {
+	userID, err := u.sessions.Authorize(sessionToken, csrfToken)
+	if err != nil {
+		return domain.ProfileRelationship{}, err
+	}
+	if err := validateRelationshipType(req.RelationshipsType); err != nil {
+		return domain.ProfileRelationship{}, err
+	}
+	relationship, err := u.relationships.CreateByUUID(ctx, userID, req.ProfileUIDSlave, req.RelationshipsType)
 	if err != nil {
 		logging.LogUseCaseErrorContext(ctx, "relationship", "create relationship", err)
 	}
@@ -160,6 +179,18 @@ func (u *UseCase) Accept(
 	return relationship, err
 }
 
+// AcceptByUID подтверждает запрос на связь по UUID пользователя
+func (u *UseCase) AcceptByUID(ctx context.Context, sessionToken, csrfToken string, req domain.AcceptRelationshipRequest) (domain.ProfileRelationship, error) {
+	userID, err := u.sessions.Authorize(sessionToken, csrfToken)
+	if err != nil {
+		return domain.ProfileRelationship{}, err
+	}
+	if err := validateRelationshipType(req.RelationshipsType); err != nil {
+		return domain.ProfileRelationship{}, err
+	}
+	return u.relationships.AcceptByUUID(ctx, userID, req.ProfileUID, req.RelationshipsType)
+}
+
 // Cancel отменяет запрос или закрывает активную связь
 func (u *UseCase) Cancel(
 	ctx context.Context,
@@ -181,7 +212,19 @@ func (u *UseCase) Cancel(
 	return relationship, err
 }
 
-// validateRelationshipType проверяет поддерживаемые виды связей.
+// CancelByUID закрывает связь по UUID пользователя
+func (u *UseCase) CancelByUID(ctx context.Context, sessionToken, csrfToken string, req domain.CancleRelationshipRequest) (domain.ProfileRelationship, error) {
+	userID, err := u.sessions.Authorize(sessionToken, csrfToken)
+	if err != nil {
+		return domain.ProfileRelationship{}, err
+	}
+	if err := validateRelationshipType(req.RelationshipsType); err != nil {
+		return domain.ProfileRelationship{}, err
+	}
+	return u.relationships.CancelByUUID(ctx, userID, req.ProfileUID, req.RelationshipsType)
+}
+
+// validateRelationshipType проверяет поддерживаемые виды связей
 func validateRelationshipType(typeName string) error {
 	switch typeName {
 	case domain.RelationshipTypeFriendship, domain.RelationshipTypeFamily:

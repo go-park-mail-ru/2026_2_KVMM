@@ -2,7 +2,6 @@ package posts
 
 import (
 	"net/http"
-	"strconv"
 
 	"kvmm/internal/handler/helpers"
 )
@@ -16,7 +15,7 @@ import (
 // @Accept json
 // @Produce json
 // @Param X-CSRF-Token header string true "CSRF-токен"
-// @Param post_id query int true "ID публикации"
+// @Param post_uid query string true "Внешний UUID публикации"
 // @Success 204 "Публикация удалена"
 // @Failure 400 {object} domain.ErrorResponse
 // @Failure 401 {object} domain.ErrorResponse
@@ -25,15 +24,16 @@ import (
 // @Failure 500 {object} domain.ErrorResponse
 // @Router /api/posts/delete [delete]
 func (h *PostHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	if !helpers.MethodAllowed(w, r, http.MethodDelete) {
+	if r.URL.Query().Get("post_id") != "" {
+		helpers.WriteError(w, http.StatusBadRequest, "validation_error", "post_id is no longer accepted; use post_uid")
 		return
 	}
-	postID, err := strconv.ParseInt(r.URL.Query().Get("post_id"), 10, 64)
-	if err != nil || postID <= 0 {
-		helpers.WriteError(w, http.StatusBadRequest, "validation_error", "post_id must be a positive integer")
+	postUID, err := helpers.UUIDQuery(r, "post_uid")
+	if err != nil {
+		helpers.WriteError(w, http.StatusBadRequest, "validation_error", err.Error())
 		return
 	}
-	if err := h.useCase.Delete(r.Context(), helpers.SessionCookie(r), r.Header.Get("X-CSRF-Token"), postID); err != nil {
+	if err := h.useCase.DeleteByUID(r.Context(), helpers.SessionCookie(r), r.Header.Get("X-CSRF-Token"), postUID); err != nil {
 		h.writeError(w, err)
 		return
 	}

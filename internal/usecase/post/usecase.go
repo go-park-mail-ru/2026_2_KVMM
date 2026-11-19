@@ -23,6 +23,9 @@ var (
 type postRepository interface {
 	Create(context.Context, repository.CreatePostParams) (domain.Post, error)
 	ReadByID(context.Context, int64) (domain.Post, error)
+	UpdateByUUID(context.Context, string, int64, repository.UpdatePostParams) (domain.Post, error)
+	DeleteByUUID(context.Context, string, int64) error
+	ReadProfilePostsByUUID(context.Context, string, string, int) ([]domain.Post, string, bool, error)
 	ReadProfilePosts(context.Context, int64, int64, int) ([]domain.Post, int64, bool, error)
 	Update(context.Context, int64, repository.UpdatePostParams) (domain.Post, error)
 	Delete(context.Context, int64) error
@@ -98,6 +101,23 @@ func (u *UseCase) Update(
 	return updated, err
 }
 
+// UpdateByUID изменяет текст собственной публикации по UUID
+func (u *UseCase) UpdateByUID(ctx context.Context, sessionToken, csrfToken string, req domain.UpdatePostRequest) (domain.Post, error) {
+	userID, err := u.authorize(sessionToken, csrfToken)
+	if err != nil {
+		return domain.Post{}, err
+	}
+	if req.PostText == nil || len([]rune(strings.TrimSpace(*req.PostText))) > 2048 {
+		return domain.Post{}, ErrInvalidPost
+	}
+	text := strings.TrimSpace(*req.PostText)
+	post, err := u.posts.UpdateByUUID(ctx, req.PostUID, userID, repository.UpdatePostParams{PostText: &text})
+	if err != nil {
+		logging.LogUseCaseErrorContext(ctx, "post", "update post", err)
+	}
+	return post, err
+}
+
 // Delete удаляет собственную публикацию
 func (u *UseCase) Delete(
 	ctx context.Context,
@@ -124,6 +144,19 @@ func (u *UseCase) Delete(
 	return err
 }
 
+// DeleteByUID удаляет собственную публикацию по UUID
+func (u *UseCase) DeleteByUID(ctx context.Context, sessionToken, csrfToken, postUID string) error {
+	userID, err := u.authorize(sessionToken, csrfToken)
+	if err != nil {
+		return err
+	}
+	if err := u.posts.DeleteByUUID(ctx, postUID, userID); err != nil {
+		logging.LogUseCaseErrorContext(ctx, "post", "delete post", err)
+		return err
+	}
+	return nil
+}
+
 // UserPosts возвращает публикации указанного пользователя
 func (u *UseCase) UserPosts(
 	ctx context.Context,
@@ -144,6 +177,15 @@ func (u *UseCase) UserPosts(
 		HasMore:    hasMore,
 		NextCursor: nextCursor,
 	}, nil
+}
+
+// UserPostsByUID возвращает публикации профиля по UUID
+func (u *UseCase) UserPostsByUID(ctx context.Context, profileUID, cursorUID string, limit int) (domain.UserPostsResponse, error) {
+	posts, nextUID, hasMore, err := u.posts.ReadProfilePostsByUUID(ctx, profileUID, cursorUID, limit)
+	if err != nil {
+		return domain.UserPostsResponse{}, err
+	}
+	return domain.UserPostsResponse{Posts: posts, ProfileUID: profileUID, CursorUID: cursorUID, Limit: limit, HasMore: hasMore, NextCursorUID: nextUID}, nil
 }
 
 func (u *UseCase) authorize(sessionToken, csrfToken string) (int64, error) {
