@@ -11,8 +11,78 @@ services:
       - ./deploy/.env
     expose:
       - "8080"
+    restart: unless-stopped
+    networks:
+      - kvmm
+    depends_on:
+      postgres:
+        condition: service_healthy
+      auth:
+        condition: service_started
+
+  user:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        GIT_BRANCH: ${GIT_BRANCH:-unknown}
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}
+    command: ["/kvmm-user"]
+    container_name: kvmm-user
+    env_file:
+      - ./deploy/.env
+    expose:
+      - "8082"
+      - "9091"
     volumes:
       - media_data:/data/media
+    restart: unless-stopped
+    networks:
+      - kvmm
+    depends_on:
+      postgres:
+        condition: service_healthy
+      auth:
+        condition: service_started
+
+  posts:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        GIT_BRANCH: ${GIT_BRANCH:-unknown}
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}
+    command: ["/kvmm-posts"]
+    container_name: kvmm-posts
+    env_file:
+      - ./deploy/.env
+    expose:
+      - "8083"
+    restart: unless-stopped
+    networks:
+      - kvmm
+    depends_on:
+      postgres:
+        condition: service_healthy
+      auth:
+        condition: service_started
+      user:
+        condition: service_started
+
+  auth:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        GIT_BRANCH: ${GIT_BRANCH:-unknown}
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}
+    command: ["/kvmm-auth"]
+    container_name: kvmm-auth
+    env_file:
+      - ./deploy/.env
+    expose:
+      - "8081"
+      - "9090"
     restart: unless-stopped
     networks:
       - kvmm
@@ -47,6 +117,9 @@ services:
       - ./internal/docs:/usr/share/nginx/html/docs:ro
     depends_on:
       - backend
+      - auth
+      - user
+      - posts
       - frontend
     restart: unless-stopped
     networks:

@@ -6,32 +6,21 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
 	"go.uber.org/zap"
 
 	"kvmm/internal/config"
-	"kvmm/internal/handler/auth"
-	"kvmm/internal/handler/chat"
-	"kvmm/internal/handler/feed"
-	"kvmm/internal/handler/helpers"
-	"kvmm/internal/handler/posts"
-	"kvmm/internal/handler/profile"
 	"kvmm/internal/handler/relationship"
 	"kvmm/internal/httpapi"
 	"kvmm/internal/logging"
-	"kvmm/internal/mailer"
 	"kvmm/internal/repository"
-	authusecase "kvmm/internal/usecase/auth"
-	chatusecase "kvmm/internal/usecase/chat"
-	feedusecase "kvmm/internal/usecase/feed"
-	postusecase "kvmm/internal/usecase/post"
-	profileusecase "kvmm/internal/usecase/profile"
 	relationshipusecase "kvmm/internal/usecase/relationship"
 	sessionusecase "kvmm/internal/usecase/session"
 
-	"github.com/redis/go-redis/v9"
+	"kvmm/internal/authgrpc"
 )
 
 var (
@@ -56,26 +45,15 @@ func main() {
 		zap.String("git_commit", gitCommit),
 		zap.Any("config", appConfig.SafeForLog()),
 	)
-	redisTTL, err := appConfig.Redis.TTLDuration()
+	grpcTarget := appConfig.Auth.GRPCAddr
+	if strings.HasPrefix(grpcTarget, ":") {
+		grpcTarget = "auth" + grpcTarget
+	}
+	sessionClient, err := authgrpc.Dial(grpcTarget)
 	if err != nil {
-		logger.Fatal("invalid Redis session TTL", zap.Error(err))
+		logger.Fatal("auth gRPC connection failed", zap.Error(err))
 	}
-	redisClient := redis.NewClient(&redis.Options{
-		Addr:     appConfig.Redis.Addr,
-		Password: appConfig.Redis.Password,
-		DB:       appConfig.Redis.DB,
-	})
-	redisSessions, err := repository.NewRedisSessionRepository(redisClient, redisTTL)
-	if err != nil {
-		logger.Fatal("Redis session repository initialization failed", zap.Error(err))
-	}
-	redisContext, cancelRedis := context.WithTimeout(context.Background(), 5*time.Second)
-	if err := redisSessions.Ping(redisContext); err != nil {
-		cancelRedis()
-		logger.Fatal("Redis connection failed", zap.Error(err))
-	}
-	cancelRedis()
-	defer redisClient.Close()
+	defer sessionClient.Close()
 
 	databaseURL := appConfig.DatabaseURL
 	if databaseURL == "" {
@@ -89,29 +67,8 @@ func main() {
 	}
 	defer database.Close()
 
-	sessions := redisSessions
-	sessionReader := sessionusecase.New(sessions)
-	profiles := repository.NewProfileRepository(database)
-	postsRepository := repository.NewPostRepository(database)
-	chats := repository.NewChatRepository(database)
-	messages := repository.NewMessageRepository(database)
+	sessionReader := sessionusecase.New(sessionClient)
 	relationships := repository.NewRelationshipRepository(database)
-	avatars := repository.NewAvatarRepository(database, appConfig.Media.Dir, appConfig.Media.PublicURL)
-	mailSender := mailer.New(mailer.SMTPSettings{
-		Host:     appConfig.SMTP.Host,
-		Port:     appConfig.SMTP.Port,
-		Username: appConfig.SMTP.Username,
-		Password: appConfig.SMTP.Password,
-		From:     appConfig.SMTP.From,
-		FromName: appConfig.SMTP.FromName,
-		LogoURL:  appConfig.SMTP.LogoURL,
-	})
-
-	authUseCase := authusecase.New(profiles, sessions, mailSender)
-	profileUseCase := profileusecase.New(profiles, avatars, sessionReader)
-	feedUseCase := feedusecase.New(postsRepository)
-	postUseCase := postusecase.New(postsRepository, sessionReader)
-	chatUseCase := chatusecase.New(chats, messages, sessionReader)
 	relationshipUseCase := relationshipusecase.New(relationships, sessionReader)
 
 	logger.Info("server listening", zap.String("addr", appConfig.HTTP.Addr))
@@ -119,15 +76,7 @@ func main() {
 	server := http.Server{
 		Addr: appConfig.HTTP.Addr,
 		Handler: httpapi.NewRouter(httpapi.Dependencies{
-			Config: appConfig,
-			Auth: auth.NewAuthHandler(authUseCase, helpers.CookieSettings{
-				Secure:   appConfig.Cookie.Secure,
-				SameSite: appConfig.Cookie.SameSite,
-			}),
-			Chat:         chat.NewChatHandler(chatUseCase, sessionReader, appConfig.Frontend.Origin),
-			Feed:         feed.NewFeedHandler(feedUseCase),
-			Posts:        posts.NewPostHandler(postUseCase),
-			Profile:      profile.NewProfileHandler(profileUseCase),
+			Config:       appConfig,
 			Relationship: relationship.NewRelationshipHandler(relationshipUseCase),
 		}),
 		ReadTimeout:  10 * time.Second,

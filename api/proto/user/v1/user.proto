@@ -1,0 +1,28 @@
+syntax = "proto3";
+package user.v1;
+option go_package = "kvmm/api/gen/user/v1;userv1";
+service UserService {
+  rpc GetProfileByUID(GetProfileByUIDRequest) returns (GetProfileByUIDResponse);
+  rpc GetProfilesByID(GetProfilesByIDRequest) returns (GetProfilesByIDResponse);
+}
+message GetProfileByUIDRequest { string uid = 1; }
+message GetProfileByUIDResponse {
+  string uid = 1;
+  string nickname = 2;
+  string profile_name = 3;
+  string surname = 4;
+  string patronymic = 5;
+  string avatar_url = 6;
+  int64 profile_id = 7;
+}
+message GetProfilesByIDRequest { repeated int64 profile_ids = 1; }
+message GetProfilesByIDResponse { repeated Profile profiles = 1; }
+message Profile {
+  int64 profile_id = 1;
+  string uid = 2;
+  string nickname = 3;
+  string profile_name = 4;
+  string surname = 5;
+  string patronymic = 6;
+  string avatar_url = 7;
+}

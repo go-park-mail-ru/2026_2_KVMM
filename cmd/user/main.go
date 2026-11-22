@@ -1,0 +1,109 @@
+package main
+
+import (
+	"context"
+	"errors"
+	"net"
+	"net/http"
+	"os"
+	"os/signal"
+	"strings"
+	"syscall"
+	"time"
+
+	"github.com/gorilla/mux"
+	"go.uber.org/zap"
+	"google.golang.org/grpc"
+	userv1 "kvmm/api/gen/user/v1"
+	"kvmm/internal/usergrpc"
+
+	"kvmm/internal/authgrpc"
+	"kvmm/internal/config"
+	"kvmm/internal/handler/chat"
+	"kvmm/internal/handler/profile"
+	"kvmm/internal/logging"
+	"kvmm/internal/repository"
+	chatusecase "kvmm/internal/usecase/chat"
+	profileusecase "kvmm/internal/usecase/profile"
+	sessionusecase "kvmm/internal/usecase/session"
+)
+
+func main() {
+	cfg, err := config.Load()
+	if err != nil {
+		panic(err)
+	}
+	logger, debug, err := logging.New(cfg.Logging.Mode)
+	if err != nil {
+		panic(err)
+	}
+	logging.SetDefault(logger)
+	defer logger.Sync()
+	target := cfg.Auth.GRPCAddr
+	if strings.HasPrefix(target, ":") {
+		target = "auth" + target
+	}
+	sessions, err := authgrpc.Dial(target)
+	if err != nil {
+		logger.Fatal("auth gRPC connection failed", zap.Error(err))
+	}
+	defer sessions.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	db, err := repository.NewPool(ctx, cfg.DatabaseURL, logger, debug)
+	cancel()
+	if err != nil {
+		logger.Fatal("database connection failed", zap.Error(err))
+	}
+	defer db.Close()
+	sessionReader := sessionusecase.New(sessions)
+	profiles := repository.NewProfileRepository(db)
+	grpcListener, err := net.Listen("tcp", cfg.User.GRPCAddr)
+	if err != nil {
+		logger.Fatal("user gRPC listen failed", zap.Error(err))
+	}
+	grpcServer := grpc.NewServer()
+	userv1.RegisterUserServiceServer(grpcServer, usergrpc.NewServer(profiles))
+	go func() {
+		if err := grpcServer.Serve(grpcListener); err != nil {
+			logger.Error("user gRPC server stopped", zap.Error(err))
+		}
+	}()
+	avatars := repository.NewAvatarRepository(db, cfg.Media.Dir, cfg.Media.PublicURL)
+	chats := repository.NewChatRepository(db)
+	messages := repository.NewMessageRepository(db)
+	profileUC := profileusecase.New(profiles, avatars, sessionReader)
+	chatUC := chatusecase.New(chats, messages, sessionReader)
+	router := http.NewServeMux()
+	userRouter := newUserRouter(profile.NewProfileHandler(profileUC), chat.NewChatHandler(chatUC, sessionReader, cfg.Frontend.Origin), cfg)
+	router.Handle("/", userRouter)
+	server := &http.Server{Addr: cfg.User.HTTPAddr, Handler: router, ReadHeaderTimeout: 5 * time.Second}
+	go func() {
+		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			logger.Fatal("user service failed", zap.Error(err))
+		}
+	}()
+	logger.Info("user service started", zap.String("addr", cfg.User.HTTPAddr), zap.String("grpc", cfg.User.GRPCAddr))
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+	<-stop
+	shutdown, cancelShutdown := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelShutdown()
+	_ = server.Shutdown(shutdown)
+	grpcServer.GracefulStop()
+}
+
+func newUserRouter(profileHandler *profile.ProfileHandler, chatHandler *chat.ChatHandler, cfg config.Config) http.Handler {
+	router := mux.NewRouter()
+	router.HandleFunc("/api/profile/update", profileHandler.Update).Methods(http.MethodPatch)
+	router.HandleFunc("/api/profile/search", profileHandler.Search).Methods(http.MethodGet)
+	router.HandleFunc("/api/profile/avatar", profileHandler.UploadAvatar).Methods(http.MethodPost)
+	router.HandleFunc("/api/profile/avatars", profileHandler.ListAvatars).Methods(http.MethodGet)
+	router.HandleFunc("/api/profile/avatars/{uid}", profileHandler.DeleteAvatar).Methods(http.MethodDelete)
+	router.PathPrefix("/api/media/").Handler(http.StripPrefix("/api/media/", http.FileServer(http.Dir(cfg.Media.Dir))))
+	router.HandleFunc("/api/chats/list", chatHandler.List).Methods(http.MethodGet)
+	router.HandleFunc("/api/chats/messages", chatHandler.Messages).Methods(http.MethodGet)
+	router.HandleFunc("/api/chats/send", chatHandler.Send).Methods(http.MethodPost)
+	router.HandleFunc("/api/chats/create", chatHandler.Create).Methods(http.MethodPost)
+	router.HandleFunc("/api/chats/ws", chatHandler.WebSocket).Methods(http.MethodGet)
+	return router
+}

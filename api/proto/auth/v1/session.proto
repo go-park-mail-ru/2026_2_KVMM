@@ -1,0 +1,11 @@
+syntax = "proto3";
+package auth.v1;
+option go_package = "kvmm/api/gen/auth/v1;authv1";
+service SessionService {
+  rpc ReadSession(ReadSessionRequest) returns (ReadSessionResponse);
+  rpc ValidateCSRF(ValidateCSRFRequest) returns (ValidateCSRFResponse);
+}
+message ReadSessionRequest { string token = 1; }
+message ReadSessionResponse { int64 user_id = 1; string csrf_token = 2; }
+message ValidateCSRFRequest { string token = 1; string csrf_token = 2; }
+message ValidateCSRFResponse { bool valid = 1; }

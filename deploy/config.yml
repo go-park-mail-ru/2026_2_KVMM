@@ -21,6 +21,17 @@ redis:
   db: 0
   session_ttl: 720h
 
+auth:
+  http_addr: ":8081"
+  grpc_addr: ":9090"
+
+user:
+  http_addr: ":8082"
+  grpc_addr: ":9091"
+
+posts:
+  http_addr: ":8083"
+
 smtp:
   logo_url: "https://nexlysocial.ru/public/icon.png"
 

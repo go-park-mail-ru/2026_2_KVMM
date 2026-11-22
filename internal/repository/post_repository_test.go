@@ -34,26 +34,25 @@ func postRows(ids ...int64) *pgxmock.Rows {
 	return rows
 }
 
-func postAuthorRows(ids ...int64) *pgxmock.Rows {
-	rows := pgxmock.NewRows([]string{"id", "author_name"})
-	for _, id := range ids {
-		rows.AddRow(id, "Alice")
-	}
-	return rows
+type postTestProfileService struct{}
+
+func (postTestProfileService) GetProfileIDByUID(context.Context, string) (int64, error) {
+	return 1, nil
 }
 
-func postAvatarRows(ids ...int64) *pgxmock.Rows {
-	rows := pgxmock.NewRows([]string{"profile_id", "media_path"})
+func (postTestProfileService) GetProfilesByIDs(_ context.Context, ids []int64) ([]domain.Profile, error) {
+	profiles := make([]domain.Profile, 0, len(ids))
 	for _, id := range ids {
-		rows.AddRow(id, "/api/media/avatar.png")
+		name := "Alice"
+		profiles = append(profiles, domain.Profile{ID: id, UID: "550e8400-e29b-41d4-a716-446655440000", Nickname: name, AvatarURLs: []string{"/api/media/avatar.png"}})
 	}
-	return rows
+	return profiles, nil
 }
 
 func TestPostRepositoryCRUD(t *testing.T) {
 	ctx := context.Background()
 	mock := newMockPool(t)
-	repository := NewPostRepository(mock)
+	repository := NewPostRepository(mock, postTestProfileService{})
 	text := "hello"
 	authorID := int64(1)
 
@@ -68,12 +67,6 @@ func TestPostRepositoryCRUD(t *testing.T) {
 	mock.ExpectQuery("(?s)INSERT INTO post .*RETURNING .*uid,").
 		WithArgs(text, authorID, nil).
 		WillReturnRows(postRows(1))
-	mock.ExpectQuery(queryPattern(postAuthorsQuery)).
-		WithArgs(pgxmock.AnyArg()).
-		WillReturnRows(postAuthorRows(1))
-	mock.ExpectQuery(queryPattern(postAuthorAvatarsQuery)).
-		WithArgs(pgxmock.AnyArg()).
-		WillReturnRows(postAvatarRows(1))
 	created, err := repository.Create(ctx, CreatePostParams{PostText: &text, AuthorProfileID: &authorID})
 	if err != nil || created.ID != 1 || created.Author.AvatarURL == "" {
 		t.Fatalf("Create() = %+v, %v", created, err)
@@ -82,12 +75,6 @@ func TestPostRepositoryCRUD(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta("WHERE post.id = $1")).
 		WithArgs(int64(1)).
 		WillReturnRows(postRows(1))
-	mock.ExpectQuery(queryPattern(postAuthorsQuery)).
-		WithArgs(pgxmock.AnyArg()).
-		WillReturnRows(postAuthorRows(1))
-	mock.ExpectQuery(queryPattern(postAuthorAvatarsQuery)).
-		WithArgs(pgxmock.AnyArg()).
-		WillReturnRows(postAvatarRows(1))
 	if post, err := repository.ReadByID(ctx, 1); err != nil || post.ID != 1 {
 		t.Fatalf("ReadByID() = %+v, %v", post, err)
 	}
@@ -97,12 +84,6 @@ func TestPostRepositoryCRUD(t *testing.T) {
 	mock.ExpectQuery(updateQuery).
 		WithArgs(newText, int64(1)).
 		WillReturnRows(postRows(1))
-	mock.ExpectQuery(queryPattern(postAuthorsQuery)).
-		WithArgs(pgxmock.AnyArg()).
-		WillReturnRows(postAuthorRows(1))
-	mock.ExpectQuery(queryPattern(postAuthorAvatarsQuery)).
-		WithArgs(pgxmock.AnyArg()).
-		WillReturnRows(postAvatarRows(1))
 	if post, err := repository.Update(ctx, 1, UpdatePostParams{PostText: &newText}); err != nil || post.ID != 1 {
 		t.Fatalf("Update() = %+v, %v", post, err)
 	}
@@ -110,12 +91,6 @@ func TestPostRepositoryCRUD(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta("WHERE post.id = $1")).
 		WithArgs(int64(1)).
 		WillReturnRows(postRows(1))
-	mock.ExpectQuery(queryPattern(postAuthorsQuery)).
-		WithArgs(pgxmock.AnyArg()).
-		WillReturnRows(postAuthorRows(1))
-	mock.ExpectQuery(queryPattern(postAuthorAvatarsQuery)).
-		WithArgs(pgxmock.AnyArg()).
-		WillReturnRows(postAvatarRows(1))
 	if _, err := repository.Update(ctx, 1, UpdatePostParams{}); err != nil {
 		t.Fatalf("Update(empty) error = %v", err)
 	}
@@ -144,7 +119,7 @@ func TestPostRepositoryCRUD(t *testing.T) {
 func TestPostRepositoryLists(t *testing.T) {
 	ctx := context.Background()
 	mock := newMockPool(t)
-	repository := NewPostRepository(mock)
+	repository := NewPostRepository(mock, postTestProfileService{})
 
 	if _, _, _, err := repository.ReadProfilePosts(ctx, 0, 0, 10); !errors.Is(err, ErrProfileNotFound) {
 		t.Fatalf("ReadProfilePosts(invalid) error = %v", err)
@@ -152,12 +127,6 @@ func TestPostRepositoryLists(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta("WHERE post.author_profile_id = $1")).
 		WithArgs(int64(1), int64(0), 3).
 		WillReturnRows(postRows(3, 2, 1))
-	mock.ExpectQuery(queryPattern(postAuthorsQuery)).
-		WithArgs(pgxmock.AnyArg()).
-		WillReturnRows(postAuthorRows(3, 2))
-	mock.ExpectQuery(queryPattern(postAuthorAvatarsQuery)).
-		WithArgs(pgxmock.AnyArg()).
-		WillReturnRows(postAvatarRows(3, 2))
 	posts, next, more, err := repository.ReadProfilePosts(ctx, 1, -1, 2)
 	if err != nil || len(posts) != 2 || next != 2 || !more {
 		t.Fatalf("ReadProfilePosts() = %d, %d, %v, %v", len(posts), next, more, err)
@@ -169,12 +138,6 @@ func TestPostRepositoryLists(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta("FROM profile_relationship pr")).
 		WithArgs(int64(1), int64(0), 3, []string{"family"}).
 		WillReturnRows(postRows(4))
-	mock.ExpectQuery(queryPattern(postAuthorsQuery)).
-		WithArgs(pgxmock.AnyArg()).
-		WillReturnRows(postAuthorRows(4))
-	mock.ExpectQuery(queryPattern(postAuthorAvatarsQuery)).
-		WithArgs(pgxmock.AnyArg()).
-		WillReturnRows(postAvatarRows(4))
 	posts, next, more, err = repository.ReadRelationshipPosts(ctx, 1, 0, 2, []string{"family"})
 	if err != nil || len(posts) != 1 || next != 4 || more {
 		t.Fatalf("ReadRelationshipPosts() = %d, %d, %v, %v", len(posts), next, more, err)
@@ -183,12 +146,6 @@ func TestPostRepositoryLists(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta("ORDER BY post.id DESC")).
 		WithArgs(int64(0), 2).
 		WillReturnRows(postRows(6, 5))
-	mock.ExpectQuery(queryPattern(postAuthorsQuery)).
-		WithArgs(pgxmock.AnyArg()).
-		WillReturnRows(postAuthorRows(6))
-	mock.ExpectQuery(queryPattern(postAuthorAvatarsQuery)).
-		WithArgs(pgxmock.AnyArg()).
-		WillReturnRows(postAvatarRows(6))
 	posts, next, more, err = repository.ReadFeedPosts(ctx, -1, 1)
 	if err != nil || len(posts) != 1 || next != 6 || !more {
 		t.Fatalf("ReadFeedPosts() = %d, %d, %v, %v", len(posts), next, more, err)

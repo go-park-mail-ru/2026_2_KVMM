@@ -20,6 +20,9 @@ type Config struct {
 	SMTP        SMTPConfig     `mapstructure:"smtp"`
 	Local       LocalConfig    `mapstructure:"local"`
 	Redis       RedisConfig    `mapstructure:"redis"`
+	Auth        AuthConfig     `mapstructure:"auth"`
+	User        UserConfig     `mapstructure:"user"`
+	Posts       PostsConfig    `mapstructure:"posts"`
 }
 
 // HTTPConfig содержит настройки HTTP-сервера
@@ -79,6 +82,20 @@ type RedisConfig struct {
 	DB         int    `mapstructure:"db"`
 	SessionTTL string `mapstructure:"session_ttl"`
 	Password   string `mapstructure:"password"`
+}
+
+type AuthConfig struct {
+	HTTPAddr string `mapstructure:"http_addr"`
+	GRPCAddr string `mapstructure:"grpc_addr"`
+}
+
+type UserConfig struct {
+	HTTPAddr string `mapstructure:"http_addr"`
+	GRPCAddr string `mapstructure:"grpc_addr"`
+}
+
+type PostsConfig struct {
+	HTTPAddr string `mapstructure:"http_addr"`
 }
 
 // TTLDuration возвращает срок жизни сессии в формате time.Duration.
@@ -174,6 +191,9 @@ func Default() Config {
 		Media:    MediaConfig{Dir: "/data/media", PublicURL: "/api/media"},
 		Logging:  LoggingConfig{Mode: "prod"},
 		Redis:    RedisConfig{Addr: "redis:6379", SessionTTL: "720h"},
+		Auth:     AuthConfig{HTTPAddr: ":8081", GRPCAddr: ":9090"},
+		User:     UserConfig{HTTPAddr: ":8082", GRPCAddr: ":9091"},
+		Posts:    PostsConfig{HTTPAddr: ":8083"},
 	}
 }
 

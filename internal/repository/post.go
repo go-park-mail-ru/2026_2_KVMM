@@ -13,8 +13,9 @@ import (
 )
 
 var (
-	ErrPostNotFound      = errors.New("post not found")
-	ErrInvalidPostAuthor = errors.New("exactly one post author is required")
+	ErrPostNotFound              = errors.New("post not found")
+	ErrInvalidPostAuthor         = errors.New("exactly one post author is required")
+	ErrProfileServiceUnavailable = errors.New("profile service is unavailable")
 )
 
 const postColumns = `
@@ -26,35 +27,6 @@ const postColumns = `
 	post.created_at,
 	post.updated_at,
 	post.deleted_at`
-
-const postAuthorsQuery = `
-	SELECT
-		p.id,
-		COALESCE(
-			NULLIF(
-				CONCAT_WS(
-					' ',
-					NULLIF(BTRIM(p.surname), ''),
-					NULLIF(BTRIM(p.profile_name), '')
-				),
-				''
-			),
-			p.nickname
-		) AS author_name
-	FROM profile p
-	WHERE p.id = ANY($1::BIGINT[])
-		AND p.deleted_at IS NULL`
-
-const postAuthorAvatarsQuery = `
-	SELECT DISTINCT ON (pa.profile_id)
-		pa.profile_id,
-		m.media_path
-	FROM profile_avatar pa
-	JOIN media m ON m.id = pa.media_id
-	WHERE pa.profile_id = ANY($1::BIGINT[])
-		AND pa.deleted_at IS NULL
-		AND m.deleted_at IS NULL
-	ORDER BY pa.profile_id, pa.created_at DESC, pa.media_id DESC`
 
 const postReturningColumns = `
 	id,
@@ -84,9 +56,7 @@ const deletePostByUUIDQuery = `
 const readProfilePostsByUUIDQuery = `
 	SELECT ` + postColumns + `
 	FROM post
-	WHERE post.author_profile_id = (
-		SELECT id FROM profile WHERE uid = $1::uuid AND deleted_at IS NULL
-	)
+	WHERE post.author_profile_id = $1
 		AND post.deleted_at IS NULL
 		AND ($2 = '' OR post.id < (
 			SELECT id FROM post WHERE uid = NULLIF($2, '')::uuid
@@ -105,14 +75,24 @@ const readFeedPostsByUUIDQuery = `
 	ORDER BY post.id DESC
 	LIMIT $2`
 
-// PostRepository выполняет sql-операции с таблицей profile
-type PostRepository struct {
-	pool dbPool
+// PostRepository выполняет SQL-операции с публикациями и запрашивает профили через User service.
+type profileServiceReader interface {
+	GetProfileIDByUID(context.Context, string) (int64, error)
+	GetProfilesByIDs(context.Context, []int64) ([]domain.Profile, error)
 }
 
-// NewProfileRepository создаёт репозиторий пользователей
-func NewPostRepository(pool dbPool) *PostRepository {
-	return &PostRepository{pool: pool}
+type PostRepository struct {
+	pool     dbPool
+	profiles profileServiceReader
+}
+
+// NewPostRepository создаёт репозиторий публикаций и клиента сервиса профилей.
+func NewPostRepository(pool dbPool, profiles ...profileServiceReader) *PostRepository {
+	repository := &PostRepository{pool: pool}
+	if len(profiles) > 0 {
+		repository.profiles = profiles[0]
+	}
+	return repository
 }
 
 // CreatePostParams содержит данные для создания поста
@@ -212,10 +192,17 @@ func (r *PostRepository) DeleteByUUID(ctx context.Context, uid string, authorID 
 	return nil
 }
 
-// ReadProfilePostsByUUID возвращает посты профиля с UUID-курсором без предварительного поиска ID.
+// ReadProfilePostsByUUID получает внутренний ID профиля через User service и возвращает страницу постов по UUID
 func (r *PostRepository) ReadProfilePostsByUUID(ctx context.Context, profileUID, cursorUID string, limit int) ([]domain.Post, string, bool, error) {
+	if r.profiles == nil {
+		return nil, "", false, ErrProfileServiceUnavailable
+	}
+	profileID, err := r.profiles.GetProfileIDByUID(ctx, profileUID)
+	if err != nil {
+		return nil, "", false, err
+	}
 	limit = normalizeLimit(limit, 10)
-	rows, err := r.pool.Query(ctx, readProfilePostsByUUIDQuery, profileUID, cursorUID, limit+1)
+	rows, err := r.pool.Query(ctx, readProfilePostsByUUIDQuery, profileID, cursorUID, limit+1)
 	if err != nil {
 		return nil, "", false, err
 	}
@@ -298,12 +285,6 @@ func (r *PostRepository) ReadProfilePosts(
 		WHERE post.author_profile_id = $1
 			AND post.deleted_at IS NULL
 			AND ($2 = 0 OR post.id < $2)
-			AND EXISTS (
-				SELECT 1
-				FROM profile p
-				WHERE p.id = post.author_profile_id
-					AND p.deleted_at IS NULL
-			)
 		ORDER BY post.id DESC
 		LIMIT $3`
 
@@ -366,12 +347,6 @@ func (r *PostRepository) ReadRelationshipPosts(
 			AND ($2 = 0 OR post.id < $2)
 			AND post.author_profile_id IS NOT NULL
 
-			AND EXISTS (
-				SELECT 1
-				FROM profile p
-				WHERE p.id = post.author_profile_id
-					AND p.deleted_at IS NULL
-			)
 
 			AND EXISTS (
 				SELECT 1
@@ -618,7 +593,7 @@ func scanPost(row rowScanner) (domain.Post, error) {
 	return post, nil
 }
 
-// attachPostAuthors добавляет авторов к постам двумя batch-запросами.
+// attachPostAuthors получает авторов пакетно только через User service.
 func (r *PostRepository) attachPostAuthors(ctx context.Context, posts []domain.Post) error {
 	profileIDs := make([]int64, 0, len(posts))
 	seen := make(map[int64]struct{}, len(posts))
@@ -635,64 +610,46 @@ func (r *PostRepository) attachPostAuthors(ctx context.Context, posts []domain.P
 	if len(profileIDs) == 0 {
 		return nil
 	}
-
-	authors := make(map[int64]domain.Author, len(profileIDs))
-	rows, err := r.pool.Query(ctx, postAuthorsQuery, profileIDs)
+	if r.profiles == nil {
+		return ErrProfileServiceUnavailable
+	}
+	profiles, err := r.profiles.GetProfilesByIDs(ctx, profileIDs)
 	if err != nil {
 		return err
 	}
-	for rows.Next() {
-		var (
-			profileID int64
-			name      string
-		)
-		if err := rows.Scan(&profileID, &name); err != nil {
-			rows.Close()
-			return err
+	authors := make(map[int64]domain.Author, len(profiles))
+	profileUIDs := make(map[int64]string, len(profiles))
+	for _, profile := range profiles {
+		name := strings.TrimSpace(strings.TrimSpace(derefString(profile.Surname)) + " " + strings.TrimSpace(derefString(profile.ProfileName)))
+		if name == "" {
+			name = profile.Nickname
 		}
-		authors[profileID] = domain.Author{
-			Name: name,
-			Type: domain.AuthorProfile,
+		var avatarURL string
+		if len(profile.AvatarURLs) > 0 {
+			avatarURL = profile.AvatarURLs[0]
 		}
+		authors[profile.ID] = domain.Author{Name: name, AvatarURL: avatarURL, Type: domain.AuthorProfile}
+		profileUIDs[profile.ID] = profile.UID
 	}
-	if err := rows.Err(); err != nil {
-		rows.Close()
-		return err
-	}
-	rows.Close()
-
-	rows, err = r.pool.Query(ctx, postAuthorAvatarsQuery, profileIDs)
-	if err != nil {
-		return err
-	}
-	for rows.Next() {
-		var (
-			profileID int64
-			avatarURL string
-		)
-		if err := rows.Scan(&profileID, &avatarURL); err != nil {
-			rows.Close()
-			return err
-		}
-		author := authors[profileID]
-		author.AvatarURL = avatarURL
-		authors[profileID] = author
-	}
-	if err := rows.Err(); err != nil {
-		rows.Close()
-		return err
-	}
-	rows.Close()
-
 	for index := range posts {
 		if posts[index].AuthorProfileID == nil {
 			continue
 		}
 		if author, ok := authors[*posts[index].AuthorProfileID]; ok {
 			posts[index].Author = author
+			if uid := profileUIDs[*posts[index].AuthorProfileID]; uid != "" {
+				posts[index].AuthorProfileUID = &uid
+			}
 		}
 	}
 	return nil
+}
+
+func derefString(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
 }
 
 func normalizePostError(err error) error {

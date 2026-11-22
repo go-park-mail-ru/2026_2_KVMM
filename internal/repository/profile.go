@@ -81,6 +81,22 @@ const searchProfileByUUIDQuery = `
 	WHERE uid = $1::uuid
 		AND deleted_at IS NULL`
 
+const readProfilesByIDsQuery = `
+	SELECT ` + profileColumns + `,
+		(
+			SELECT m.media_path
+			FROM profile_avatar pa
+			JOIN media m ON m.id = pa.media_id
+			WHERE pa.profile_id = p.id
+				AND pa.deleted_at IS NULL
+				AND m.deleted_at IS NULL
+			ORDER BY pa.created_at DESC, pa.media_id DESC
+			LIMIT 1
+		) AS avatar_url
+	FROM profile p
+	WHERE p.id = ANY($1::BIGINT[])
+		AND p.deleted_at IS NULL`
+
 const deleteProfileQuery = `
 	UPDATE profile SET deleted_at = NOW() 
 	WHERE id = $1 AND deleted_at IS NULL`
@@ -163,6 +179,34 @@ func (r *ProfileRepository) SearchByUUID(
 		strings.TrimSpace(uuid),
 	), false)
 	return profile, normalizeProfileError(err)
+}
+
+// ReadProfilesByIDs возвращает публичные данные нескольких профилей для внутренних сервисов.
+func (r *ProfileRepository) ReadProfilesByIDs(ctx context.Context, ids []int64) ([]domain.Profile, error) {
+	if len(ids) == 0 {
+		return []domain.Profile{}, nil
+	}
+	rows, err := r.pool.Query(ctx, readProfilesByIDsQuery, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	profiles := make([]domain.Profile, 0, len(ids))
+	for rows.Next() {
+		var avatarURL pgtype.Text
+		profile, _, scanErr := scanProfileWithLeadingAvatar(rows, nil, &avatarURL)
+		if scanErr != nil {
+			return nil, scanErr
+		}
+		if avatarURL.Valid {
+			profile.AvatarURLs = []string{avatarURL.String}
+		}
+		profiles = append(profiles, profile)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return profiles, nil
 }
 
 // ReadByLogin возвращает публичный профиль без password_hash и других данных авторизации

@@ -10,12 +10,9 @@ import (
 	"time"
 
 	"kvmm/internal/config"
-	"kvmm/internal/handler/auth"
-	"kvmm/internal/handler/chat"
 	"kvmm/internal/handler/feed"
 	"kvmm/internal/handler/helpers"
 	"kvmm/internal/handler/posts"
-	"kvmm/internal/handler/profile"
 	"kvmm/internal/handler/relationship"
 	"kvmm/internal/logging"
 
@@ -26,11 +23,8 @@ import (
 // обработчики приложения
 type Dependencies struct {
 	Config       config.Config
-	Auth         *auth.AuthHandler
-	Chat         *chat.ChatHandler
 	Feed         *feed.FeedHandler
 	Posts        *posts.PostHandler
-	Profile      *profile.ProfileHandler
 	Relationship *relationship.FriendsHandler
 }
 
@@ -42,54 +36,24 @@ func NewRouter(deps Dependencies) http.Handler {
 	}
 	router := mux.NewRouter()
 
-	authHandler := deps.Auth
-	chatHandler := deps.Chat
-	feedHandler := deps.Feed
-	postHandler := deps.Posts
-	profileHandler := deps.Profile
-	relationshipHandler := deps.Relationship
-
-	router.HandleFunc("/api/auth/register", authHandler.Register).Methods(http.MethodPost)
-	router.HandleFunc("/api/auth/register/email/send/code", authHandler.RequestRegisterCode).Methods(http.MethodPost)
-	router.HandleFunc("/api/auth/register/email/code", authHandler.RegisterByEmail).Methods(http.MethodPost)
-	router.HandleFunc("/api/auth/login", authHandler.Login).Methods(http.MethodPost)
-	router.HandleFunc("/api/auth/login/email/send/code", authHandler.RequestLoginCode).Methods(http.MethodPost)
-	router.HandleFunc("/api/auth/login/email/code", authHandler.LoginByEmail).Methods(http.MethodPost)
-	router.HandleFunc("/api/auth/me", authHandler.Me).Methods(http.MethodGet)
-	router.HandleFunc("/api/auth/logout", authHandler.Logout).Methods(http.MethodPost)
-	router.HandleFunc("/api/auth/email/change", authHandler.RequestEmailChange).Methods(http.MethodPost)
-	router.HandleFunc("/api/auth/email/confirm", authHandler.ConfirmEmail).Methods(http.MethodPost)
-
-	router.HandleFunc("/api/feed", feedHandler.List).Methods(http.MethodGet)
-
-	router.HandleFunc("/api/posts/create", postHandler.Create).Methods(http.MethodPost)
-	router.HandleFunc("/api/posts/delete", postHandler.Delete).Methods(http.MethodDelete)
-	router.HandleFunc("/api/posts/update", postHandler.Update).Methods(http.MethodPatch)
-	router.HandleFunc("/api/posts/user", postHandler.UserPosts).Methods(http.MethodGet)
-
-	router.PathPrefix("/api/media/").Handler(
-		http.StripPrefix("/api/media/", http.FileServer(http.Dir(appConfig.Media.Dir))),
-	)
-
-	router.HandleFunc("/api/profile/update", profileHandler.Update).Methods(http.MethodPatch)
-	router.HandleFunc("/api/profile/search", profileHandler.Search).Methods(http.MethodGet)
-	router.HandleFunc("/api/profile/avatar", profileHandler.UploadAvatar).Methods(http.MethodPost)
-	router.HandleFunc("/api/profile/avatars", profileHandler.ListAvatars).Methods(http.MethodGet)
-	router.HandleFunc("/api/profile/avatars/{uid}", profileHandler.DeleteAvatar).Methods(http.MethodDelete)
-
-	router.HandleFunc("/api/chats/list", chatHandler.List).Methods(http.MethodGet)
-	router.HandleFunc("/api/chats/messages", chatHandler.Messages).Methods(http.MethodGet)
-	router.HandleFunc("/api/chats/send", chatHandler.Send).Methods(http.MethodPost)
-	router.HandleFunc("/api/chats/create", chatHandler.Create).Methods(http.MethodPost)
-	router.HandleFunc("/api/chats/ws", chatHandler.WebSocket).Methods(http.MethodGet)
-
-	router.HandleFunc("/api/relationships/list", relationshipHandler.List).Methods(http.MethodGet)
-	router.HandleFunc("/api/relationships/typeslist", relationshipHandler.TypesList).Methods(http.MethodGet)
-	router.HandleFunc("/api/relationships/create", relationshipHandler.Create).Methods(http.MethodPost)
-	router.HandleFunc("/api/relationships/cancle", relationshipHandler.Cancle).Methods(http.MethodDelete)
-	router.HandleFunc("/api/relationships/accept", relationshipHandler.Accept).Methods(http.MethodPatch)
-	router.HandleFunc("/api/relationships/requests", relationshipHandler.Requests).Methods(http.MethodGet)
-	router.HandleFunc("/api/relationships/suggestions", relationshipHandler.Suggestions).Methods(http.MethodGet)
+	if deps.Feed != nil {
+		router.HandleFunc("/api/feed", deps.Feed.List).Methods(http.MethodGet)
+	}
+	if deps.Posts != nil {
+		router.HandleFunc("/api/posts/create", deps.Posts.Create).Methods(http.MethodPost)
+		router.HandleFunc("/api/posts/delete", deps.Posts.Delete).Methods(http.MethodDelete)
+		router.HandleFunc("/api/posts/update", deps.Posts.Update).Methods(http.MethodPatch)
+		router.HandleFunc("/api/posts/user", deps.Posts.UserPosts).Methods(http.MethodGet)
+	}
+	if deps.Relationship != nil {
+		router.HandleFunc("/api/relationships/list", deps.Relationship.List).Methods(http.MethodGet)
+		router.HandleFunc("/api/relationships/typeslist", deps.Relationship.TypesList).Methods(http.MethodGet)
+		router.HandleFunc("/api/relationships/create", deps.Relationship.Create).Methods(http.MethodPost)
+		router.HandleFunc("/api/relationships/cancle", deps.Relationship.Cancle).Methods(http.MethodDelete)
+		router.HandleFunc("/api/relationships/accept", deps.Relationship.Accept).Methods(http.MethodPatch)
+		router.HandleFunc("/api/relationships/requests", deps.Relationship.Requests).Methods(http.MethodGet)
+		router.HandleFunc("/api/relationships/suggestions", deps.Relationship.Suggestions).Methods(http.MethodGet)
+	}
 
 	router.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
