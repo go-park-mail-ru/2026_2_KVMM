@@ -29,6 +29,17 @@ const docTemplate = `{
                 ],
                 "type": "object"
             },
+            "domain.AssignCommunityAdminRequest": {
+                "properties": {
+                    "profile_uid": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "profile_uid"
+                ],
+                "type": "object"
+            },
             "domain.AuthResponse": {
                 "properties": {
                     "csrf_token": {
@@ -177,6 +188,95 @@ const docTemplate = `{
                 },
                 "type": "object"
             },
+            "domain.Community": {
+                "properties": {
+                    "bio": {
+                        "example": "Сообщество разработчиков Go",
+                        "type": "string"
+                    },
+                    "community_name": {
+                        "example": "Go developers",
+                        "type": "string"
+                    },
+                    "created_at": {
+                        "type": "string"
+                    },
+                    "subscribers_count": {
+                        "example": 42,
+                        "type": "integer"
+                    },
+                    "uid": {
+                        "example": "550e8400-e29b-41d4-a716-446655440000",
+                        "type": "string"
+                    },
+                    "updated_at": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
+            "domain.CommunityPage": {
+                "properties": {
+                    "communities": {
+                        "items": {
+                            "$ref": "#/components/schemas/domain.Community"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "has_more": {
+                        "type": "boolean"
+                    },
+                    "limit": {
+                        "type": "integer"
+                    },
+                    "offset": {
+                        "type": "integer"
+                    }
+                },
+                "type": "object"
+            },
+            "domain.CommunityPostRequest": {
+                "properties": {
+                    "community_uid": {
+                        "type": "string"
+                    },
+                    "post_text": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "community_uid"
+                ],
+                "type": "object"
+            },
+            "domain.CommunityPostsResponse": {
+                "properties": {
+                    "community_uid": {
+                        "type": "string"
+                    },
+                    "cursor": {
+                        "type": "string"
+                    },
+                    "has_more": {
+                        "type": "boolean"
+                    },
+                    "limit": {
+                        "type": "integer"
+                    },
+                    "next_cursor": {
+                        "type": "string"
+                    },
+                    "posts": {
+                        "items": {
+                            "$ref": "#/components/schemas/domain.Post"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    }
+                },
+                "type": "object"
+            },
             "domain.ConfirmEmailRequest": {
                 "properties": {
                     "code": {
@@ -204,6 +304,23 @@ const docTemplate = `{
                 },
                 "required": [
                     "profile_uid"
+                ],
+                "type": "object"
+            },
+            "domain.CreateCommunityRequest": {
+                "properties": {
+                    "bio": {
+                        "maxLength": 256,
+                        "type": "string"
+                    },
+                    "community_name": {
+                        "maxLength": 128,
+                        "minLength": 2,
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "community_name"
                 ],
                 "type": "object"
             },
@@ -456,6 +573,9 @@ const docTemplate = `{
                 "properties": {
                     "author": {
                         "$ref": "#/components/schemas/domain.Author"
+                    },
+                    "author_community_uid": {
+                        "type": "string"
                     },
                     "author_profile_uid": {
                         "example": "550e8400-e29b-41d4-a716-446655440000",
@@ -838,6 +958,39 @@ const docTemplate = `{
                     },
                     "uid": {
                         "example": "550e8400-e29b-41d4-a716-446655440000",
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
+            "domain.UpdateCommunityPostRequest": {
+                "properties": {
+                    "community_uid": {
+                        "type": "string"
+                    },
+                    "post_text": {
+                        "type": "string"
+                    },
+                    "post_uid": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "community_uid",
+                    "post_text",
+                    "post_uid"
+                ],
+                "type": "object"
+            },
+            "domain.UpdateCommunityRequest": {
+                "properties": {
+                    "bio": {
+                        "maxLength": 256,
+                        "type": "string"
+                    },
+                    "community_name": {
+                        "maxLength": 128,
+                        "minLength": 2,
                         "type": "string"
                     }
                 },
@@ -2054,6 +2207,872 @@ const docTemplate = `{
                 "summary": "Подключение к чатам через WebSocket",
                 "tags": [
                     "chats"
+                ]
+            }
+        },
+        "/api/communities": {
+            "get": {
+                "parameters": [
+                    {
+                        "description": "Смещение",
+                        "in": "query",
+                        "name": "offset",
+                        "schema": {
+                            "default": 0,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Размер страницы",
+                        "in": "query",
+                        "name": "limit",
+                        "schema": {
+                            "default": 10,
+                            "maximum": 50,
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.CommunityPage"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    }
+                },
+                "summary": "Получить список сообществ",
+                "tags": [
+                    "communities"
+                ]
+            },
+            "post": {
+                "parameters": [
+                    {
+                        "description": "CSRF-токен",
+                        "in": "header",
+                        "name": "X-CSRF-Token",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/domain.CreateCommunityRequest",
+                                "summary": "request",
+                                "description": "Данные сообщества"
+                            }
+                        }
+                    },
+                    "description": "Данные сообщества",
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.Community"
+                                }
+                            }
+                        },
+                        "description": "Created"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Conflict"
+                    }
+                },
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "summary": "Создать сообщество",
+                "tags": [
+                    "communities"
+                ]
+            }
+        },
+        "/api/communities/subscriptions": {
+            "get": {
+                "parameters": [
+                    {
+                        "description": "Смещение",
+                        "in": "query",
+                        "name": "offset",
+                        "schema": {
+                            "default": 0,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "Размер страницы",
+                        "in": "query",
+                        "name": "limit",
+                        "schema": {
+                            "default": 10,
+                            "maximum": 50,
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.CommunityPage"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    }
+                },
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "summary": "Получить список подписок",
+                "tags": [
+                    "communities"
+                ]
+            }
+        },
+        "/api/communities/{uid}": {
+            "delete": {
+                "parameters": [
+                    {
+                        "description": "UUID сообщества",
+                        "in": "path",
+                        "name": "uid",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "CSRF-токен",
+                        "in": "header",
+                        "name": "X-CSRF-Token",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Сообщество удалено"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Forbidden"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    }
+                },
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "summary": "Удалить сообщество",
+                "tags": [
+                    "communities"
+                ]
+            },
+            "get": {
+                "parameters": [
+                    {
+                        "description": "UUID сообщества",
+                        "in": "path",
+                        "name": "uid",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.Community"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    }
+                },
+                "summary": "Получить сообщество",
+                "tags": [
+                    "communities"
+                ]
+            },
+            "patch": {
+                "parameters": [
+                    {
+                        "description": "UUID сообщества",
+                        "in": "path",
+                        "name": "uid",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "CSRF-токен",
+                        "in": "header",
+                        "name": "X-CSRF-Token",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/domain.UpdateCommunityRequest",
+                                "summary": "request",
+                                "description": "Новые значения"
+                            }
+                        }
+                    },
+                    "description": "Новые значения",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.Community"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Forbidden"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    }
+                },
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "summary": "Изменить сообщество",
+                "tags": [
+                    "communities"
+                ]
+            }
+        },
+        "/api/communities/{uid}/admins": {
+            "post": {
+                "parameters": [
+                    {
+                        "description": "UUID сообщества",
+                        "in": "path",
+                        "name": "uid",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "CSRF-токен",
+                        "in": "header",
+                        "name": "X-CSRF-Token",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/domain.AssignCommunityAdminRequest",
+                                "summary": "request",
+                                "description": "UUID участника"
+                            }
+                        }
+                    },
+                    "description": "UUID участника",
+                    "required": true
+                },
+                "responses": {
+                    "204": {
+                        "description": "Администратор назначен"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Forbidden"
+                    }
+                },
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "summary": "Назначить администратора",
+                "tags": [
+                    "communities"
+                ]
+            }
+        },
+        "/api/communities/{uid}/subscribe": {
+            "delete": {
+                "parameters": [
+                    {
+                        "description": "UUID сообщества",
+                        "in": "path",
+                        "name": "uid",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "CSRF-токен",
+                        "in": "header",
+                        "name": "X-CSRF-Token",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Подписка отменена"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    }
+                },
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "summary": "Отписаться от сообщества",
+                "tags": [
+                    "communities"
+                ]
+            },
+            "post": {
+                "parameters": [
+                    {
+                        "description": "UUID сообщества",
+                        "in": "path",
+                        "name": "uid",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "CSRF-токен",
+                        "in": "header",
+                        "name": "X-CSRF-Token",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Подписка оформлена"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    }
+                },
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "summary": "Подписаться на сообщество",
+                "tags": [
+                    "communities"
+                ]
+            }
+        },
+        "/api/community-posts/create": {
+            "post": {
+                "parameters": [
+                    {
+                        "description": "CSRF-токен",
+                        "in": "header",
+                        "name": "X-CSRF-Token",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/domain.CommunityPostRequest",
+                                "summary": "request",
+                                "description": "Публикация сообщества"
+                            }
+                        }
+                    },
+                    "description": "Публикация сообщества",
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.Post"
+                                }
+                            }
+                        },
+                        "description": "Created"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Forbidden"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    }
+                },
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "summary": "Создать публикацию сообщества",
+                "tags": [
+                    "community-posts"
+                ]
+            }
+        },
+        "/api/community-posts/delete": {
+            "delete": {
+                "parameters": [
+                    {
+                        "description": "UUID сообщества",
+                        "in": "query",
+                        "name": "community_uid",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "UUID публикации",
+                        "in": "query",
+                        "name": "post_uid",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "CSRF-токен",
+                        "in": "header",
+                        "name": "X-CSRF-Token",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Публикация удалена"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Forbidden"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    }
+                },
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "summary": "Удалить публикацию сообщества",
+                "tags": [
+                    "community-posts"
+                ]
+            }
+        },
+        "/api/community-posts/list": {
+            "get": {
+                "parameters": [
+                    {
+                        "description": "UUID сообщества",
+                        "in": "query",
+                        "name": "community_uid",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "UUID последнего поста",
+                        "in": "query",
+                        "name": "cursor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "Размер страницы",
+                        "in": "query",
+                        "name": "limit",
+                        "schema": {
+                            "default": 10,
+                            "maximum": 100,
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.CommunityPostsResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    }
+                },
+                "summary": "Получить посты сообщества",
+                "tags": [
+                    "community-posts"
+                ]
+            }
+        },
+        "/api/community-posts/update": {
+            "patch": {
+                "parameters": [
+                    {
+                        "description": "CSRF-токен",
+                        "in": "header",
+                        "name": "X-CSRF-Token",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/domain.UpdateCommunityPostRequest",
+                                "summary": "request",
+                                "description": "Новый текст публикации"
+                            }
+                        }
+                    },
+                    "description": "Новый текст публикации",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.Post"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Forbidden"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    }
+                },
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "summary": "Изменить публикацию сообщества",
+                "tags": [
+                    "community-posts"
                 ]
             }
         },

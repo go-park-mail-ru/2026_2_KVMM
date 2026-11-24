@@ -12,12 +12,15 @@ import (
 )
 
 var (
-	ErrUnauthorized    = sessionusecase.ErrUnauthorized
-	ErrInvalidCSRF     = sessionusecase.ErrInvalidCSRF
-	ErrForbidden       = errors.New("post belongs to another profile")
-	ErrInvalidPost     = errors.New("post text must be at most 2048 characters")
-	ErrPostNotFound    = repository.ErrPostNotFound
-	ErrProfileNotFound = repository.ErrProfileNotFound
+	ErrUnauthorized                = sessionusecase.ErrUnauthorized
+	ErrInvalidCSRF                 = sessionusecase.ErrInvalidCSRF
+	ErrForbidden                   = errors.New("post belongs to another profile")
+	ErrInvalidPost                 = errors.New("post text must be at most 2048 characters")
+	ErrPostNotFound                = repository.ErrPostNotFound
+	ErrProfileNotFound             = repository.ErrProfileNotFound
+	ErrCommunityNotFound           = repository.ErrCommunityNotFound
+	ErrCommunityForbidden          = repository.ErrCommunityForbidden
+	ErrCommunityServiceUnavailable = repository.ErrCommunityServiceUnavailable
 )
 
 type postRepository interface {
@@ -31,15 +34,36 @@ type postRepository interface {
 	Delete(context.Context, int64) error
 }
 
+type communityPostRepository interface {
+	Create(context.Context, repository.CreatePostParams) (domain.Post, error)
+	UpdateCommunityPostByUUID(context.Context, string, int64, repository.UpdatePostParams) (domain.Post, error)
+	DeleteCommunityPostByUUID(context.Context, string, int64) error
+	ReadCommunityPostsByUID(context.Context, string, string, int) ([]domain.Post, string, bool, error)
+}
+
+type communityPostAuthorizer interface {
+	CommunityIDByUID(context.Context, string) (int64, error)
+	AuthorizePostWrite(context.Context, int64, string) (int64, string, error)
+}
+
 // UseCase содержит бизнес-логику публикаций
 type UseCase struct {
-	posts    postRepository
-	sessions *sessionusecase.UseCase
+	posts          postRepository
+	communityPosts communityPostRepository
+	communities    communityPostAuthorizer
+	sessions       *sessionusecase.UseCase
 }
 
 // New создаёт usecase публикаций
-func New(posts postRepository, sessions *sessionusecase.UseCase) *UseCase {
-	return &UseCase{posts: posts, sessions: sessions}
+func New(posts postRepository, sessions *sessionusecase.UseCase, communities ...communityPostAuthorizer) *UseCase {
+	useCase := &UseCase{posts: posts, sessions: sessions}
+	if repository, ok := posts.(communityPostRepository); ok {
+		useCase.communityPosts = repository
+	}
+	if len(communities) > 0 {
+		useCase.communities = communities[0]
+	}
+	return useCase
 }
 
 // Create создаёт публикацию от имени текущего пользователя
@@ -186,6 +210,100 @@ func (u *UseCase) UserPostsByUID(ctx context.Context, profileUID, cursorUID stri
 		return domain.UserPostsResponse{}, err
 	}
 	return domain.UserPostsResponse{Posts: posts, ProfileUID: profileUID, CursorUID: cursorUID, Limit: limit, HasMore: hasMore, NextCursorUID: nextUID}, nil
+}
+
+// CreateCommunityPost публикует запись от имени сообщества после проверки роли участника.
+func (u *UseCase) CreateCommunityPost(ctx context.Context, session, csrf string, req domain.CommunityPostRequest) (domain.Post, error) {
+	profileID, err := u.authorize(session, csrf)
+	if err != nil {
+		return domain.Post{}, err
+	}
+	if u.communities == nil || u.communityPosts == nil {
+		return domain.Post{}, ErrCommunityServiceUnavailable
+	}
+	if req.PostText != nil && len([]rune(strings.TrimSpace(*req.PostText))) > 2048 {
+		return domain.Post{}, ErrInvalidPost
+	}
+	communityID, name, err := u.communities.AuthorizePostWrite(ctx, profileID, req.CommunityUID)
+	if err != nil {
+		return domain.Post{}, err
+	}
+	var text *string
+	if req.PostText != nil {
+		clean := strings.TrimSpace(*req.PostText)
+		if clean != "" {
+			text = &clean
+		}
+	}
+	post, err := u.communityPosts.Create(ctx, repository.CreatePostParams{PostText: text, AuthorCommunityID: &communityID})
+	if err != nil {
+		logging.LogUseCaseErrorContext(ctx, "post", "create community post", err)
+		return domain.Post{}, err
+	}
+	post.Author = domain.Author{Name: name, Type: domain.AuthorCommunity}
+	post.AuthorCommunityUID = &req.CommunityUID
+	return post, nil
+}
+
+// UpdateCommunityPost изменяет публикацию сообщества для владельца, администратора или модератора.
+func (u *UseCase) UpdateCommunityPost(ctx context.Context, session, csrf string, req domain.UpdateCommunityPostRequest) (domain.Post, error) {
+	profileID, err := u.authorize(session, csrf)
+	if err != nil {
+		return domain.Post{}, err
+	}
+	if u.communities == nil || u.communityPosts == nil {
+		return domain.Post{}, ErrCommunityServiceUnavailable
+	}
+	if req.PostText == nil || len([]rune(strings.TrimSpace(*req.PostText))) > 2048 {
+		return domain.Post{}, ErrInvalidPost
+	}
+	communityID, name, err := u.communities.AuthorizePostWrite(ctx, profileID, req.CommunityUID)
+	if err != nil {
+		return domain.Post{}, err
+	}
+	text := strings.TrimSpace(*req.PostText)
+	post, err := u.communityPosts.UpdateCommunityPostByUUID(ctx, req.PostUID, communityID, repository.UpdatePostParams{PostText: &text})
+	if err != nil {
+		logging.LogUseCaseErrorContext(ctx, "post", "update community post", err)
+	}
+	if err == nil {
+		post.Author = domain.Author{Name: name, Type: domain.AuthorCommunity}
+		post.AuthorCommunityUID = &req.CommunityUID
+	}
+	return post, err
+}
+
+// DeleteCommunityPost удаляет публикацию сообщества для владельца, администратора или модератора.
+func (u *UseCase) DeleteCommunityPost(ctx context.Context, session, csrf, communityUID, postUID string) error {
+	profileID, err := u.authorize(session, csrf)
+	if err != nil {
+		return err
+	}
+	if u.communities == nil || u.communityPosts == nil {
+		return ErrCommunityServiceUnavailable
+	}
+	communityID, _, err := u.communities.AuthorizePostWrite(ctx, profileID, communityUID)
+	if err != nil {
+		return err
+	}
+	if err := u.communityPosts.DeleteCommunityPostByUUID(ctx, postUID, communityID); err != nil {
+		logging.LogUseCaseErrorContext(ctx, "post", "delete community post", err)
+		return err
+	}
+	return nil
+}
+
+// CommunityPosts возвращает страницу публикаций сообщества.
+func (u *UseCase) CommunityPosts(ctx context.Context, communityUID, cursorUID string, limit int) (domain.CommunityPostsResponse, error) {
+	if u.communityPosts == nil {
+		return domain.CommunityPostsResponse{}, ErrCommunityServiceUnavailable
+	}
+	posts, nextUID, hasMore, err := u.communityPosts.ReadCommunityPostsByUID(ctx, communityUID, cursorUID, limit)
+	if err != nil {
+		logging.LogUseCaseErrorContext(ctx, "post", "list community posts", err)
+		return domain.CommunityPostsResponse{}, err
+	}
+	return domain.CommunityPostsResponse{Posts: posts, CommunityUID: communityUID, Cursor: cursorUID, Limit: limit, HasMore: hasMore, NextCursor: nextUID}, nil
 }
 
 func (u *UseCase) authorize(sessionToken, csrfToken string) (int64, error) {

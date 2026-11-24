@@ -69,6 +69,7 @@ CREATE UNIQUE INDEX profile_phone_unique
 -- Сообщества пользователей
 CREATE TABLE community (
     id BIGINT GENERATED ALWAYS AS IDENTITY,
+    uid UUID NOT NULL DEFAULT gen_random_uuid(),
     community_name TEXT NOT NULL
         CHECK (LENGTH(community_name) <= 128),
     bio TEXT NOT NULL
@@ -83,6 +84,8 @@ CREATE TABLE community (
     CONSTRAINT community_name_unique
         UNIQUE (community_name)
 );
+
+CREATE UNIQUE INDEX community_uid_unique ON community (uid);
 
 
 

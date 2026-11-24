@@ -13,6 +13,7 @@ import (
 	"go.uber.org/zap"
 
 	"kvmm/internal/authgrpc"
+	"kvmm/internal/communitygrpc"
 	"kvmm/internal/config"
 	"kvmm/internal/handler/feed"
 	"kvmm/internal/handler/posts"
@@ -53,6 +54,11 @@ func main() {
 		logger.Fatal("user gRPC connection failed", zap.Error(err))
 	}
 	defer profiles.Close()
+	communities, err := communitygrpc.Dial(dialTarget(cfg.Community.GRPCAddr, "community"))
+	if err != nil {
+		logger.Fatal("community gRPC connection failed", zap.Error(err))
+	}
+	defer communities.Close()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	db, err := repository.NewPool(ctx, cfg.DatabaseURL, logger, debugDatabase)
@@ -63,9 +69,9 @@ func main() {
 	defer db.Close()
 
 	sessionReader := sessionusecase.New(sessions)
-	postRepository := repository.NewPostRepository(db, profiles)
+	postRepository := repository.NewPostRepository(db, profiles, communities)
 	feedUseCase := feedusecase.New(postRepository)
-	postUseCase := postusecase.New(postRepository, sessionReader)
+	postUseCase := postusecase.New(postRepository, sessionReader, communities)
 	server := &http.Server{
 		Addr: cfg.Posts.HTTPAddr,
 		Handler: httpapi.NewRouter(httpapi.Dependencies{

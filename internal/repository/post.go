@@ -13,9 +13,10 @@ import (
 )
 
 var (
-	ErrPostNotFound              = errors.New("post not found")
-	ErrInvalidPostAuthor         = errors.New("exactly one post author is required")
-	ErrProfileServiceUnavailable = errors.New("profile service is unavailable")
+	ErrPostNotFound                = errors.New("post not found")
+	ErrInvalidPostAuthor           = errors.New("exactly one post author is required")
+	ErrProfileServiceUnavailable   = errors.New("profile service is unavailable")
+	ErrCommunityServiceUnavailable = errors.New("community service is unavailable")
 )
 
 const postColumns = `
@@ -53,6 +54,21 @@ const deletePostByUUIDQuery = `
 		AND author_profile_id = $2
 		AND deleted_at IS NULL`
 
+const updateCommunityPostByUUIDQuery = `
+	UPDATE post SET post_text = $1, updated_at = NOW()
+	WHERE uid = $2::uuid AND author_community_id = $3 AND deleted_at IS NULL
+	RETURNING ` + postReturningColumns
+
+const deleteCommunityPostByUUIDQuery = `
+	UPDATE post SET deleted_at = NOW(), updated_at = NOW()
+	WHERE uid = $1::uuid AND author_community_id = $2 AND deleted_at IS NULL`
+
+const readCommunityPostsQuery = `
+	SELECT ` + postColumns + ` FROM post
+	WHERE author_community_id = $1 AND deleted_at IS NULL
+		AND ($2 = '' OR post.id < (SELECT id FROM post WHERE uid = NULLIF($2, '')::uuid))
+	ORDER BY post.id DESC LIMIT $3`
+
 const readProfilePostsByUUIDQuery = `
 	SELECT ` + postColumns + `
 	FROM post
@@ -71,26 +87,31 @@ const readFeedPostsByUUIDQuery = `
 		AND ($1 = '' OR post.id < (
 			SELECT id FROM post WHERE uid = NULLIF($1, '')::uuid
 		))
-		AND post.author_profile_id IS NOT NULL
 	ORDER BY post.id DESC
 	LIMIT $2`
 
-// PostRepository выполняет SQL-операции с публикациями и запрашивает профили через User service.
+// PostRepository выполняет SQL-операции с публикациями и получает авторов от профильных сервисов.
 type profileServiceReader interface {
 	GetProfileIDByUID(context.Context, string) (int64, error)
 	GetProfilesByIDs(context.Context, []int64) ([]domain.Profile, error)
 }
 
+type communityServiceReader interface {
+	CommunityIDByUID(context.Context, string) (int64, error)
+	GetCommunitiesByIDs(context.Context, []int64) ([]domain.Community, error)
+}
+
 type PostRepository struct {
-	pool     dbPool
-	profiles profileServiceReader
+	pool        dbPool
+	profiles    profileServiceReader
+	communities communityServiceReader
 }
 
 // NewPostRepository создаёт репозиторий публикаций и клиента сервиса профилей.
-func NewPostRepository(pool dbPool, profiles ...profileServiceReader) *PostRepository {
-	repository := &PostRepository{pool: pool}
-	if len(profiles) > 0 {
-		repository.profiles = profiles[0]
+func NewPostRepository(pool dbPool, profiles profileServiceReader, communities ...communityServiceReader) *PostRepository {
+	repository := &PostRepository{pool: pool, profiles: profiles}
+	if len(communities) > 0 {
+		repository.communities = communities[0]
 	}
 	return repository
 }
@@ -137,6 +158,9 @@ func (r *PostRepository) Create(
 	if err != nil {
 		return domain.Post{}, normalizePostError(err)
 	}
+	if params.AuthorCommunityID != nil {
+		return post, nil
+	}
 	posts := []domain.Post{post}
 	if err := r.attachPostAuthors(ctx, posts); err != nil {
 		return domain.Post{}, err
@@ -160,11 +184,7 @@ func (r *PostRepository) ReadByID(
 	if err != nil {
 		return domain.Post{}, normalizePostError(err)
 	}
-	posts := []domain.Post{post}
-	if err := r.attachPostAuthors(ctx, posts); err != nil {
-		return domain.Post{}, err
-	}
-	return posts[0], nil
+	return post, nil
 }
 
 // UpdateByUUID изменяет пост текущего пользователя напрямую по UUID
@@ -190,6 +210,67 @@ func (r *PostRepository) DeleteByUUID(ctx context.Context, uid string, authorID 
 		return ErrPostNotFound
 	}
 	return nil
+}
+
+// UpdateCommunityPostByUUID изменяет пост сообщества по UUID.
+func (r *PostRepository) UpdateCommunityPostByUUID(ctx context.Context, uid string, communityID int64, params UpdatePostParams) (domain.Post, error) {
+	post, err := scanPost(r.pool.QueryRow(ctx, updateCommunityPostByUUIDQuery, nullableString(params.PostText), uid, communityID))
+	if err != nil {
+		return domain.Post{}, normalizePostError(err)
+	}
+	return post, nil
+}
+
+// DeleteCommunityPostByUUID мягко удаляет пост сообщества.
+func (r *PostRepository) DeleteCommunityPostByUUID(ctx context.Context, uid string, communityID int64) error {
+	result, err := r.pool.Exec(ctx, deleteCommunityPostByUUIDQuery, uid, communityID)
+	if err != nil {
+		return err
+	}
+	if result.RowsAffected() == 0 {
+		return ErrPostNotFound
+	}
+	return nil
+}
+
+// ReadCommunityPostsByUID возвращает страницу публикаций по UUID сообщества.
+func (r *PostRepository) ReadCommunityPostsByUID(ctx context.Context, communityUID, cursorUID string, limit int) ([]domain.Post, string, bool, error) {
+	if r.communities == nil {
+		return nil, "", false, ErrCommunityServiceUnavailable
+	}
+	communityID, err := r.communities.CommunityIDByUID(ctx, communityUID)
+	if err != nil {
+		return nil, "", false, err
+	}
+	limit = normalizeLimit(limit, 10)
+	rows, err := r.pool.Query(ctx, readCommunityPostsQuery, communityID, cursorUID, limit+1)
+	if err != nil {
+		return nil, "", false, err
+	}
+	defer rows.Close()
+	items := make([]domain.Post, 0, limit+1)
+	for rows.Next() {
+		item, scanErr := scanPost(rows)
+		if scanErr != nil {
+			return nil, "", false, scanErr
+		}
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, "", false, err
+	}
+	more := len(items) > limit
+	if more {
+		items = items[:limit]
+	}
+	var next string
+	if len(items) > 0 {
+		next = items[len(items)-1].UID
+	}
+	if err := r.attachPostAuthors(ctx, items); err != nil {
+		return nil, "", false, err
+	}
+	return items, next, more, nil
 }
 
 // ReadProfilePostsByUUID получает внутренний ID профиля через User service и возвращает страницу постов по UUID
@@ -345,9 +426,6 @@ func (r *PostRepository) ReadRelationshipPosts(
 		FROM post
 		WHERE post.deleted_at IS NULL
 			AND ($2 = 0 OR post.id < $2)
-			AND post.author_profile_id IS NOT NULL
-
-
 			AND EXISTS (
 				SELECT 1
 				FROM profile_relationship pr
@@ -430,7 +508,6 @@ func (r *PostRepository) ReadFeedPosts(
 		FROM post
 		WHERE post.deleted_at IS NULL
 			AND ($1 = 0 OR post.id < $1)
-			AND post.author_profile_id IS NOT NULL
 		ORDER BY post.id DESC
 		LIMIT $2`
 
@@ -597,47 +674,78 @@ func scanPost(row rowScanner) (domain.Post, error) {
 func (r *PostRepository) attachPostAuthors(ctx context.Context, posts []domain.Post) error {
 	profileIDs := make([]int64, 0, len(posts))
 	seen := make(map[int64]struct{}, len(posts))
+	communityIDs := make([]int64, 0, len(posts))
+	communitySeen := make(map[int64]struct{}, len(posts))
 	for _, post := range posts {
-		if post.AuthorProfileID == nil {
-			continue
+		if post.AuthorProfileID != nil {
+			if _, ok := seen[*post.AuthorProfileID]; !ok {
+				seen[*post.AuthorProfileID] = struct{}{}
+				profileIDs = append(profileIDs, *post.AuthorProfileID)
+			}
 		}
-		if _, ok := seen[*post.AuthorProfileID]; ok {
-			continue
+		if post.AuthorCommunityID != nil {
+			if _, ok := communitySeen[*post.AuthorCommunityID]; !ok {
+				communitySeen[*post.AuthorCommunityID] = struct{}{}
+				communityIDs = append(communityIDs, *post.AuthorCommunityID)
+			}
 		}
-		seen[*post.AuthorProfileID] = struct{}{}
-		profileIDs = append(profileIDs, *post.AuthorProfileID)
 	}
-	if len(profileIDs) == 0 {
-		return nil
-	}
-	if r.profiles == nil {
-		return ErrProfileServiceUnavailable
-	}
-	profiles, err := r.profiles.GetProfilesByIDs(ctx, profileIDs)
-	if err != nil {
-		return err
-	}
-	authors := make(map[int64]domain.Author, len(profiles))
-	profileUIDs := make(map[int64]string, len(profiles))
-	for _, profile := range profiles {
-		name := strings.TrimSpace(strings.TrimSpace(derefString(profile.Surname)) + " " + strings.TrimSpace(derefString(profile.ProfileName)))
-		if name == "" {
-			name = profile.Nickname
+	profileAuthors := make(map[int64]domain.Author, len(profileIDs))
+	profileUIDs := make(map[int64]string, len(profileIDs))
+	if len(profileIDs) > 0 {
+		if r.profiles == nil {
+			return ErrProfileServiceUnavailable
 		}
-		var avatarURL string
-		if len(profile.AvatarURLs) > 0 {
-			avatarURL = profile.AvatarURLs[0]
+		profiles, err := r.profiles.GetProfilesByIDs(ctx, profileIDs)
+		if err != nil {
+			return err
 		}
-		authors[profile.ID] = domain.Author{Name: name, AvatarURL: avatarURL, Type: domain.AuthorProfile}
-		profileUIDs[profile.ID] = profile.UID
+		for _, profile := range profiles {
+			name := strings.TrimSpace(strings.TrimSpace(derefString(profile.Surname)) + " " + strings.TrimSpace(derefString(profile.ProfileName)))
+			if name == "" {
+				name = profile.Nickname
+			}
+			var avatarURL string
+			if len(profile.AvatarURLs) > 0 {
+				avatarURL = profile.AvatarURLs[0]
+			}
+			profileAuthors[profile.ID] = domain.Author{Name: name, AvatarURL: avatarURL, Type: domain.AuthorProfile}
+			profileUIDs[profile.ID] = profile.UID
+		}
+	}
+	communityAuthors := make(map[int64]domain.Author, len(communityIDs))
+	communityUIDs := make(map[int64]string, len(communityIDs))
+	if len(communityIDs) > 0 {
+		if r.communities == nil {
+			return ErrCommunityServiceUnavailable
+		}
+		communities, err := r.communities.GetCommunitiesByIDs(ctx, communityIDs)
+		if err != nil {
+			return err
+		}
+		for _, community := range communities {
+			communityAuthors[community.ID] = domain.Author{Name: community.Name, Type: domain.AuthorCommunity}
+			communityUIDs[community.ID] = community.UID
+		}
 	}
 	for index := range posts {
+		if posts[index].AuthorCommunityID != nil {
+			id := *posts[index].AuthorCommunityID
+			if author, ok := communityAuthors[id]; ok {
+				posts[index].Author = author
+				if uid := communityUIDs[id]; uid != "" {
+					posts[index].AuthorCommunityUID = &uid
+				}
+			}
+			continue
+		}
 		if posts[index].AuthorProfileID == nil {
 			continue
 		}
-		if author, ok := authors[*posts[index].AuthorProfileID]; ok {
+		id := *posts[index].AuthorProfileID
+		if author, ok := profileAuthors[id]; ok {
 			posts[index].Author = author
-			if uid := profileUIDs[*posts[index].AuthorProfileID]; uid != "" {
+			if uid := profileUIDs[id]; uid != "" {
 				posts[index].AuthorProfileUID = &uid
 			}
 		}

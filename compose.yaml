@@ -68,6 +68,33 @@ services:
         condition: service_started
       user:
         condition: service_started
+      community:
+        condition: service_started
+
+  community:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        GIT_BRANCH: ${GIT_BRANCH:-unknown}
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}
+    command: ["/kvmm-community"]
+    container_name: kvmm-community
+    env_file:
+      - ./deploy/.env
+    expose:
+      - "8084"
+      - "9092"
+    restart: unless-stopped
+    networks:
+      - kvmm
+    depends_on:
+      postgres:
+        condition: service_healthy
+      auth:
+        condition: service_started
+      user:
+        condition: service_started
 
   auth:
     build:
@@ -120,6 +147,7 @@ services:
       - auth
       - user
       - posts
+      - community
       - frontend
     restart: unless-stopped
     networks:

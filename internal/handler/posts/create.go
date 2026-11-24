@@ -41,6 +41,37 @@ func (h *PostHandler) Create(w http.ResponseWriter, r *http.Request) {
 	helpers.WriteJSON(w, http.StatusCreated, post)
 }
 
+// CreateCommunity создаёт публикацию от имени сообщества.
+// @Summary Создать публикацию сообщества
+// @Tags community-posts
+// @Security SessionCookie
+// @Accept json
+// @Produce json
+// @Param X-CSRF-Token header string true "CSRF-токен"
+// @Param request body domain.CommunityPostRequest true "Публикация сообщества"
+// @Success 201 {object} domain.Post
+// @Failure 401 {object} domain.ErrorResponse
+// @Failure 403 {object} domain.ErrorResponse
+// @Failure 404 {object} domain.ErrorResponse
+// @Router /api/community-posts/create [post]
+func (h *PostHandler) CreateCommunity(w http.ResponseWriter, r *http.Request) {
+	var req domain.CommunityPostRequest
+	if err := helpers.DecodeJSON(w, r, &req); err != nil {
+		helpers.WriteError(w, http.StatusBadRequest, "validation_error", err.Error())
+		return
+	}
+	if !helpers.IsUUID(req.CommunityUID) {
+		helpers.WriteError(w, http.StatusBadRequest, "validation_error", "community_uid must be a valid UUID")
+		return
+	}
+	post, err := h.useCase.CreateCommunityPost(r.Context(), helpers.SessionCookie(r), r.Header.Get("X-CSRF-Token"), req)
+	if err != nil {
+		h.writeError(w, err)
+		return
+	}
+	helpers.WriteJSON(w, http.StatusCreated, post)
+}
+
 func (h *PostHandler) writeError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, postusecase.ErrUnauthorized):
@@ -53,6 +84,10 @@ func (h *PostHandler) writeError(w http.ResponseWriter, err error) {
 		helpers.WriteError(w, http.StatusBadRequest, "validation_error", err.Error())
 	case errors.Is(err, postusecase.ErrPostNotFound), errors.Is(err, postusecase.ErrProfileNotFound):
 		helpers.WriteError(w, http.StatusNotFound, "not_found", "post or profile not found")
+	case errors.Is(err, postusecase.ErrCommunityNotFound):
+		helpers.WriteError(w, http.StatusNotFound, "not_found", "community or post not found")
+	case errors.Is(err, postusecase.ErrCommunityForbidden):
+		helpers.WriteError(w, http.StatusForbidden, "forbidden", "community post permission denied")
 	default:
 		helpers.WriteInternalError(w, "posts", err)
 	}

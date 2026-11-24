@@ -32,6 +32,10 @@ user:
 posts:
   http_addr: ":8083"
 
+community:
+  http_addr: ":8084"
+  grpc_addr: ":9092"
+
 smtp:
   logo_url: "https://nexlysocial.ru/public/icon.png"
 

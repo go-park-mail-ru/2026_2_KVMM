@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"kvmm/internal/config"
+	"kvmm/internal/handler/community"
 	"kvmm/internal/handler/feed"
 	"kvmm/internal/handler/helpers"
 	"kvmm/internal/handler/posts"
@@ -25,6 +26,7 @@ type Dependencies struct {
 	Config       config.Config
 	Feed         *feed.FeedHandler
 	Posts        *posts.PostHandler
+	Communities  *community.Handler
 	Relationship *relationship.FriendsHandler
 }
 
@@ -44,6 +46,21 @@ func NewRouter(deps Dependencies) http.Handler {
 		router.HandleFunc("/api/posts/delete", deps.Posts.Delete).Methods(http.MethodDelete)
 		router.HandleFunc("/api/posts/update", deps.Posts.Update).Methods(http.MethodPatch)
 		router.HandleFunc("/api/posts/user", deps.Posts.UserPosts).Methods(http.MethodGet)
+		router.HandleFunc("/api/community-posts/create", deps.Posts.CreateCommunity).Methods(http.MethodPost)
+		router.HandleFunc("/api/community-posts/update", deps.Posts.UpdateCommunity).Methods(http.MethodPatch)
+		router.HandleFunc("/api/community-posts/delete", deps.Posts.DeleteCommunity).Methods(http.MethodDelete)
+		router.HandleFunc("/api/community-posts/list", deps.Posts.ListCommunity).Methods(http.MethodGet)
+	}
+	if deps.Communities != nil {
+		router.HandleFunc("/api/communities", deps.Communities.Create).Methods(http.MethodPost)
+		router.HandleFunc("/api/communities", deps.Communities.List).Methods(http.MethodGet)
+		router.HandleFunc("/api/communities/subscriptions", deps.Communities.Subscriptions).Methods(http.MethodGet)
+		router.HandleFunc("/api/communities/{uid}/subscribe", deps.Communities.Subscribe).Methods(http.MethodPost)
+		router.HandleFunc("/api/communities/{uid}/subscribe", deps.Communities.Unsubscribe).Methods(http.MethodDelete)
+		router.HandleFunc("/api/communities/{uid}/admins", deps.Communities.AssignAdmin).Methods(http.MethodPost)
+		router.HandleFunc("/api/communities/{uid}", deps.Communities.Read).Methods(http.MethodGet)
+		router.HandleFunc("/api/communities/{uid}", deps.Communities.Update).Methods(http.MethodPatch)
+		router.HandleFunc("/api/communities/{uid}", deps.Communities.Delete).Methods(http.MethodDelete)
 	}
 	if deps.Relationship != nil {
 		router.HandleFunc("/api/relationships/list", deps.Relationship.List).Methods(http.MethodGet)

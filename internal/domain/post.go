@@ -13,21 +13,22 @@ const (
 
 // Post — публикация пользователя в ленте
 type Post struct {
-	ID                int64      `json:"-"`
-	UID               string     `json:"uid" example:"550e8400-e29b-41d4-a716-446655440000"`
-	PostText          *string    `json:"post_text,omitempty" example:"Привет, мир!"`
-	AuthorProfileID   *int64     `json:"-"`
-	AuthorProfileUID  *string    `json:"author_profile_uid,omitempty" example:"550e8400-e29b-41d4-a716-446655440000"`
-	AuthorCommunityID *int64     `json:"-"`
-	Author            Author     `json:"author"`
-	CreatedAt         time.Time  `json:"created_at" example:"2026-01-01T12:00:00Z"`
-	UpdatedAt         *time.Time `json:"updated_at,omitempty"`
-	DeletedAt         *time.Time `json:"deleted_at,omitempty"`
-	CommentsCount     int64      `json:"comments_count" example:"0"`
-	RepostsCount      int64      `json:"reposts_count" example:"0"`
-	LikesCount        int64      `json:"likes_count" example:"0"`
-	MediaCount        int64      `json:"media_count" example:"1"`
-	MediaURLs         []string   `json:"media_urls,omitempty"`
+	ID                 int64      `json:"-"`
+	UID                string     `json:"uid" example:"550e8400-e29b-41d4-a716-446655440000"`
+	PostText           *string    `json:"post_text,omitempty" example:"Привет, мир!"`
+	AuthorProfileID    *int64     `json:"-"`
+	AuthorProfileUID   *string    `json:"author_profile_uid,omitempty" example:"550e8400-e29b-41d4-a716-446655440000"`
+	AuthorCommunityID  *int64     `json:"-"`
+	AuthorCommunityUID *string    `json:"author_community_uid,omitempty"`
+	Author             Author     `json:"author"`
+	CreatedAt          time.Time  `json:"created_at" example:"2026-01-01T12:00:00Z"`
+	UpdatedAt          *time.Time `json:"updated_at,omitempty"`
+	DeletedAt          *time.Time `json:"deleted_at,omitempty"`
+	CommentsCount      int64      `json:"comments_count" example:"0"`
+	RepostsCount       int64      `json:"reposts_count" example:"0"`
+	LikesCount         int64      `json:"likes_count" example:"0"`
+	MediaCount         int64      `json:"media_count" example:"1"`
+	MediaURLs          []string   `json:"media_urls,omitempty"`
 }
 
 // Post — публикация пользователя в ленте

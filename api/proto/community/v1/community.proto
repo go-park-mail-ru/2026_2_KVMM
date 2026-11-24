@@ -1,0 +1,20 @@
+syntax = "proto3";
+package community.v1;
+option go_package = "kvmm/api/gen/community/v1;communityv1";
+service CommunityService {
+  rpc GetCommunityIDByUID(GetCommunityIDByUIDRequest) returns (GetCommunityIDByUIDResponse);
+  rpc AuthorizePostWrite(AuthorizePostWriteRequest) returns (AuthorizePostWriteResponse);
+  rpc GetCommunitiesByID(GetCommunitiesByIDRequest) returns (GetCommunitiesByIDResponse);
+}
+message GetCommunityIDByUIDRequest { string community_uid = 1; }
+message GetCommunityIDByUIDResponse { int64 community_id = 1; }
+message AuthorizePostWriteRequest { int64 profile_id = 1; string community_uid = 2; }
+message AuthorizePostWriteResponse { int64 community_id = 1; string community_name = 2; }
+message GetCommunitiesByIDRequest { repeated int64 community_ids = 1; }
+message GetCommunitiesByIDResponse { repeated Community communities = 1; }
+message Community {
+  int64 community_id = 1;
+  string uid = 2;
+  string name = 3;
+  string avatar_url = 4;
+}

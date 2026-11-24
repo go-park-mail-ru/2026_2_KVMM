@@ -39,3 +39,28 @@ func (h *PostHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
+
+// DeleteCommunity удаляет публикацию сообщества.
+// @Summary Удалить публикацию сообщества
+// @Tags community-posts
+// @Security SessionCookie
+// @Param community_uid query string true "UUID сообщества"
+// @Param post_uid query string true "UUID публикации"
+// @Param X-CSRF-Token header string true "CSRF-токен"
+// @Success 204 "Публикация удалена"
+// @Failure 401 {object} domain.ErrorResponse
+// @Failure 403 {object} domain.ErrorResponse
+// @Failure 404 {object} domain.ErrorResponse
+// @Router /api/community-posts/delete [delete]
+func (h *PostHandler) DeleteCommunity(w http.ResponseWriter, r *http.Request) {
+	communityUID, postUID := r.URL.Query().Get("community_uid"), r.URL.Query().Get("post_uid")
+	if !helpers.IsUUID(communityUID) || !helpers.IsUUID(postUID) {
+		helpers.WriteError(w, http.StatusBadRequest, "validation_error", "community_uid and post_uid must be valid UUIDs")
+		return
+	}
+	if err := h.useCase.DeleteCommunityPost(r.Context(), helpers.SessionCookie(r), r.Header.Get("X-CSRF-Token"), communityUID, postUID); err != nil {
+		h.writeError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}

@@ -38,3 +38,34 @@ func (h *PostHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 	helpers.WriteJSON(w, http.StatusOK, post)
 }
+
+// UpdateCommunity изменяет текст публикации сообщества
+// @Summary Изменить публикацию сообщества
+// @Tags community-posts
+// @Security SessionCookie
+// @Accept json
+// @Produce json
+// @Param X-CSRF-Token header string true "CSRF-токен"
+// @Param request body domain.UpdateCommunityPostRequest true "Новый текст публикации"
+// @Success 200 {object} domain.Post
+// @Failure 401 {object} domain.ErrorResponse
+// @Failure 403 {object} domain.ErrorResponse
+// @Failure 404 {object} domain.ErrorResponse
+// @Router /api/community-posts/update [patch]
+func (h *PostHandler) UpdateCommunity(w http.ResponseWriter, r *http.Request) {
+	var req domain.UpdateCommunityPostRequest
+	if err := helpers.DecodeJSON(w, r, &req); err != nil {
+		helpers.WriteError(w, http.StatusBadRequest, "validation_error", err.Error())
+		return
+	}
+	if !helpers.IsUUID(req.CommunityUID) || !helpers.IsUUID(req.PostUID) {
+		helpers.WriteError(w, http.StatusBadRequest, "validation_error", "community_uid and post_uid must be valid UUIDs")
+		return
+	}
+	post, err := h.useCase.UpdateCommunityPost(r.Context(), helpers.SessionCookie(r), r.Header.Get("X-CSRF-Token"), req)
+	if err != nil {
+		h.writeError(w, err)
+		return
+	}
+	helpers.WriteJSON(w, http.StatusOK, post)
+}
