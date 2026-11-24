@@ -55,8 +55,8 @@ func New(
 	return &UseCase{profiles: profiles, avatars: avatars, sessions: sessions}
 }
 
-// Search возвращает публичный профиль пользователя по логину, email или телефону
-func (u *UseCase) Search(
+// Find возвращает публичный профиль пользователя по логину, email или телефону.
+func (u *UseCase) Find(
 	ctx context.Context,
 	sessionToken string,
 	login string,
@@ -89,8 +89,8 @@ func (u *UseCase) SearchByID(
 	return u.attachAvatars(ctx, profile)
 }
 
-// SearchByUUID возвращает публичный профиль пользователя по UUID
-func (u *UseCase) SearchByUUID(
+// FindByUUID возвращает публичный профиль пользователя по UUID.
+func (u *UseCase) FindByUUID(
 	ctx context.Context,
 	sessionToken string,
 	uuid string,

@@ -163,3 +163,224 @@ func (mr *MockpostRepositoryMockRecorder) UpdateByUUID(arg0, arg1, arg2, arg3 an
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateByUUID", reflect.TypeOf((*MockpostRepository)(nil).UpdateByUUID), arg0, arg1, arg2, arg3)
 }
+
+// MockcommunityPostRepository is a mock of communityPostRepository interface.
+type MockcommunityPostRepository struct {
+	ctrl     *gomock.Controller
+	recorder *MockcommunityPostRepositoryMockRecorder
+	isgomock struct{}
+}
+
+// MockcommunityPostRepositoryMockRecorder is the mock recorder for MockcommunityPostRepository.
+type MockcommunityPostRepositoryMockRecorder struct {
+	mock *MockcommunityPostRepository
+}
+
+// NewMockcommunityPostRepository creates a new mock instance.
+func NewMockcommunityPostRepository(ctrl *gomock.Controller) *MockcommunityPostRepository {
+	mock := &MockcommunityPostRepository{ctrl: ctrl}
+	mock.recorder = &MockcommunityPostRepositoryMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockcommunityPostRepository) EXPECT() *MockcommunityPostRepositoryMockRecorder {
+	return m.recorder
+}
+
+// Create mocks base method.
+func (m *MockcommunityPostRepository) Create(arg0 context.Context, arg1 repository.CreatePostParams) (domain.Post, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Create", arg0, arg1)
+	ret0, _ := ret[0].(domain.Post)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Create indicates an expected call of Create.
+func (mr *MockcommunityPostRepositoryMockRecorder) Create(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockcommunityPostRepository)(nil).Create), arg0, arg1)
+}
+
+// DeleteCommunityPostByUUID mocks base method.
+func (m *MockcommunityPostRepository) DeleteCommunityPostByUUID(arg0 context.Context, arg1 string, arg2 int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteCommunityPostByUUID", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteCommunityPostByUUID indicates an expected call of DeleteCommunityPostByUUID.
+func (mr *MockcommunityPostRepositoryMockRecorder) DeleteCommunityPostByUUID(arg0, arg1, arg2 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteCommunityPostByUUID", reflect.TypeOf((*MockcommunityPostRepository)(nil).DeleteCommunityPostByUUID), arg0, arg1, arg2)
+}
+
+// ReadCommunityPostsByUID mocks base method.
+func (m *MockcommunityPostRepository) ReadCommunityPostsByUID(arg0 context.Context, arg1, arg2 string, arg3 int) ([]domain.Post, string, bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReadCommunityPostsByUID", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].([]domain.Post)
+	ret1, _ := ret[1].(string)
+	ret2, _ := ret[2].(bool)
+	ret3, _ := ret[3].(error)
+	return ret0, ret1, ret2, ret3
+}
+
+// ReadCommunityPostsByUID indicates an expected call of ReadCommunityPostsByUID.
+func (mr *MockcommunityPostRepositoryMockRecorder) ReadCommunityPostsByUID(arg0, arg1, arg2, arg3 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadCommunityPostsByUID", reflect.TypeOf((*MockcommunityPostRepository)(nil).ReadCommunityPostsByUID), arg0, arg1, arg2, arg3)
+}
+
+// UpdateCommunityPostByUUID mocks base method.
+func (m *MockcommunityPostRepository) UpdateCommunityPostByUUID(arg0 context.Context, arg1 string, arg2 int64, arg3 repository.UpdatePostParams) (domain.Post, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateCommunityPostByUUID", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(domain.Post)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpdateCommunityPostByUUID indicates an expected call of UpdateCommunityPostByUUID.
+func (mr *MockcommunityPostRepositoryMockRecorder) UpdateCommunityPostByUUID(arg0, arg1, arg2, arg3 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateCommunityPostByUUID", reflect.TypeOf((*MockcommunityPostRepository)(nil).UpdateCommunityPostByUUID), arg0, arg1, arg2, arg3)
+}
+
+// MockcommunityPostAuthorizer is a mock of communityPostAuthorizer interface.
+type MockcommunityPostAuthorizer struct {
+	ctrl     *gomock.Controller
+	recorder *MockcommunityPostAuthorizerMockRecorder
+	isgomock struct{}
+}
+
+// MockcommunityPostAuthorizerMockRecorder is the mock recorder for MockcommunityPostAuthorizer.
+type MockcommunityPostAuthorizerMockRecorder struct {
+	mock *MockcommunityPostAuthorizer
+}
+
+// NewMockcommunityPostAuthorizer creates a new mock instance.
+func NewMockcommunityPostAuthorizer(ctrl *gomock.Controller) *MockcommunityPostAuthorizer {
+	mock := &MockcommunityPostAuthorizer{ctrl: ctrl}
+	mock.recorder = &MockcommunityPostAuthorizerMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockcommunityPostAuthorizer) EXPECT() *MockcommunityPostAuthorizerMockRecorder {
+	return m.recorder
+}
+
+// AuthorizePostWrite mocks base method.
+func (m *MockcommunityPostAuthorizer) AuthorizePostWrite(arg0 context.Context, arg1 int64, arg2 string) (int64, string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AuthorizePostWrite", arg0, arg1, arg2)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(string)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// AuthorizePostWrite indicates an expected call of AuthorizePostWrite.
+func (mr *MockcommunityPostAuthorizerMockRecorder) AuthorizePostWrite(arg0, arg1, arg2 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AuthorizePostWrite", reflect.TypeOf((*MockcommunityPostAuthorizer)(nil).AuthorizePostWrite), arg0, arg1, arg2)
+}
+
+// CommunityIDByUID mocks base method.
+func (m *MockcommunityPostAuthorizer) CommunityIDByUID(arg0 context.Context, arg1 string) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CommunityIDByUID", arg0, arg1)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CommunityIDByUID indicates an expected call of CommunityIDByUID.
+func (mr *MockcommunityPostAuthorizerMockRecorder) CommunityIDByUID(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CommunityIDByUID", reflect.TypeOf((*MockcommunityPostAuthorizer)(nil).CommunityIDByUID), arg0, arg1)
+}
+
+// MockpostLikesRepository is a mock of postLikesRepository interface.
+type MockpostLikesRepository struct {
+	ctrl     *gomock.Controller
+	recorder *MockpostLikesRepositoryMockRecorder
+	isgomock struct{}
+}
+
+// MockpostLikesRepositoryMockRecorder is the mock recorder for MockpostLikesRepository.
+type MockpostLikesRepositoryMockRecorder struct {
+	mock *MockpostLikesRepository
+}
+
+// NewMockpostLikesRepository creates a new mock instance.
+func NewMockpostLikesRepository(ctrl *gomock.Controller) *MockpostLikesRepository {
+	mock := &MockpostLikesRepository{ctrl: ctrl}
+	mock.recorder = &MockpostLikesRepositoryMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockpostLikesRepository) EXPECT() *MockpostLikesRepositoryMockRecorder {
+	return m.recorder
+}
+
+// AttachLikeStats mocks base method.
+func (m *MockpostLikesRepository) AttachLikeStats(arg0 context.Context, arg1 []domain.Post, arg2 int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AttachLikeStats", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AttachLikeStats indicates an expected call of AttachLikeStats.
+func (mr *MockpostLikesRepositoryMockRecorder) AttachLikeStats(arg0, arg1, arg2 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AttachLikeStats", reflect.TypeOf((*MockpostLikesRepository)(nil).AttachLikeStats), arg0, arg1, arg2)
+}
+
+// LikeByUUID mocks base method.
+func (m *MockpostLikesRepository) LikeByUUID(arg0 context.Context, arg1 int64, arg2 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LikeByUUID", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// LikeByUUID indicates an expected call of LikeByUUID.
+func (mr *MockpostLikesRepositoryMockRecorder) LikeByUUID(arg0, arg1, arg2 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LikeByUUID", reflect.TypeOf((*MockpostLikesRepository)(nil).LikeByUUID), arg0, arg1, arg2)
+}
+
+// ListPostFriendLikers mocks base method.
+func (m *MockpostLikesRepository) ListPostFriendLikers(arg0 context.Context, arg1 int64, arg2, arg3 string, arg4 int) (domain.PostLikersResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListPostFriendLikers", arg0, arg1, arg2, arg3, arg4)
+	ret0, _ := ret[0].(domain.PostLikersResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListPostFriendLikers indicates an expected call of ListPostFriendLikers.
+func (mr *MockpostLikesRepositoryMockRecorder) ListPostFriendLikers(arg0, arg1, arg2, arg3, arg4 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListPostFriendLikers", reflect.TypeOf((*MockpostLikesRepository)(nil).ListPostFriendLikers), arg0, arg1, arg2, arg3, arg4)
+}
+
+// UnlikeByUUID mocks base method.
+func (m *MockpostLikesRepository) UnlikeByUUID(arg0 context.Context, arg1 int64, arg2 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UnlikeByUUID", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UnlikeByUUID indicates an expected call of UnlikeByUUID.
+func (mr *MockpostLikesRepositoryMockRecorder) UnlikeByUUID(arg0, arg1, arg2 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnlikeByUUID", reflect.TypeOf((*MockpostLikesRepository)(nil).UnlikeByUUID), arg0, arg1, arg2)
+}

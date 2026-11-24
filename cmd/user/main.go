@@ -11,11 +11,12 @@ import (
 	"syscall"
 	"time"
 
+	userv1 "kvmm/api/gen/user/v1"
+	"kvmm/internal/usergrpc"
+
 	"github.com/gorilla/mux"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
-	userv1 "kvmm/api/gen/user/v1"
-	"kvmm/internal/usergrpc"
 
 	"kvmm/internal/authgrpc"
 	"kvmm/internal/config"
@@ -95,7 +96,7 @@ func main() {
 func newUserRouter(profileHandler *profile.ProfileHandler, chatHandler *chat.ChatHandler, cfg config.Config) http.Handler {
 	router := mux.NewRouter()
 	router.HandleFunc("/api/profile/update", profileHandler.Update).Methods(http.MethodPatch)
-	router.HandleFunc("/api/profile/search", profileHandler.Search).Methods(http.MethodGet)
+	router.HandleFunc("/api/profiles/find", profileHandler.Find).Methods(http.MethodGet)
 	router.HandleFunc("/api/profile/avatar", profileHandler.UploadAvatar).Methods(http.MethodPost)
 	router.HandleFunc("/api/profile/avatars", profileHandler.ListAvatars).Methods(http.MethodGet)
 	router.HandleFunc("/api/profile/avatars/{uid}", profileHandler.DeleteAvatar).Methods(http.MethodDelete)

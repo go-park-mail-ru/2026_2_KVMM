@@ -11,8 +11,8 @@ import (
 	profileusecase "kvmm/internal/usecase/profile"
 )
 
-// Search ищет публичный профиль по ID, логину, email или номеру телефона
-// Search godoc
+// Find ищет публичный профиль по ID, логину, email или номеру телефона
+// Find godoc
 // @Summary Найти пользователя
 // @Description Возвращает публичные данные. Можно передать uid или login
 // @Tags profile
@@ -25,8 +25,8 @@ import (
 // @Failure 401 {object} domain.ErrorResponse
 // @Failure 404 {object} domain.ErrorResponse
 // @Failure 500 {object} domain.ErrorResponse
-// @Router /api/profile/search [get]
-func (h *ProfileHandler) Search(w http.ResponseWriter, r *http.Request) {
+// @Router /api/profiles/find [get]
+func (h *ProfileHandler) Find(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 	if query.Get("profile_id") != "" {
 		helpers.WriteError(w, http.StatusBadRequest, "validation_error", "profile_id is no longer accepted; use uid")
@@ -37,8 +37,8 @@ func (h *ProfileHandler) Search(w http.ResponseWriter, r *http.Request) {
 			helpers.WriteError(w, http.StatusBadRequest, "validation_error", "uid must be a valid UUID")
 			return
 		}
-		h.writeSearchResult(w, func() (domain.Profile, error) {
-			return h.useCase.SearchByUUID(
+		h.writeFindResult(w, func() (domain.Profile, error) {
+			return h.useCase.FindByUUID(
 				r.Context(),
 				helpers.SessionCookie(r),
 				uid,
@@ -55,8 +55,8 @@ func (h *ProfileHandler) Search(w http.ResponseWriter, r *http.Request) {
 		helpers.WriteError(w, http.StatusBadRequest, "validation_error", "numeric profile IDs are not accepted; use uid")
 		return
 	}
-	h.writeSearchResult(w, func() (domain.Profile, error) {
-		return h.useCase.Search(
+	h.writeFindResult(w, func() (domain.Profile, error) {
+		return h.useCase.Find(
 			r.Context(),
 			helpers.SessionCookie(r),
 			login,
@@ -64,9 +64,9 @@ func (h *ProfileHandler) Search(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// writeSearchResult отправляет результат публичного поиска профиля
-func (h *ProfileHandler) writeSearchResult(w http.ResponseWriter, search func() (domain.Profile, error)) {
-	profile, err := search()
+// writeFindResult отправляет результат публичного поиска профиля
+func (h *ProfileHandler) writeFindResult(w http.ResponseWriter, find func() (domain.Profile, error)) {
+	profile, err := find()
 	if err != nil {
 		switch {
 		case errors.Is(err, profileusecase.ErrUnauthorized):
@@ -74,7 +74,7 @@ func (h *ProfileHandler) writeSearchResult(w http.ResponseWriter, search func() 
 		case errors.Is(err, profileusecase.ErrProfileNotFound):
 			helpers.WriteError(w, http.StatusNotFound, "profile_not_found", "profile not found")
 		default:
-			helpers.WriteInternalError(w, "profile.search", err)
+			helpers.WriteInternalError(w, "profile.find", err)
 		}
 		return
 	}

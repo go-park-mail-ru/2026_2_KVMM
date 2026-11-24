@@ -80,7 +80,7 @@ func TestProfileHandlers(t *testing.T) {
 	}
 }
 
-func TestProfileSearchHandler(t *testing.T) {
+func TestProfileFindHandler(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	profiles := profilemock.NewMockprofileRepository(ctrl)
 	avatars := profilemock.NewMockavatarRepository(ctrl)
@@ -101,25 +101,25 @@ func TestProfileSearchHandler(t *testing.T) {
 	}, nil).Times(2)
 
 	w := httptest.NewRecorder()
-	request := profileRequest(http.MethodGet, "/api/profile/search?login=alice", nil)
+	request := profileRequest(http.MethodGet, "/api/profiles/find?login=alice", nil)
 	request.Header.Del("X-CSRF-Token")
-	h.Search(w, request)
+	h.Find(w, request)
 	if w.Code != http.StatusOK {
-		t.Fatalf("Search() status = %d", w.Code)
+		t.Fatalf("Find() status = %d", w.Code)
 	}
 	if body := w.Body.String(); !strings.Contains(body, `"nickname":"alice"`) {
-		t.Fatalf("Search() body = %s", body)
+		t.Fatalf("Find() body = %s", body)
 	}
 	if body := w.Body.String(); !strings.Contains(body, `"avatar_urls":["/api/media/avatars/new.png"]`) {
-		t.Fatalf("Search() avatar body = %s", body)
+		t.Fatalf("Find() avatar body = %s", body)
 	}
 
 	w = httptest.NewRecorder()
-	request = profileRequest(http.MethodGet, "/api/profile/search?profile_id=1", nil)
+	request = profileRequest(http.MethodGet, "/api/profiles/find?profile_id=1", nil)
 	request.Header.Del("X-CSRF-Token")
-	h.Search(w, request)
+	h.Find(w, request)
 	if w.Code != http.StatusBadRequest {
-		t.Fatalf("Search(profile_id) status = %d, want bad request", w.Code)
+		t.Fatalf("Find(profile_id) status = %d, want bad request", w.Code)
 	}
 
 	profiles.EXPECT().SearchByUUID(gomock.Any(), "550e8400-e29b-41d4-a716-446655440000").Return(domain.Profile{
@@ -128,11 +128,11 @@ func TestProfileSearchHandler(t *testing.T) {
 		UID:      "550e8400-e29b-41d4-a716-446655440000",
 	}, nil)
 	w = httptest.NewRecorder()
-	request = profileRequest(http.MethodGet, "/api/profile/search?uid=550e8400-e29b-41d4-a716-446655440000", nil)
+	request = profileRequest(http.MethodGet, "/api/profiles/find?uid=550e8400-e29b-41d4-a716-446655440000", nil)
 	request.Header.Del("X-CSRF-Token")
-	h.Search(w, request)
+	h.Find(w, request)
 	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), `"uid":"550e8400-e29b-41d4-a716-446655440000"`) {
-		t.Fatalf("Search(uid) status = %d body = %s", w.Code, w.Body.String())
+		t.Fatalf("Find(uid) status = %d body = %s", w.Code, w.Body.String())
 	}
 }
 

@@ -132,7 +132,7 @@ const listPostFriendLikersQuery = `
 		ORDER BY liked.profile_id
 		LIMIT $4`
 
-// PostRepository выполняет SQL-операции с публикациями и получает авторов от профильных сервисов.
+// PostRepository выполняет SQL-операции с публикациями и получает авторов от профильных сервисов
 type profileServiceReader interface {
 	GetProfileIDByUID(context.Context, string) (int64, error)
 	GetProfilesByIDs(context.Context, []int64) ([]domain.Profile, error)
@@ -149,7 +149,7 @@ type PostRepository struct {
 	communities communityServiceReader
 }
 
-// NewPostRepository создаёт репозиторий публикаций и клиента сервиса профилей.
+// NewPostRepository создаёт репозиторий публикаций и клиента сервиса профилей
 func NewPostRepository(pool dbPool, profiles profileServiceReader, communities ...communityServiceReader) *PostRepository {
 	repository := &PostRepository{pool: pool, profiles: profiles}
 	if len(communities) > 0 {
