@@ -23,7 +23,7 @@ func (h *FeedHandler) List(w http.ResponseWriter, r *http.Request) {
 		helpers.WriteError(w, http.StatusBadRequest, "invalid_pagination", err.Error())
 		return
 	}
-	response, err := h.useCase.ListByUID(r.Context(), cursor, limit)
+	response, err := h.useCase.ListByUID(r.Context(), cursor, limit, helpers.SessionCookie(r))
 	if err != nil {
 		helpers.WriteInternalError(w, "feed.list", err)
 		return

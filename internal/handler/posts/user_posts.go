@@ -38,7 +38,7 @@ func (h *PostHandler) UserPosts(w http.ResponseWriter, r *http.Request) {
 		helpers.WriteError(w, http.StatusBadRequest, "invalid_pagination", err.Error())
 		return
 	}
-	response, err := h.useCase.UserPostsByUID(r.Context(), profileUID, cursor, limit)
+	response, err := h.useCase.UserPostsByUID(r.Context(), profileUID, cursor, limit, helpers.SessionCookie(r))
 	if err != nil {
 		if errors.Is(err, postusecase.ErrProfileNotFound) {
 			helpers.WriteError(w, http.StatusNotFound, "not_found", "profile or posts not found")

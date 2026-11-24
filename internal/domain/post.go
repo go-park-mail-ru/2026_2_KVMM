@@ -27,8 +27,19 @@ type Post struct {
 	CommentsCount      int64      `json:"comments_count" example:"0"`
 	RepostsCount       int64      `json:"reposts_count" example:"0"`
 	LikesCount         int64      `json:"likes_count" example:"0"`
+	IsLikedByMe        bool       `json:"is_liked_by_me" example:"false"`
 	MediaCount         int64      `json:"media_count" example:"1"`
 	MediaURLs          []string   `json:"media_urls,omitempty"`
+}
+
+// PostLikersResponse содержит страницу друзей, поставивших лайк публикации.
+type PostLikersResponse struct {
+	PostUID    string         `json:"post_uid"`
+	Profiles   []ShortProfile `json:"profiles"`
+	Cursor     string         `json:"cursor,omitempty"`
+	Limit      int            `json:"limit"`
+	HasMore    bool           `json:"has_more"`
+	NextCursor string         `json:"next_cursor,omitempty"`
 }
 
 // Post — публикация пользователя в ленте

@@ -90,6 +90,48 @@ const readFeedPostsByUUIDQuery = `
 	ORDER BY post.id DESC
 	LIMIT $2`
 
+const postLikeSummaryQuery = `
+		SELECT post_id, COUNT(*)::BIGINT, COALESCE(BOOL_OR(profile_id = $2), FALSE)
+		FROM profile_like
+		WHERE post_id = ANY($1::BIGINT[]) AND deleted_at IS NULL
+		GROUP BY post_id`
+const likePostByUUIDQuery = `
+		INSERT INTO profile_like (profile_id, post_id)
+		SELECT $1, post.id
+		FROM post
+		WHERE post.uid = $2::uuid AND post.deleted_at IS NULL
+		ON CONFLICT (profile_id, post_id) WHERE deleted_at IS NULL
+		DO UPDATE SET deleted_at = NULL
+		RETURNING id`
+const readPostIDByUUIDQuery = `
+		SELECT id FROM post WHERE uid = $1::uuid AND deleted_at IS NULL`
+const removePostLikeByUUIDQuery = `
+		UPDATE profile_like
+		SET deleted_at = NOW()
+		WHERE profile_id = $1
+			AND post_id = (SELECT id FROM post WHERE uid = $2::uuid AND deleted_at IS NULL)
+			AND deleted_at IS NULL`
+const listPostFriendLikersQuery = `
+		SELECT liked.profile_id
+		FROM post target
+		JOIN profile_like liked ON liked.post_id = target.id AND liked.deleted_at IS NULL
+		WHERE target.uid = $1::uuid AND target.deleted_at IS NULL
+			AND liked.profile_id <> $2
+			AND liked.profile_id > $3
+			AND EXISTS (
+				SELECT 1
+				FROM profile_relationship relationship
+				WHERE relationship.relationships_status = 'accepted'
+					AND relationship.relationships_type = 'friendship'
+					AND relationship.deleted_at IS NULL
+					AND (
+						(relationship.profile_id_master = $2 AND relationship.profile_id_slave = liked.profile_id)
+						OR (relationship.profile_id_slave = $2 AND relationship.profile_id_master = liked.profile_id)
+					)
+			)
+		ORDER BY liked.profile_id
+		LIMIT $4`
+
 // PostRepository выполняет SQL-операции с публикациями и получает авторов от профильных сервисов.
 type profileServiceReader interface {
 	GetProfileIDByUID(context.Context, string) (int64, error)
@@ -212,7 +254,7 @@ func (r *PostRepository) DeleteByUUID(ctx context.Context, uid string, authorID 
 	return nil
 }
 
-// UpdateCommunityPostByUUID изменяет пост сообщества по UUID.
+// UpdateCommunityPostByUUID изменяет пост сообщества по UUID
 func (r *PostRepository) UpdateCommunityPostByUUID(ctx context.Context, uid string, communityID int64, params UpdatePostParams) (domain.Post, error) {
 	post, err := scanPost(r.pool.QueryRow(ctx, updateCommunityPostByUUIDQuery, nullableString(params.PostText), uid, communityID))
 	if err != nil {
@@ -221,7 +263,7 @@ func (r *PostRepository) UpdateCommunityPostByUUID(ctx context.Context, uid stri
 	return post, nil
 }
 
-// DeleteCommunityPostByUUID мягко удаляет пост сообщества.
+// DeleteCommunityPostByUUID мягко удаляет пост сообщества
 func (r *PostRepository) DeleteCommunityPostByUUID(ctx context.Context, uid string, communityID int64) error {
 	result, err := r.pool.Exec(ctx, deleteCommunityPostByUUIDQuery, uid, communityID)
 	if err != nil {
@@ -233,7 +275,7 @@ func (r *PostRepository) DeleteCommunityPostByUUID(ctx context.Context, uid stri
 	return nil
 }
 
-// ReadCommunityPostsByUID возвращает страницу публикаций по UUID сообщества.
+// ReadCommunityPostsByUID возвращает страницу публикаций по UUID сообщества
 func (r *PostRepository) ReadCommunityPostsByUID(ctx context.Context, communityUID, cursorUID string, limit int) ([]domain.Post, string, bool, error) {
 	if r.communities == nil {
 		return nil, "", false, ErrCommunityServiceUnavailable
@@ -271,6 +313,140 @@ func (r *PostRepository) ReadCommunityPostsByUID(ctx context.Context, communityU
 		return nil, "", false, err
 	}
 	return items, next, more, nil
+}
+
+// AttachLikeStats загружает счётчики и состояние лайка текущего пользователя для страницы
+func (r *PostRepository) AttachLikeStats(ctx context.Context, posts []domain.Post, viewerID int64) error {
+	if len(posts) == 0 {
+		return nil
+	}
+	ids := make([]int64, 0, len(posts))
+	indexes := make(map[int64]int, len(posts))
+	for i := range posts {
+		posts[i].LikesCount = 0
+		posts[i].IsLikedByMe = false
+		ids = append(ids, posts[i].ID)
+		indexes[posts[i].ID] = i
+	}
+	rows, err := r.pool.Query(ctx, postLikeSummaryQuery, ids, viewerID)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var postID, count int64
+		var likedByMe bool
+		if err := rows.Scan(&postID, &count, &likedByMe); err != nil {
+			return err
+		}
+		if index, ok := indexes[postID]; ok {
+			posts[index].LikesCount = count
+			posts[index].IsLikedByMe = likedByMe
+		}
+	}
+	return rows.Err()
+}
+
+// LikeByUUID ставит лайк посту  (повторный вызов не создаёт второй активный лайк, а убирает delete at)
+func (r *PostRepository) LikeByUUID(ctx context.Context, profileID int64, postUID string) error {
+	var likeID int64
+	if err := r.pool.QueryRow(ctx, likePostByUUIDQuery, profileID, postUID).Scan(&likeID); err != nil {
+		return normalizePostError(err)
+	}
+	return nil
+}
+
+// UnlikeByUUID снимает лайк текущего пользователя с поста
+func (r *PostRepository) UnlikeByUUID(ctx context.Context, profileID int64, postUID string) error {
+	result, err := r.pool.Exec(ctx, removePostLikeByUUIDQuery, profileID, postUID)
+	if err != nil {
+		return err
+	}
+	if result.RowsAffected() > 0 {
+		return nil
+	}
+	var postID int64
+	if err := r.pool.QueryRow(ctx, readPostIDByUUIDQuery, postUID).Scan(&postID); err != nil {
+		return normalizePostError(err)
+	}
+	return nil
+}
+
+// ListPostFriendLikers возвращает друзей, лайкнувших пост
+func (r *PostRepository) ListPostFriendLikers(ctx context.Context, viewerID int64, postUID, cursorUID string, limit int) (domain.PostLikersResponse, error) {
+	if r.profiles == nil {
+		return domain.PostLikersResponse{}, ErrProfileServiceUnavailable
+	}
+	limit = normalizeLimit(limit, 50)
+	var cursorID int64
+	if cursorUID != "" {
+		var err error
+		cursorID, err = r.profiles.GetProfileIDByUID(ctx, cursorUID)
+		if err != nil {
+			return domain.PostLikersResponse{}, err
+		}
+	}
+	rows, err := r.pool.Query(ctx, listPostFriendLikersQuery, postUID, viewerID, cursorID, limit+1)
+	if err != nil {
+		return domain.PostLikersResponse{}, err
+	}
+	profileIDs := make([]int64, 0, limit+1)
+	for rows.Next() {
+		var profileID int64
+		if err := rows.Scan(&profileID); err != nil {
+			rows.Close()
+			return domain.PostLikersResponse{}, err
+		}
+		profileIDs = append(profileIDs, profileID)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return domain.PostLikersResponse{}, err
+	}
+	rows.Close()
+
+	if len(profileIDs) == 0 {
+		var postID int64
+		if err := r.pool.QueryRow(ctx, readPostIDByUUIDQuery, postUID).Scan(&postID); err != nil {
+			return domain.PostLikersResponse{}, normalizePostError(err)
+		}
+	}
+	hasMore := len(profileIDs) > limit
+	if hasMore {
+		profileIDs = profileIDs[:limit]
+	}
+	profiles, err := r.profiles.GetProfilesByIDs(ctx, profileIDs)
+	if err != nil {
+		return domain.PostLikersResponse{}, err
+	}
+	byID := make(map[int64]domain.Profile, len(profiles))
+	for _, profile := range profiles {
+		byID[profile.ID] = profile
+	}
+	shortProfiles := make([]domain.ShortProfile, 0, len(profileIDs))
+	for _, profileID := range profileIDs {
+		profile, ok := byID[profileID]
+		if !ok {
+			continue
+		}
+		var avatarURL *string
+		if len(profile.AvatarURLs) > 0 && profile.AvatarURLs[0] != "" {
+			avatarURL = &profile.AvatarURLs[0]
+		}
+		shortProfiles = append(shortProfiles, domain.ShortProfile{
+			ID: profile.ID, UID: profile.UID, Nickname: profile.Nickname,
+			ProfileName: profile.ProfileName, Surname: profile.Surname,
+			Patronymic: profile.Patronymic, AvatarURL: avatarURL,
+		})
+	}
+	var nextCursor string
+	if len(shortProfiles) > 0 {
+		nextCursor = shortProfiles[len(shortProfiles)-1].UID
+	}
+	return domain.PostLikersResponse{
+		PostUID: postUID, Profiles: shortProfiles, Cursor: cursorUID,
+		Limit: limit, HasMore: hasMore, NextCursor: nextCursor,
+	}, nil
 }
 
 // ReadProfilePostsByUUID получает внутренний ID профиля через User service и возвращает страницу постов по UUID
@@ -313,7 +489,7 @@ func (r *PostRepository) ReadProfilePostsByUUID(ctx context.Context, profileUID,
 	return posts, nextUID, hasMore, nil
 }
 
-// ReadFeedPostsByUUID возвращает ленту с UUID-курсором без предварительного поиска ID.
+// ReadFeedPostsByUUID возвращает ленту
 func (r *PostRepository) ReadFeedPostsByUUID(ctx context.Context, cursorUID string, limit int) ([]domain.Post, string, bool, error) {
 	limit = normalizeLimit(limit, 100)
 	rows, err := r.pool.Query(ctx, readFeedPostsByUUIDQuery, cursorUID, limit+1)

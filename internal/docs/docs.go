@@ -592,6 +592,10 @@ const docTemplate = `{
                     "deleted_at": {
                         "type": "string"
                     },
+                    "is_liked_by_me": {
+                        "example": false,
+                        "type": "boolean"
+                    },
                     "likes_count": {
                         "example": 0,
                         "type": "integer"
@@ -635,6 +639,33 @@ const docTemplate = `{
                     "AuthorProfile",
                     "AuthorCommunity"
                 ]
+            },
+            "domain.PostLikersResponse": {
+                "properties": {
+                    "cursor": {
+                        "type": "string"
+                    },
+                    "has_more": {
+                        "type": "boolean"
+                    },
+                    "limit": {
+                        "type": "integer"
+                    },
+                    "next_cursor": {
+                        "type": "string"
+                    },
+                    "post_uid": {
+                        "type": "string"
+                    },
+                    "profiles": {
+                        "items": {
+                            "$ref": "#/components/schemas/domain.ShortProfile"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    }
+                },
+                "type": "object"
             },
             "domain.Profile": {
                 "properties": {
@@ -2332,7 +2363,7 @@ const docTemplate = `{
             "get": {
                 "parameters": [
                     {
-                        "description": "Смещение",
+                        "description": "offset",
                         "in": "query",
                         "name": "offset",
                         "schema": {
@@ -2341,7 +2372,7 @@ const docTemplate = `{
                         }
                     },
                     {
-                        "description": "Размер страницы",
+                        "description": "limit",
                         "in": "query",
                         "name": "limit",
                         "schema": {
@@ -3500,6 +3531,224 @@ const docTemplate = `{
                     }
                 },
                 "summary": "Получить публикации пользователя",
+                "tags": [
+                    "posts"
+                ]
+            }
+        },
+        "/api/posts/{uid}/like": {
+            "delete": {
+                "parameters": [
+                    {
+                        "description": "UUID публикации",
+                        "in": "path",
+                        "name": "uid",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "CSRF-токен",
+                        "in": "header",
+                        "name": "X-CSRF-Token",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Лайк снят"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    }
+                },
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "summary": "Снять лайк с поста",
+                "tags": [
+                    "posts"
+                ]
+            },
+            "put": {
+                "parameters": [
+                    {
+                        "description": "UUID публикации",
+                        "in": "path",
+                        "name": "uid",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "CSRF-токен",
+                        "in": "header",
+                        "name": "X-CSRF-Token",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Лайк установлен"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    }
+                },
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "summary": "Поставить лайк посту",
+                "tags": [
+                    "posts"
+                ]
+            }
+        },
+        "/api/posts/{uid}/likes": {
+            "get": {
+                "parameters": [
+                    {
+                        "description": "UUID публикации",
+                        "in": "path",
+                        "name": "uid",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "UUID профиля из предыдущей страницы",
+                        "in": "query",
+                        "name": "cursor",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "Размер страницы (максимум 50)",
+                        "in": "query",
+                        "name": "limit",
+                        "schema": {
+                            "default": 10,
+                            "maximum": 50,
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.PostLikersResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    }
+                },
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "summary": "Получить друзей, лайкнувших публикацию",
                 "tags": [
                     "posts"
                 ]

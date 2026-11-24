@@ -36,7 +36,7 @@ func (h *PostHandler) ListCommunity(w http.ResponseWriter, r *http.Request) {
 		}
 		limit = parsed
 	}
-	response, err := h.useCase.CommunityPosts(r.Context(), communityUID, cursorUID, limit)
+	response, err := h.useCase.CommunityPosts(r.Context(), communityUID, cursorUID, limit, helpers.SessionCookie(r))
 	if err != nil {
 		h.writeError(w, err)
 		return

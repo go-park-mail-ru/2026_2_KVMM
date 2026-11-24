@@ -70,7 +70,7 @@ func main() {
 
 	sessionReader := sessionusecase.New(sessions)
 	postRepository := repository.NewPostRepository(db, profiles, communities)
-	feedUseCase := feedusecase.New(postRepository)
+	feedUseCase := feedusecase.New(postRepository, sessionReader)
 	postUseCase := postusecase.New(postRepository, sessionReader, communities)
 	server := &http.Server{
 		Addr: cfg.Posts.HTTPAddr,
