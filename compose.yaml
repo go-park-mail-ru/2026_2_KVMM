@@ -85,6 +85,8 @@ services:
     expose:
       - "8084"
       - "9092"
+    volumes:
+      - media_data:/data/media
     restart: unless-stopped
     networks:
       - kvmm

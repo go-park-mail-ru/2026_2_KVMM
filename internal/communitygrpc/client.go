@@ -68,7 +68,12 @@ func (c *Client) GetCommunitiesByIDs(ctx context.Context, ids []int64) ([]domain
 	}
 	items := make([]domain.Community, 0, len(response.GetCommunities()))
 	for _, item := range response.GetCommunities() {
-		items = append(items, domain.Community{ID: item.GetCommunityId(), UID: item.GetUid(), Name: item.GetName()})
+		community := domain.Community{ID: item.GetCommunityId(), UID: item.GetUid(), Name: item.GetName()}
+		if item.GetAvatarUrl() != "" {
+			avatarURL := item.GetAvatarUrl()
+			community.AvatarURL = &avatarURL
+		}
+		items = append(items, community)
 	}
 	return items, nil
 }

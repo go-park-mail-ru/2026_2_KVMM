@@ -8,6 +8,7 @@ type Community struct {
 	UID              string     `json:"uid" example:"550e8400-e29b-41d4-a716-446655440000"`
 	Name             string     `json:"community_name" example:"Go developers"`
 	Bio              string     `json:"bio" example:"Сообщество разработчиков Go"`
+	AvatarURL        *string    `json:"avatar_url,omitempty" example:"/api/media/community_avatars/avatar.png"`
 	SubscribersCount int64      `json:"subscribers_count" example:"42"`
 	CreatedAt        time.Time  `json:"created_at"`
 	UpdatedAt        *time.Time `json:"updated_at,omitempty"`

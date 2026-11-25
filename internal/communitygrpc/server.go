@@ -48,7 +48,16 @@ func (s *Server) GetCommunitiesByID(ctx context.Context, req *communityv1.GetCom
 	}
 	response := &communityv1.GetCommunitiesByIDResponse{Communities: make([]*communityv1.Community, 0, len(items))}
 	for _, item := range items {
-		response.Communities = append(response.Communities, &communityv1.Community{CommunityId: item.ID, Uid: item.UID, Name: item.Name})
+		avatarURL := ""
+		if item.AvatarURL != nil {
+			avatarURL = *item.AvatarURL
+		}
+		response.Communities = append(response.Communities, &communityv1.Community{
+			CommunityId: item.ID,
+			Uid:         item.UID,
+			Name:        item.Name,
+			AvatarUrl:   avatarURL,
+		})
 	}
 	return response, nil
 }

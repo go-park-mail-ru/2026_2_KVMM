@@ -61,7 +61,7 @@ func main() {
 		logger.Fatal("database connection failed", zap.Error(err))
 	}
 	defer db.Close()
-	repo := repository.NewCommunityRepository(db)
+	repo := repository.NewCommunityRepository(db, cfg.Media.Dir, cfg.Media.PublicURL)
 	uc := communityusecase.NewCommunityUseCase(repo, sessionusecase.New(sessions), profiles)
 	listener, err := net.Listen("tcp", cfg.Community.GRPCAddr)
 	if err != nil {

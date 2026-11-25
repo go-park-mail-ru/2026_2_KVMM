@@ -190,6 +190,10 @@ const docTemplate = `{
             },
             "domain.Community": {
                 "properties": {
+                    "avatar_url": {
+                        "example": "/api/media/community_avatars/avatar.png",
+                        "type": "string"
+                    },
                     "bio": {
                         "example": "Сообщество разработчиков Go",
                         "type": "string"
@@ -2865,6 +2869,123 @@ const docTemplate = `{
                     }
                 ],
                 "summary": "Назначить администратора",
+                "tags": [
+                    "communities"
+                ]
+            }
+        },
+        "/api/communities/{uid}/avatar": {
+            "post": {
+                "description": "Принимает PNG, JPEG, WebP или GIF размером не более 10 МБ. Загрузить изображение могут владелец и администратор сообщества.",
+                "parameters": [
+                    {
+                        "description": "UUID сообщества",
+                        "in": "path",
+                        "name": "uid",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "CSRF-токен",
+                        "in": "header",
+                        "name": "X-CSRF-Token",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "properties": {
+                                    "avatar": {
+                                        "description": "Файл аватарки",
+                                        "format": "binary",
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "avatar"
+                                ],
+                                "type": "object"
+                            }
+                        }
+                    },
+                    "description": "Файл аватарки",
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.Avatar"
+                                }
+                            }
+                        },
+                        "description": "Created"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Forbidden"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "security": [
+                    {
+                        "SessionCookie": []
+                    }
+                ],
+                "summary": "Загрузить аватарку сообщества",
                 "tags": [
                     "communities"
                 ]

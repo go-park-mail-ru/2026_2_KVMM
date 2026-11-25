@@ -25,6 +25,8 @@ func (h *Handler) writeError(w http.ResponseWriter, err error) {
 		helpers.WriteError(w, http.StatusNotFound, "profile_not_found", "profile not found")
 	case errors.Is(err, communityusecase.ErrInvalidCommunity):
 		helpers.WriteError(w, http.StatusBadRequest, "validation_error", err.Error())
+	case errors.Is(err, communityusecase.ErrInvalidAvatar):
+		helpers.WriteError(w, http.StatusBadRequest, "invalid_avatar", "avatar must be a valid image no larger than 10 MB")
 	default:
 		helpers.WriteInternalError(w, "community", err)
 	}

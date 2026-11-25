@@ -900,7 +900,7 @@ func (r *PostRepository) attachPostAuthors(ctx context.Context, posts []domain.P
 			return err
 		}
 		for _, community := range communities {
-			communityAuthors[community.ID] = domain.Author{Name: community.Name, Type: domain.AuthorCommunity}
+			communityAuthors[community.ID] = domain.Author{Name: community.Name, AvatarURL: derefString(community.AvatarURL), Type: domain.AuthorCommunity}
 			communityUIDs[community.ID] = community.UID
 		}
 	}

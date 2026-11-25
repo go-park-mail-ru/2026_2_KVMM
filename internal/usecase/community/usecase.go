@@ -21,6 +21,7 @@ var (
 	ErrCommunityConflict       = repository.ErrCommunityConflict
 	ErrProfileNotFound         = repository.ErrProfileNotFound
 	ErrInvalidCommunity        = errors.New("invalid community data")
+	ErrInvalidAvatar           = repository.ErrInvalidAvatar
 )
 
 type communityRepository interface {
@@ -33,6 +34,7 @@ type communityRepository interface {
 	Subscribe(context.Context, int64, string) error
 	Unsubscribe(context.Context, int64, string) error
 	AssignAdmin(context.Context, int64, int64, string) error
+	CreateAvatar(context.Context, int64, string, domain.UploadAvatarRequest) (domain.Avatar, error)
 }
 
 type profileIDReader interface {
@@ -157,6 +159,19 @@ func (u *CommunityUseCase) AssignAdmin(ctx context.Context, session, csrf, commu
 		logging.LogUseCaseErrorContext(ctx, "community", "assign admin", err)
 	}
 	return err
+}
+
+// UploadAvatar загружает изображение сообщества от имени владельца или администратора.
+func (u *CommunityUseCase) UploadAvatar(ctx context.Context, session, csrf, communityUID string, req domain.UploadAvatarRequest) (domain.Avatar, error) {
+	profileID, err := u.sessions.Authorize(session, csrf)
+	if err != nil {
+		return domain.Avatar{}, err
+	}
+	avatar, err := u.communities.CreateAvatar(ctx, profileID, communityUID, req)
+	if err != nil {
+		logging.LogUseCaseErrorContext(ctx, "community", "upload avatar", err)
+	}
+	return avatar, err
 }
 
 func (u *CommunityUseCase) Subscriptions(ctx context.Context, session string, offset, limit int) (domain.CommunityPage, error) {

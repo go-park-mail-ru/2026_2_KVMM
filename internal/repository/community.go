@@ -3,6 +3,9 @@ package repository
 import (
 	"context"
 	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"kvmm/internal/domain"
@@ -25,16 +28,43 @@ const communitySelectColumns = `
 	c.bio,
 	c.created_at,
 	c.updated_at,
-	(SELECT COUNT(*) FROM community_member cm WHERE cm.community_id = c.id AND cm.deleted_at IS NULL)`
+	(SELECT COUNT(*) FROM community_member cm WHERE cm.community_id = c.id AND cm.deleted_at IS NULL),
+	(SELECT m.media_path
+	 FROM community_avatar ca
+	 JOIN media m ON m.id = ca.media_id
+	 WHERE ca.community_id = c.id AND ca.deleted_at IS NULL AND m.deleted_at IS NULL
+	 ORDER BY ca.created_at DESC, m.id DESC
+	 LIMIT 1)`
 
 const createCommunityQuery = `
 		INSERT INTO community (community_name, bio)
 		VALUES ($1, $2)
-		RETURNING id, uid, community_name, bio, created_at, updated_at, 0`
+		RETURNING id, uid, community_name, bio, created_at, updated_at, 0, NULL`
 
 const createCommunityOwnerQuery = `
 		INSERT INTO community_member (profile_id, community_id, role)
 		VALUES ($1, $2, 'owner')`
+
+const createCommunityAvatarAuthorizationQuery = `
+		SELECT c.id
+		FROM community c
+		WHERE c.uid = $1::uuid AND c.deleted_at IS NULL
+			AND EXISTS (
+				SELECT 1 FROM community_member cm
+				WHERE cm.community_id = c.id AND cm.profile_id = $2
+					AND cm.deleted_at IS NULL AND cm.role IN ('owner', 'admin')
+			)
+		FOR UPDATE OF c`
+
+const createCommunityAvatarQuery = `
+		INSERT INTO community_avatar (community_id, media_id)
+		VALUES ($1, $2)`
+
+const communityAvatarFailureQuery = `
+		SELECT EXISTS(
+			SELECT 1 FROM community
+			WHERE uid = $1::uuid AND deleted_at IS NULL
+		)`
 
 const readCommunitiesByIDsQuery = `
 		SELECT ` + communitySelectColumns + `
@@ -76,7 +106,13 @@ const updateCommunityQuery = `
 					AND cm.deleted_at IS NULL AND cm.role IN ('owner', 'admin')
 			)
 		RETURNING c.id, c.uid, c.community_name, c.bio, c.created_at, c.updated_at,
-			(SELECT COUNT(*) FROM community_member cm WHERE cm.community_id = c.id AND cm.deleted_at IS NULL)`
+			(SELECT COUNT(*) FROM community_member cm WHERE cm.community_id = c.id AND cm.deleted_at IS NULL),
+			(SELECT m.media_path
+			 FROM community_avatar ca
+			 JOIN media m ON m.id = ca.media_id
+			 WHERE ca.community_id = c.id AND ca.deleted_at IS NULL AND m.deleted_at IS NULL
+			 ORDER BY ca.created_at DESC, m.id DESC
+			 LIMIT 1)`
 
 const deleteCommunityQuery = `
 		UPDATE community c SET deleted_at = NOW(), updated_at = NOW()
@@ -149,11 +185,22 @@ const authorizeCommunityPostWriteQuery = `
 			AND cm.role IN ('owner', 'admin', 'moderator')`
 
 // CommunityRepository выполняет SQL-операции для сообществ и их участников
-type CommunityRepository struct{ pool dbPool }
+type CommunityRepository struct {
+	pool     dbPool
+	mediaDir string
+	mediaURL string
+}
 
 // NewCommunityRepository создаёт репозиторий сообществ
-func NewCommunityRepository(pool dbPool) *CommunityRepository {
-	return &CommunityRepository{pool: pool}
+func NewCommunityRepository(pool dbPool, media ...string) *CommunityRepository {
+	mediaDir, mediaURL := "./internal/store/media", "/api/media"
+	if len(media) > 0 && strings.TrimSpace(media[0]) != "" {
+		mediaDir = media[0]
+	}
+	if len(media) > 1 && strings.TrimSpace(media[1]) != "" {
+		mediaURL = strings.TrimRight(media[1], "/")
+	}
+	return &CommunityRepository{pool: pool, mediaDir: mediaDir, mediaURL: mediaURL}
 }
 
 // Create создаёт сообщество и назначает создателя владельцем в одной транзакции
@@ -174,6 +221,72 @@ func (r *CommunityRepository) Create(ctx context.Context, ownerID int64, req dom
 		return domain.Community{}, err
 	}
 	return community, nil
+}
+
+// CreateAvatar сохраняет изображение и назначает его аватаром сообщества.
+func (r *CommunityRepository) CreateAvatar(ctx context.Context, profileID int64, communityUID string, req domain.UploadAvatarRequest) (domain.Avatar, error) {
+	if profileID <= 0 || len(req.Data) == 0 || len(req.Data) > domain.MaxAvatarSize {
+		return domain.Avatar{}, ErrInvalidAvatar
+	}
+	extension, ok := avatarExtension(req.Data)
+	if !ok {
+		return domain.Avatar{}, ErrInvalidAvatar
+	}
+	fileName, err := randomAvatarName(extension)
+	if err != nil {
+		return domain.Avatar{}, err
+	}
+	relativePath := filepath.ToSlash(filepath.Join("community_avatars", fileName))
+	localPath := filepath.Join(r.mediaDir, filepath.FromSlash(relativePath))
+	publicPath := r.mediaURL + "/" + relativePath
+	if err := os.MkdirAll(filepath.Dir(localPath), 0o755); err != nil {
+		return domain.Avatar{}, fmt.Errorf("create community avatar directory: %w", err)
+	}
+	if err := os.WriteFile(localPath, req.Data, 0o644); err != nil {
+		return domain.Avatar{}, fmt.Errorf("save community avatar file: %w", err)
+	}
+	removeFile := true
+	defer func() {
+		if removeFile {
+			_ = os.Remove(localPath)
+		}
+	}()
+
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return domain.Avatar{}, err
+	}
+	defer tx.Rollback(ctx)
+	var communityID int64
+	if err := tx.QueryRow(ctx, createCommunityAvatarAuthorizationQuery, communityUID, profileID).Scan(&communityID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			var exists bool
+			if lookupErr := r.pool.QueryRow(ctx, communityAvatarFailureQuery, communityUID).Scan(&exists); lookupErr != nil {
+				return domain.Avatar{}, lookupErr
+			}
+			if !exists {
+				return domain.Avatar{}, ErrCommunityNotFound
+			}
+			return domain.Avatar{}, ErrCommunityForbidden
+		}
+		return domain.Avatar{}, err
+	}
+
+	var avatar domain.Avatar
+	var uid pgtype.UUID
+	if err := tx.QueryRow(ctx, createMediaQuery, publicPath).Scan(&avatar.ID, &uid, &avatar.CreatedAt); err != nil {
+		return domain.Avatar{}, err
+	}
+	if _, err := tx.Exec(ctx, createCommunityAvatarQuery, communityID, avatar.ID); err != nil {
+		return domain.Avatar{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return domain.Avatar{}, err
+	}
+	removeFile = false
+	avatar.UID = uuidString(uid)
+	avatar.URL = publicPath
+	return avatar, nil
 }
 
 // ReadByIDs пакетно читает сообщества по внутренним ID для Posts service
@@ -352,11 +465,16 @@ func scanCommunity(row rowScanner) (domain.Community, error) {
 	var uid pgtype.UUID
 	var name, bio pgtype.Text
 	var created, updated pgtype.Timestamptz
+	var avatarURL pgtype.Text
 	var subscribers int64
-	if err := row.Scan(&id, &uid, &name, &bio, &created, &updated, &subscribers); err != nil {
+	if err := row.Scan(&id, &uid, &name, &bio, &created, &updated, &subscribers, &avatarURL); err != nil {
 		return domain.Community{}, err
 	}
-	return domain.Community{ID: id, UID: uuidString(uid), Name: name.String, Bio: bio.String, CreatedAt: created.Time, UpdatedAt: timestampPointer(updated), SubscribersCount: subscribers}, nil
+	community := domain.Community{ID: id, UID: uuidString(uid), Name: name.String, Bio: bio.String, CreatedAt: created.Time, UpdatedAt: timestampPointer(updated), SubscribersCount: subscribers}
+	if avatarURL.Valid {
+		community.AvatarURL = &avatarURL.String
+	}
+	return community, nil
 }
 
 func scanCommunities(rows pgx.Rows) ([]domain.Community, error) {

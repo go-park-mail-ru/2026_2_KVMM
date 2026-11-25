@@ -61,6 +61,7 @@ func NewRouter(deps Dependencies) http.Handler {
 		router.HandleFunc("/api/communities/{uid}/subscribe", deps.Communities.Subscribe).Methods(http.MethodPost)
 		router.HandleFunc("/api/communities/{uid}/subscribe", deps.Communities.Unsubscribe).Methods(http.MethodDelete)
 		router.HandleFunc("/api/communities/{uid}/admins", deps.Communities.AssignAdmin).Methods(http.MethodPost)
+		router.HandleFunc("/api/communities/{uid}/avatar", deps.Communities.UploadAvatar).Methods(http.MethodPost)
 		router.HandleFunc("/api/communities/{uid}", deps.Communities.Read).Methods(http.MethodGet)
 		router.HandleFunc("/api/communities/{uid}", deps.Communities.Update).Methods(http.MethodPatch)
 		router.HandleFunc("/api/communities/{uid}", deps.Communities.Delete).Methods(http.MethodDelete)
