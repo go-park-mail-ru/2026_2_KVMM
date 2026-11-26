@@ -25,6 +25,9 @@ type Profile struct {
 	Gender      *Gender    `json:"gender,omitempty" example:"male" enums:"male,female,other"`
 	Birthday    *time.Time `json:"birthday,omitempty" example:"2000-05-14T00:00:00Z"`
 	Bio         *string    `json:"bio,omitempty" example:"hi!"`
+	City        *string    `json:"city,omitempty" example:"Москва"`
+	Education   *string    `json:"education,omitempty" example:"МГУ"`
+	Workplace   *string    `json:"workplace,omitempty" example:"ООО Пример"`
 	AvatarURLs  []string   `json:"avatar_urls,omitempty" example:"/api/media/avatar1.png"`
 	CreatedAt   time.Time  `json:"created_at" example:"2026-01-01T12:00:00Z"`
 	UpdatedAt   *time.Time `json:"updated_at,omitempty" example:"2026-01-02T12:00:00Z"`
@@ -54,9 +57,12 @@ type UpdateProfileRequest struct {
 	Surname     *string `json:"surname,omitempty" example:"Иванов" validate:"omitempty,min=2,max=32"`
 	Patronymic  *string `json:"patronymic,omitempty" example:"Иванович" validate:"omitempty,min=2,max=32"`
 
-	Gender   *Gender `json:"gender,omitempty" example:"male" validate:"omitempty,oneof=male female"`
-	Birthday *string `json:"birthday,omitempty" example:"2000-05-14" validate:"omitempty"`
-	Bio      *string `json:"bio,omitempty" example:"hi!" validate:"omitempty,max=256"`
+	Gender    *Gender `json:"gender,omitempty" example:"male" validate:"omitempty,oneof=male female"`
+	Birthday  *string `json:"birthday,omitempty" example:"2000-05-14" validate:"omitempty"`
+	Bio       *string `json:"bio,omitempty" example:"hi!" validate:"omitempty,max=256"`
+	City      *string `json:"city,omitempty" example:"Москва" validate:"omitempty,max=128"`
+	Education *string `json:"education,omitempty" example:"МГУ" validate:"omitempty,max=256"`
+	Workplace *string `json:"workplace,omitempty" example:"ООО Пример" validate:"omitempty,max=256"`
 }
 
 // UploadAvatarRequest содержит бинарные данные новой аватарки

@@ -40,6 +40,9 @@ CREATE TABLE profile (
     birthday DATE NULL,
     bio TEXT NULL
         CHECK (LENGTH(bio) <= 256),
+    city TEXT NULL,
+    education TEXT NULL,
+    workplace TEXT NULL,
 
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NULL,

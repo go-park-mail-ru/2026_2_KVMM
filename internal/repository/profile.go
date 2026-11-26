@@ -29,6 +29,9 @@ const profileColumns = `
     gender,
     birthday,
     bio,
+    city,
+    education,
+    workplace,
     created_at,
     updated_at,
     deleted_at,
@@ -137,6 +140,9 @@ type UpdateProfileParams struct {
 	Gender      *domain.Gender
 	Birthday    *time.Time
 	Bio         *string
+	City        *string
+	Education   *string
+	Workplace   *string
 
 	PasswordHash *string
 }
@@ -315,6 +321,15 @@ func (r *ProfileRepository) Update(
 	if params.Bio != nil {
 		add("bio", nullableString(params.Bio))
 	}
+	if params.City != nil {
+		add("city", nullableString(params.City))
+	}
+	if params.Education != nil {
+		add("education", nullableString(params.Education))
+	}
+	if params.Workplace != nil {
+		add("workplace", nullableString(params.Workplace))
+	}
 	if params.PasswordHash != nil {
 		add("password_hash", *params.PasswordHash)
 	}
@@ -394,6 +409,9 @@ func scanProfileValues(
 		patronymic   pgtype.Text
 		gender       pgtype.Text
 		bio          pgtype.Text
+		city         pgtype.Text
+		education    pgtype.Text
+		workplace    pgtype.Text
 		birthday     pgtype.Date
 		createdAt    pgtype.Timestamptz
 		updatedAt    pgtype.Timestamptz
@@ -417,6 +435,9 @@ func scanProfileValues(
 		&gender,
 		&birthday,
 		&bio,
+		&city,
+		&education,
+		&workplace,
 		&createdAt,
 		&updatedAt,
 		&deletedAt,
@@ -444,6 +465,9 @@ func scanProfileValues(
 		Gender:      genderPointer(gender),
 		Birthday:    datePointer(birthday),
 		Bio:         textPointer(bio),
+		City:        textPointer(city),
+		Education:   textPointer(education),
+		Workplace:   textPointer(workplace),
 		CreatedAt:   createdAt.Time,
 		UpdatedAt:   timestampPointer(updatedAt),
 		DeletedAt:   timestampPointer(deletedAt),

@@ -144,6 +144,9 @@ func (u *UseCase) Update(
 		Patronymic:  req.Patronymic,
 		Gender:      req.Gender,
 		Bio:         req.Bio,
+		City:        req.City,
+		Education:   req.Education,
+		Workplace:   req.Workplace,
 	}
 
 	if req.Birthday != nil {
