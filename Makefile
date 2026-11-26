@@ -2,8 +2,7 @@
 
 # Restart containers with rebuilding of images
 restart:
-	docker compose down
-	GIT_BRANCH=$$(git branch --show-current) GIT_COMMIT=$$(git rev-parse HEAD) docker compose up -d --build
+	GIT_BRANCH=$$(git branch --show-current) GIT_COMMIT=$$(git rev-parse HEAD) docker compose up -d --build --force-recreate
 
 # Generate Swagger API documentation
 swagger:

@@ -970,60 +970,6 @@ const docTemplate = `{
                 },
                 "type": "object"
             },
-            "domain.SearchMessagesResponse": {
-                "properties": {
-                    "cursor": {
-                        "type": "string"
-                    },
-                    "has_more": {
-                        "type": "boolean"
-                    },
-                    "limit": {
-                        "type": "integer"
-                    },
-                    "messages": {
-                        "items": {
-                            "$ref": "#/components/schemas/domain.Message"
-                        },
-                        "type": "array",
-                        "uniqueItems": false
-                    },
-                    "next_cursor": {
-                        "type": "string"
-                    },
-                    "query": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            },
-            "domain.SearchPostsResponse": {
-                "properties": {
-                    "cursor": {
-                        "type": "string"
-                    },
-                    "has_more": {
-                        "type": "boolean"
-                    },
-                    "limit": {
-                        "type": "integer"
-                    },
-                    "next_cursor": {
-                        "type": "string"
-                    },
-                    "posts": {
-                        "items": {
-                            "$ref": "#/components/schemas/domain.Post"
-                        },
-                        "type": "array",
-                        "uniqueItems": false
-                    },
-                    "query": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            },
             "domain.SearchProfilesResponse": {
                 "properties": {
                     "cursor": {
@@ -2458,6 +2404,16 @@ const docTemplate = `{
                             }
                         },
                         "description": "Conflict"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
                     }
                 },
                 "security": [
@@ -2473,7 +2429,7 @@ const docTemplate = `{
         },
         "/api/communities/search": {
             "get": {
-                "description": "Ищет по названию и описанию сообщества. Страница сортируется по релевантности.",
+                "description": "Ищет по названию сообщества. Страница сортируется по релевантности",
                 "parameters": [
                     {
                         "description": "Поисковая строка, от 2 до 128 символов",
@@ -2655,6 +2611,16 @@ const docTemplate = `{
                             }
                         },
                         "description": "Not Found"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
                     }
                 },
                 "security": [
@@ -2780,6 +2746,16 @@ const docTemplate = `{
                             }
                         },
                         "description": "Not Found"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/domain.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
                     }
                 },
                 "security": [
@@ -3460,94 +3436,6 @@ const docTemplate = `{
                 ]
             }
         },
-        "/api/messages/search": {
-            "get": {
-                "description": "Ищет только в чатах, участником которых является текущий пользователь.",
-                "parameters": [
-                    {
-                        "description": "Поисковая строка, от 2 до 128 символов",
-                        "in": "query",
-                        "name": "q",
-                        "required": true,
-                        "schema": {
-                            "maxLength": 128,
-                            "minLength": 2,
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "description": "Непрозрачный курсор из next_cursor предыдущего ответа",
-                        "in": "query",
-                        "name": "cursor",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "description": "Размер страницы от 1 до 50",
-                        "in": "query",
-                        "name": "limit",
-                        "schema": {
-                            "default": 20,
-                            "maximum": 50,
-                            "minimum": 1,
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/domain.SearchMessagesResponse"
-                                }
-                            }
-                        },
-                        "description": "OK"
-                    },
-                    "400": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/domain.ErrorResponse"
-                                }
-                            }
-                        },
-                        "description": "Bad Request"
-                    },
-                    "401": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/domain.ErrorResponse"
-                                }
-                            }
-                        },
-                        "description": "Unauthorized"
-                    },
-                    "500": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/domain.ErrorResponse"
-                                }
-                            }
-                        },
-                        "description": "Internal Server Error"
-                    }
-                },
-                "security": [
-                    {
-                        "SessionCookie": []
-                    }
-                ],
-                "summary": "Поиск сообщений",
-                "tags": [
-                    "search"
-                ]
-            }
-        },
         "/api/posts/create": {
             "post": {
                 "description": "Создаёт публикацию текущего пользователя. Автор определяется по сессии",
@@ -3743,79 +3631,6 @@ const docTemplate = `{
                 "summary": "Удалить свою публикацию",
                 "tags": [
                     "posts"
-                ]
-            }
-        },
-        "/api/posts/search": {
-            "get": {
-                "description": "Ищет по тексту постов пользователей и сообществ. Страница сортируется по релевантности.",
-                "parameters": [
-                    {
-                        "description": "Поисковая строка, от 2 до 128 символов",
-                        "in": "query",
-                        "name": "q",
-                        "required": true,
-                        "schema": {
-                            "maxLength": 128,
-                            "minLength": 2,
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "description": "Непрозрачный курсор из next_cursor предыдущего ответа",
-                        "in": "query",
-                        "name": "cursor",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "description": "Размер страницы от 1 до 50",
-                        "in": "query",
-                        "name": "limit",
-                        "schema": {
-                            "default": 20,
-                            "maximum": 50,
-                            "minimum": 1,
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/domain.SearchPostsResponse"
-                                }
-                            }
-                        },
-                        "description": "OK"
-                    },
-                    "400": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/domain.ErrorResponse"
-                                }
-                            }
-                        },
-                        "description": "Bad Request"
-                    },
-                    "500": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/domain.ErrorResponse"
-                                }
-                            }
-                        },
-                        "description": "Internal Server Error"
-                    }
-                },
-                "summary": "Поиск публикаций",
-                "tags": [
-                    "search"
                 ]
             }
         },
@@ -4635,7 +4450,7 @@ const docTemplate = `{
         },
         "/api/profiles/search": {
             "get": {
-                "description": "Ищет по nickname, profile_name и surname. Страница сортируется по релевантности.",
+                "description": "Ищет по nickname, profile_name и surname. Страница сортируется по релевантности",
                 "parameters": [
                     {
                         "description": "Поисковая строка, от 2 до 128 символов",

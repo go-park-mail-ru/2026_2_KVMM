@@ -87,6 +87,13 @@ const listCommunitiesQuery = `
 		WHERE c.deleted_at IS NULL
 		ORDER BY c.id DESC OFFSET $1 LIMIT $2`
 
+const listCommunitiesForSearchQuery = `
+	SELECT ` + communitySelectColumns + `
+	FROM community c
+	WHERE c.deleted_at IS NULL
+	ORDER BY c.id
+	LIMIT $1 OFFSET $2`
+
 const listCommunitySubscriptionsQuery = `
 		SELECT ` + communitySelectColumns + `
 		FROM community_member cm
@@ -220,6 +227,7 @@ func (r *CommunityRepository) Create(ctx context.Context, ownerID int64, req dom
 	if err := tx.Commit(ctx); err != nil {
 		return domain.Community{}, err
 	}
+	community.SubscribersCount = 1
 	return community, nil
 }
 
@@ -334,6 +342,19 @@ func (r *CommunityRepository) List(ctx context.Context, offset, limit int) (doma
 		items = items[:limit]
 	}
 	return domain.CommunityPage{Communities: items, Offset: offset, Limit: limit, HasMore: more}, nil
+}
+
+// ListForSearch возвращает страницу активных сообществ для пересборки поискового индекса
+func (r *CommunityRepository) ListForSearch(ctx context.Context, offset, limit int) ([]domain.Community, error) {
+	if offset < 0 || limit <= 0 {
+		return nil, fmt.Errorf("invalid search page: offset=%d limit=%d", offset, limit)
+	}
+	rows, err := r.pool.Query(ctx, listCommunitiesForSearchQuery, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanCommunities(rows)
 }
 
 // ListSubscriptions возвращает сообщества, на которые подписан профиль

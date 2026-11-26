@@ -14,6 +14,7 @@ import (
 	userv1 "kvmm/api/gen/user/v1"
 	"kvmm/internal/usergrpc"
 
+	"github.com/elastic/go-elasticsearch/v9"
 	"github.com/gorilla/mux"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -22,6 +23,7 @@ import (
 	"kvmm/internal/config"
 	"kvmm/internal/handler/chat"
 	"kvmm/internal/handler/profile"
+	searchhandler "kvmm/internal/handler/search"
 	"kvmm/internal/logging"
 	"kvmm/internal/repository"
 	chatusecase "kvmm/internal/usecase/chat"
@@ -74,8 +76,43 @@ func main() {
 	messages := repository.NewMessageRepository(db)
 	profileUC := profileusecase.New(profiles, avatars, sessionReader)
 	chatUC := chatusecase.New(chats, messages, sessionReader)
+	elasticClient, err := elasticsearch.NewClient(elasticsearch.Config{Addresses: []string{cfg.Elasticsearch.URL}})
+	if err != nil {
+		logger.Fatal("elasticsearch client failed", zap.Error(err))
+	}
+	searchHandler := searchhandler.NewHandler(elasticClient)
+	searchCtx, searchCancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	if err := searchHandler.ResetIndex(searchCtx, "profiles"); err != nil {
+		searchCancel()
+		logger.Fatal("profile search index reset failed", zap.Error(err))
+	}
+	const searchPageSize = searchhandler.BackfillPageSize
+	profileCount := 0
+	for offset := 0; ; offset += searchPageSize {
+		profilesForSearch, err := profiles.ListForSearch(searchCtx, offset, searchPageSize)
+		if err != nil {
+			searchCancel()
+			logger.Fatal("profile search backfill query failed", zap.Error(err))
+		}
+		if len(profilesForSearch) == 0 {
+			break
+		}
+		if err := searchHandler.IndexProfiles(searchCtx, profilesForSearch); err != nil {
+			searchCancel()
+			logger.Fatal("profile search index backfill failed", zap.Error(err))
+		}
+		profileCount += len(profilesForSearch)
+		if len(profilesForSearch) < searchPageSize {
+			break
+		}
+	}
+	searchCancel()
+	logger.Info("profile search index backfill completed", zap.Int("profiles", profileCount), zap.Int("page_size", searchPageSize))
 	router := http.NewServeMux()
-	userRouter := newUserRouter(profile.NewProfileHandler(profileUC), chat.NewChatHandler(chatUC, sessionReader, cfg.Frontend.Origin), cfg)
+	profileHTTPHandler := profile.NewProfileHandler(profileUC)
+	profileHTTPHandler.SetSearchClient(searchHandler)
+	chatHTTPHandler := chat.NewChatHandler(chatUC, sessionReader, cfg.Frontend.Origin)
+	userRouter := newUserRouter(profileHTTPHandler, chatHTTPHandler, searchHandler, cfg)
 	router.Handle("/", userRouter)
 	server := &http.Server{Addr: cfg.User.HTTPAddr, Handler: router, ReadHeaderTimeout: 5 * time.Second}
 	go func() {
@@ -93,10 +130,11 @@ func main() {
 	grpcServer.GracefulStop()
 }
 
-func newUserRouter(profileHandler *profile.ProfileHandler, chatHandler *chat.ChatHandler, cfg config.Config) http.Handler {
+func newUserRouter(profileHandler *profile.ProfileHandler, chatHandler *chat.ChatHandler, searchHandler *searchhandler.Handler, cfg config.Config) http.Handler {
 	router := mux.NewRouter()
 	router.HandleFunc("/api/profile/update", profileHandler.Update).Methods(http.MethodPatch)
 	router.HandleFunc("/api/profiles/find", profileHandler.Find).Methods(http.MethodGet)
+	router.HandleFunc("/api/profiles/search", searchHandler.Profiles).Methods(http.MethodGet)
 	router.HandleFunc("/api/profile/avatar", profileHandler.UploadAvatar).Methods(http.MethodPost)
 	router.HandleFunc("/api/profile/avatars", profileHandler.ListAvatars).Methods(http.MethodGet)
 	router.HandleFunc("/api/profile/avatars/{uid}", profileHandler.DeleteAvatar).Methods(http.MethodDelete)

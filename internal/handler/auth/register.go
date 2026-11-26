@@ -42,5 +42,9 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	helpers.SetSessionCookie(w, session, h.cookieSettings)
+	if err := h.index(r.Context(), response.Profile); err != nil {
+		helpers.WriteInternalError(w, "auth.register.search_index", err)
+		return
+	}
 	helpers.WriteJSON(w, http.StatusCreated, response)
 }

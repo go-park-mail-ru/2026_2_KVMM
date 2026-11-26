@@ -19,6 +19,7 @@ import (
 // @Failure 400 {object} domain.ErrorResponse
 // @Failure 401 {object} domain.ErrorResponse
 // @Failure 409 {object} domain.ErrorResponse
+// @Failure 500 {object} domain.ErrorResponse
 // @Router /api/communities [post]
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	var req domain.CreateCommunityRequest
@@ -30,6 +31,12 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.writeError(w, err)
 		return
+	}
+	if h.search != nil {
+		if err := h.search.IndexCommunity(r.Context(), item); err != nil {
+			helpers.WriteInternalError(w, "community.create.search_index", err)
+			return
+		}
 	}
 	helpers.WriteJSON(w, http.StatusCreated, item)
 }

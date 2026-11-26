@@ -66,6 +66,10 @@ func (h *AuthHandler) RegisterByEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	helpers.SetSessionCookie(w, session, h.cookieSettings)
+	if err := h.index(r.Context(), response.Profile); err != nil {
+		helpers.WriteInternalError(w, "auth.register_email.search_index", err)
+		return
+	}
 	helpers.WriteJSON(w, http.StatusCreated, response)
 }
 

@@ -11,19 +11,20 @@ import (
 
 // Config содержит настройки, общие для компонентов приложения
 type Config struct {
-	HTTP        HTTPConfig      `mapstructure:"http"`
-	Frontend    FrontendConfig  `mapstructure:"frontend"`
-	Cookie      CookieConfig    `mapstructure:"cookie"`
-	Media       MediaConfig     `mapstructure:"media"`
-	Logging     LoggingConfig   `mapstructure:"logging"`
-	DatabaseURL string          `mapstructure:"database_url"`
-	SMTP        SMTPConfig      `mapstructure:"smtp"`
-	Local       LocalConfig     `mapstructure:"local"`
-	Redis       RedisConfig     `mapstructure:"redis"`
-	Auth        AuthConfig      `mapstructure:"auth"`
-	User        UserConfig      `mapstructure:"user"`
-	Posts       PostsConfig     `mapstructure:"posts"`
-	Community   CommunityConfig `mapstructure:"community"`
+	HTTP          HTTPConfig          `mapstructure:"http"`
+	Frontend      FrontendConfig      `mapstructure:"frontend"`
+	Cookie        CookieConfig        `mapstructure:"cookie"`
+	Media         MediaConfig         `mapstructure:"media"`
+	Logging       LoggingConfig       `mapstructure:"logging"`
+	DatabaseURL   string              `mapstructure:"database_url"`
+	Elasticsearch ElasticsearchConfig `mapstructure:"elasticsearch"`
+	SMTP          SMTPConfig          `mapstructure:"smtp"`
+	Local         LocalConfig         `mapstructure:"local"`
+	Redis         RedisConfig         `mapstructure:"redis"`
+	Auth          AuthConfig          `mapstructure:"auth"`
+	User          UserConfig          `mapstructure:"user"`
+	Posts         PostsConfig         `mapstructure:"posts"`
+	Community     CommunityConfig     `mapstructure:"community"`
 }
 
 // HTTPConfig содержит настройки HTTP-сервера
@@ -97,6 +98,10 @@ type UserConfig struct {
 
 type PostsConfig struct {
 	HTTPAddr string `mapstructure:"http_addr"`
+}
+
+type ElasticsearchConfig struct {
+	URL string `mapstructure:"url"`
 }
 
 type CommunityConfig struct {
@@ -191,16 +196,17 @@ func redactIfSet(value string) string {
 // Default возвращает настройки приложения по умолчанию
 func Default() Config {
 	return Config{
-		HTTP:      HTTPConfig{Addr: "0.0.0.0:8080"},
-		Frontend:  FrontendConfig{Origin: "http://localhost:8001", URL: "http://localhost:8001"},
-		Cookie:    CookieConfig{Secure: false, SameSite: "lax"},
-		Media:     MediaConfig{Dir: "/data/media", PublicURL: "/api/media"},
-		Logging:   LoggingConfig{Mode: "prod"},
-		Redis:     RedisConfig{Addr: "redis:6379", SessionTTL: "720h"},
-		Auth:      AuthConfig{HTTPAddr: ":8081", GRPCAddr: ":9090"},
-		User:      UserConfig{HTTPAddr: ":8082", GRPCAddr: ":9091"},
-		Posts:     PostsConfig{HTTPAddr: ":8083"},
-		Community: CommunityConfig{HTTPAddr: ":8084", GRPCAddr: ":9092"},
+		HTTP:          HTTPConfig{Addr: "0.0.0.0:8080"},
+		Frontend:      FrontendConfig{Origin: "http://localhost:8001", URL: "http://localhost:8001"},
+		Cookie:        CookieConfig{Secure: false, SameSite: "lax"},
+		Media:         MediaConfig{Dir: "/data/media", PublicURL: "/api/media"},
+		Logging:       LoggingConfig{Mode: "prod"},
+		Redis:         RedisConfig{Addr: "redis:6379", SessionTTL: "720h"},
+		Auth:          AuthConfig{HTTPAddr: ":8081", GRPCAddr: ":9090"},
+		User:          UserConfig{HTTPAddr: ":8082", GRPCAddr: ":9091"},
+		Posts:         PostsConfig{HTTPAddr: ":8083"},
+		Community:     CommunityConfig{HTTPAddr: ":8084", GRPCAddr: ":9092"},
+		Elasticsearch: ElasticsearchConfig{URL: "http://elasticsearch:9200"},
 	}
 }
 

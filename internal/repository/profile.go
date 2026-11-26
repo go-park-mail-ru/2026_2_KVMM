@@ -97,6 +97,13 @@ const readProfilesByIDsQuery = `
 	WHERE p.id = ANY($1::BIGINT[])
 		AND p.deleted_at IS NULL`
 
+const listProfilesForSearchQuery = `
+	SELECT ` + profileColumns + `
+	FROM profile
+	WHERE deleted_at IS NULL
+	ORDER BY id
+	LIMIT $1 OFFSET $2`
+
 const deleteProfileQuery = `
 	UPDATE profile SET deleted_at = NOW() 
 	WHERE id = $1 AND deleted_at IS NULL`
@@ -200,6 +207,31 @@ func (r *ProfileRepository) ReadProfilesByIDs(ctx context.Context, ids []int64) 
 		}
 		if avatarURL.Valid {
 			profile.AvatarURLs = []string{avatarURL.String}
+		}
+		profiles = append(profiles, profile)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return profiles, nil
+}
+
+// ListForSearch возвращает страницу активных профилей для пересборки поискового индекса
+func (r *ProfileRepository) ListForSearch(ctx context.Context, offset, limit int) ([]domain.Profile, error) {
+	if offset < 0 || limit <= 0 {
+		return nil, fmt.Errorf("invalid search page: offset=%d limit=%d", offset, limit)
+	}
+	rows, err := r.pool.Query(ctx, listProfilesForSearchQuery, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	profiles := make([]domain.Profile, 0)
+	for rows.Next() {
+		profile, _, err := scanProfile(rows, false)
+		if err != nil {
+			return nil, err
 		}
 		profiles = append(profiles, profile)
 	}

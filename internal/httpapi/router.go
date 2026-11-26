@@ -15,6 +15,7 @@ import (
 	"kvmm/internal/handler/helpers"
 	"kvmm/internal/handler/posts"
 	"kvmm/internal/handler/relationship"
+	searchhandler "kvmm/internal/handler/search"
 	"kvmm/internal/logging"
 
 	"github.com/gorilla/mux"
@@ -26,6 +27,7 @@ type Dependencies struct {
 	Config       config.Config
 	Feed         *feed.FeedHandler
 	Posts        *posts.PostHandler
+	Search       *searchhandler.Handler
 	Communities  *community.Handler
 	Relationship *relationship.FriendsHandler
 }
@@ -38,6 +40,9 @@ func NewRouter(deps Dependencies) http.Handler {
 	}
 	router := mux.NewRouter()
 
+	if deps.Search != nil {
+		router.HandleFunc("/api/communities/search", deps.Search.Communities).Methods(http.MethodGet)
+	}
 	if deps.Feed != nil {
 		router.HandleFunc("/api/feed", deps.Feed.List).Methods(http.MethodGet)
 	}

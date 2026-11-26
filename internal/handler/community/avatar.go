@@ -59,5 +59,16 @@ func (h *Handler) UploadAvatar(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
+	if h.search != nil {
+		community, readErr := h.useCase.Read(r.Context(), uid)
+		if readErr != nil {
+			helpers.WriteInternalError(w, "community.avatar.search_read", readErr)
+			return
+		}
+		if indexErr := h.search.IndexCommunity(r.Context(), community); indexErr != nil {
+			helpers.WriteInternalError(w, "community.avatar.search_index", indexErr)
+			return
+		}
+	}
 	helpers.WriteJSON(w, http.StatusCreated, avatar)
 }

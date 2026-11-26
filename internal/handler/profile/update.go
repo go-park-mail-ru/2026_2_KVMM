@@ -52,5 +52,11 @@ func (h *ProfileHandler) Update(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+	if h.search != nil {
+		if err := h.search.IndexProfile(r.Context(), updatedProfile); err != nil {
+			helpers.WriteInternalError(w, "profile.update.search_index", err)
+			return
+		}
+	}
 	helpers.WriteJSON(w, http.StatusOK, updatedProfile)
 }

@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/elastic/go-elasticsearch/v9"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -16,6 +17,7 @@ import (
 	"kvmm/internal/authgrpc"
 	"kvmm/internal/config"
 	authHandler "kvmm/internal/handler/auth"
+	searchhandler "kvmm/internal/handler/search"
 	"kvmm/internal/logging"
 	"kvmm/internal/mailer"
 	"kvmm/internal/repository"
@@ -58,7 +60,14 @@ func main() {
 	profiles := repository.NewProfileRepository(db)
 	sender := mailer.New(mailer.SMTPSettings{Host: cfg.SMTP.Host, Port: cfg.SMTP.Port, Username: cfg.SMTP.Username, Password: cfg.SMTP.Password, From: cfg.SMTP.From, FromName: cfg.SMTP.FromName, LogoURL: cfg.SMTP.LogoURL})
 	uc := authusecase.New(profiles, sessions, sender)
-	httpServer := &http.Server{Addr: cfg.Auth.HTTPAddr, Handler: authHandler.NewRouter(authHandler.NewAuthHandler(uc)), ReadHeaderTimeout: 5 * time.Second}
+	elasticClient, err := elasticsearch.NewClient(elasticsearch.Config{Addresses: []string{cfg.Elasticsearch.URL}})
+	if err != nil {
+		logger.Fatal("elasticsearch client failed", zap.Error(err))
+	}
+	authHTTPHandler := authHandler.NewAuthHandler(uc)
+	authSearch := searchhandler.NewHandler(elasticClient)
+	authHTTPHandler.SetSearchClient(authSearch)
+	httpServer := &http.Server{Addr: cfg.Auth.HTTPAddr, Handler: authHandler.NewRouter(authHTTPHandler), ReadHeaderTimeout: 5 * time.Second}
 	listener, err := net.Listen("tcp", cfg.Auth.GRPCAddr)
 	if err != nil {
 		logger.Fatal("gRPC listen failed", zap.Error(err))

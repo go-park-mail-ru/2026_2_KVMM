@@ -43,6 +43,7 @@ func (h *Handler) Read(w http.ResponseWriter, r *http.Request) {
 // @Failure 401 {object} domain.ErrorResponse
 // @Failure 403 {object} domain.ErrorResponse
 // @Failure 404 {object} domain.ErrorResponse
+// @Failure 500 {object} domain.ErrorResponse
 // @Router /api/communities/{uid} [patch]
 func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	uid, ok := communityUID(w, r)
@@ -59,6 +60,12 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
+	if h.search != nil {
+		if err := h.search.IndexCommunity(r.Context(), item); err != nil {
+			helpers.WriteInternalError(w, "community.update.search_index", err)
+			return
+		}
+	}
 	helpers.WriteJSON(w, http.StatusOK, item)
 }
 
@@ -72,6 +79,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 // @Failure 401 {object} domain.ErrorResponse
 // @Failure 403 {object} domain.ErrorResponse
 // @Failure 404 {object} domain.ErrorResponse
+// @Failure 500 {object} domain.ErrorResponse
 // @Router /api/communities/{uid} [delete]
 func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	uid, ok := communityUID(w, r)
@@ -81,6 +89,12 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	if err := h.useCase.Delete(r.Context(), helpers.SessionCookie(r), r.Header.Get("X-CSRF-Token"), uid); err != nil {
 		h.writeError(w, err)
 		return
+	}
+	if h.search != nil {
+		if err := h.search.DeleteDocument(r.Context(), "communities", uid); err != nil {
+			helpers.WriteInternalError(w, "community.delete.search_index", err)
+			return
+		}
 	}
 	w.WriteHeader(http.StatusNoContent)
 }

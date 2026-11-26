@@ -46,3 +46,6 @@ local:
     url: http://localhost:8001
   smtp:
     logo_url: "http://localhost/public/icon.png"
+
+elasticsearch:
+  url: http://elasticsearch:9200

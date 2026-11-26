@@ -1,4 +1,25 @@
 services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.0.0
+    container_name: kvmm-elasticsearch
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+    expose:
+      - "9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    restart: unless-stopped
+    networks:
+      - kvmm
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9200/_cluster/health >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
+
   backend:
     build:
       context: .
@@ -27,7 +48,7 @@ services:
       args:
         GIT_BRANCH: ${GIT_BRANCH:-unknown}
         GIT_COMMIT: ${GIT_COMMIT:-unknown}
-    command: ["/kvmm-user"]
+    entrypoint: ["/kvmm-user"]
     container_name: kvmm-user
     env_file:
       - ./deploy/.env
@@ -44,6 +65,8 @@ services:
         condition: service_healthy
       auth:
         condition: service_started
+      elasticsearch:
+        condition: service_healthy
 
   posts:
     build:
@@ -52,7 +75,7 @@ services:
       args:
         GIT_BRANCH: ${GIT_BRANCH:-unknown}
         GIT_COMMIT: ${GIT_COMMIT:-unknown}
-    command: ["/kvmm-posts"]
+    entrypoint: ["/kvmm-posts"]
     container_name: kvmm-posts
     env_file:
       - ./deploy/.env
@@ -78,7 +101,7 @@ services:
       args:
         GIT_BRANCH: ${GIT_BRANCH:-unknown}
         GIT_COMMIT: ${GIT_COMMIT:-unknown}
-    command: ["/kvmm-community"]
+    entrypoint: ["/kvmm-community"]
     container_name: kvmm-community
     env_file:
       - ./deploy/.env
@@ -95,6 +118,8 @@ services:
         condition: service_healthy
       auth:
         condition: service_started
+      elasticsearch:
+        condition: service_healthy
       user:
         condition: service_started
 
@@ -105,7 +130,7 @@ services:
       args:
         GIT_BRANCH: ${GIT_BRANCH:-unknown}
         GIT_COMMIT: ${GIT_COMMIT:-unknown}
-    command: ["/kvmm-auth"]
+    entrypoint: ["/kvmm-auth"]
     container_name: kvmm-auth
     env_file:
       - ./deploy/.env
@@ -119,6 +144,8 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      elasticsearch:
         condition: service_healthy
 
   frontend:
@@ -196,6 +223,7 @@ services:
       start_period: 5s
 
 volumes:
+  elasticsearch_data:
   postgres_data:
   media_data:
   redis_data:

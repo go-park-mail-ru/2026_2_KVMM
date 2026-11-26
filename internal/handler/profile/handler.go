@@ -1,12 +1,21 @@
 package profile
 
-import profileusecase "kvmm/internal/usecase/profile"
+import (
+	"context"
+	"kvmm/internal/domain"
+	profileusecase "kvmm/internal/usecase/profile"
+)
 
 type ProfileHandler struct {
 	useCase *profileusecase.UseCase
+	search  interface {
+		IndexProfile(context.Context, domain.Profile) error
+	}
 }
 
-// NewProfileHandler создаёт обработчик профиля
 func NewProfileHandler(useCase *profileusecase.UseCase) *ProfileHandler {
 	return &ProfileHandler{useCase: useCase}
 }
+func (h *ProfileHandler) SetSearchClient(s interface {
+	IndexProfile(context.Context, domain.Profile) error
+}) { h.search = s }

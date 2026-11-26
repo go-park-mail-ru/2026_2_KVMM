@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"context"
+	"kvmm/internal/domain"
 	"net/http"
 
 	"kvmm/internal/handler/helpers"
@@ -10,7 +12,10 @@ import (
 )
 
 type AuthHandler struct {
-	useCase        *authusecase.UseCase
+	useCase *authusecase.UseCase
+	search  interface {
+		IndexProfile(context.Context, domain.Profile) error
+	}
 	cookieSettings helpers.CookieSettings
 }
 
@@ -37,4 +42,16 @@ func NewAuthHandler(useCase *authusecase.UseCase, settings ...helpers.CookieSett
 		cookieSettings = settings[0]
 	}
 	return &AuthHandler{useCase: useCase, cookieSettings: cookieSettings}
+}
+
+func (h *AuthHandler) SetSearchClient(s interface {
+	IndexProfile(context.Context, domain.Profile) error
+}) {
+	h.search = s
+}
+func (h *AuthHandler) index(ctx context.Context, p domain.Profile) error {
+	if h.search != nil {
+		return h.search.IndexProfile(ctx, p)
+	}
+	return nil
 }
