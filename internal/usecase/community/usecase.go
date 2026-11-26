@@ -27,6 +27,7 @@ var (
 type communityRepository interface {
 	Create(context.Context, int64, domain.CreateCommunityRequest) (domain.Community, error)
 	Read(context.Context, string) (domain.Community, error)
+	IsSubscribed(context.Context, string, int64) (bool, error)
 	List(context.Context, int, int) (domain.CommunityPage, error)
 	ListSubscriptions(context.Context, int64, int, int) (domain.CommunityPage, error)
 	Update(context.Context, int64, string, domain.UpdateCommunityRequest) (domain.Community, error)
@@ -68,10 +69,21 @@ func (u *CommunityUseCase) Create(ctx context.Context, session, csrf string, req
 	return community, err
 }
 
-func (u *CommunityUseCase) Read(ctx context.Context, uid string) (domain.Community, error) {
+func (u *CommunityUseCase) Read(ctx context.Context, uid, session string) (domain.Community, error) {
 	community, err := u.communities.Read(ctx, uid)
 	if err != nil {
 		logging.LogUseCaseErrorContext(ctx, "community", "read", err)
+		return community, err
+	}
+	if session != "" {
+		profileID, _, readErr := u.sessions.Read(session)
+		if readErr != nil {
+			return domain.Community{}, readErr
+		}
+		community.IsSubscribed, err = u.communities.IsSubscribed(ctx, uid, profileID)
+		if err != nil {
+			return domain.Community{}, err
+		}
 	}
 	return community, err
 }

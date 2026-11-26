@@ -60,7 +60,7 @@ func (h *Handler) UploadAvatar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if h.search != nil {
-		community, readErr := h.useCase.Read(r.Context(), uid)
+		community, readErr := h.useCase.Read(r.Context(), uid, helpers.SessionCookie(r))
 		if readErr != nil {
 			helpers.WriteInternalError(w, "community.avatar.search_read", readErr)
 			return

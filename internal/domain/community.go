@@ -10,6 +10,7 @@ type Community struct {
 	Bio              string     `json:"bio" example:"Сообщество разработчиков Go"`
 	AvatarURL        *string    `json:"avatar_url,omitempty" example:"/api/media/community_avatars/avatar.png"`
 	SubscribersCount int64      `json:"subscribers_count" example:"42"`
+	IsSubscribed     bool       `json:"is_subscribed" example:"true"`
 	CreatedAt        time.Time  `json:"created_at"`
 	UpdatedAt        *time.Time `json:"updated_at,omitempty"`
 }

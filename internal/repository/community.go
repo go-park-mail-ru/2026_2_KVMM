@@ -81,6 +81,13 @@ const readCommunityByUIDQuery = `
 		FROM community c
 		WHERE c.uid = $1::uuid AND c.deleted_at IS NULL`
 
+const communitySubscriptionStatusQuery = `
+	SELECT EXISTS (
+		SELECT 1 FROM community_member cm
+		JOIN community c ON c.id = cm.community_id
+		WHERE c.uid = $1::uuid AND cm.profile_id = $2 AND cm.deleted_at IS NULL
+	)`
+
 const listCommunitiesQuery = `
 		SELECT ` + communitySelectColumns + `
 		FROM community c
@@ -324,6 +331,16 @@ func (r *CommunityRepository) CommunityIDByUID(ctx context.Context, uid string) 
 func (r *CommunityRepository) Read(ctx context.Context, uid string) (domain.Community, error) {
 	community, err := scanCommunity(r.pool.QueryRow(ctx, readCommunityByUIDQuery, uid))
 	return community, normalizeCommunityError(err)
+}
+
+// IsSubscribed проверяет активную подписку профиля на сообщество.
+func (r *CommunityRepository) IsSubscribed(ctx context.Context, uid string, profileID int64) (bool, error) {
+	if profileID == 0 {
+		return false, nil
+	}
+	var subscribed bool
+	err := r.pool.QueryRow(ctx, communitySubscriptionStatusQuery, uid, profileID).Scan(&subscribed)
+	return subscribed, err
 }
 
 // List возвращает страницу активных сообществ

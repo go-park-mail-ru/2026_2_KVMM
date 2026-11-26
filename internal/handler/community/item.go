@@ -22,7 +22,7 @@ func (h *Handler) Read(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	item, err := h.useCase.Read(r.Context(), uid)
+	item, err := h.useCase.Read(r.Context(), uid, helpers.SessionCookie(r))
 	if err != nil {
 		h.writeError(w, err)
 		return
