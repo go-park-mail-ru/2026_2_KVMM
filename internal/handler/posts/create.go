@@ -80,6 +80,10 @@ func (h *PostHandler) writeError(w http.ResponseWriter, err error) {
 		helpers.WriteError(w, http.StatusForbidden, "csrf_failed", "valid X-CSRF-Token header is required")
 	case errors.Is(err, postusecase.ErrForbidden):
 		helpers.WriteError(w, http.StatusForbidden, "forbidden", "you can change only your own post")
+	case errors.Is(err, postusecase.ErrTextTooLong):
+		helpers.WriteError(w, http.StatusBadRequest, "post_text_too_long", err.Error())
+	case errors.Is(err, postusecase.ErrFeatureDisabled):
+		helpers.WriteError(w, http.StatusForbidden, "feature_disabled", err.Error())
 	case errors.Is(err, postusecase.ErrInvalidPost):
 		helpers.WriteError(w, http.StatusBadRequest, "validation_error", err.Error())
 	case errors.Is(err, postusecase.ErrPostNotFound), errors.Is(err, postusecase.ErrProfileNotFound):

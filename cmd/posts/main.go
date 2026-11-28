@@ -19,6 +19,8 @@ import (
 	"kvmm/internal/handler/posts"
 	"kvmm/internal/httpapi"
 	"kvmm/internal/logging"
+	"kvmm/internal/onlineconfgrpc"
+	"kvmm/internal/postsconfig"
 	"kvmm/internal/repository"
 	feedusecase "kvmm/internal/usecase/feed"
 	postusecase "kvmm/internal/usecase/post"
@@ -71,7 +73,24 @@ func main() {
 	sessionReader := sessionusecase.New(sessions)
 	postRepository := repository.NewPostRepository(db, profiles, communities)
 	feedUseCase := feedusecase.New(postRepository, sessionReader)
-	postUseCase := postusecase.New(postRepository, sessionReader, communities)
+	runtimeCtx, stopRuntime := context.WithCancel(context.Background())
+	defer stopRuntime()
+	onlineConf, err := onlineconfgrpc.Dial(dialTarget(cfg.OnlineConf.GRPCAddr, "onlineconf"), cfg.OnlineConf.InternalToken)
+	if err != nil {
+		logger.Fatal("onlineconf gRPC connection failed", zap.Error(err))
+	}
+	defer onlineConf.Close()
+
+	runtime := postsconfig.New(onlineConf.Snapshot)
+	logRefreshError := func(err error) {
+		logger.Warn("posts OnlineConf snapshot refresh failed", zap.Error(err))
+	}
+	if err := runtime.Refresh(runtimeCtx); err != nil {
+		logRefreshError(err)
+	}
+	go runtime.Poll(runtimeCtx, logRefreshError)
+
+	postUseCase := postusecase.NewWithRuntime(postRepository, sessionReader, runtime, communities)
 	server := &http.Server{
 		Addr: cfg.Posts.HTTPAddr,
 		Handler: httpapi.NewRouter(httpapi.Dependencies{
@@ -91,6 +110,7 @@ func main() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 	<-stop
+	stopRuntime()
 	shutdown, cancelShutdown := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancelShutdown()
 	if err := server.Shutdown(shutdown); err != nil {

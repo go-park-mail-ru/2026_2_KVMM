@@ -4,14 +4,18 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"unicode/utf8"
 
 	"kvmm/internal/domain"
 	"kvmm/internal/logging"
+	"kvmm/internal/postsconfig"
 	"kvmm/internal/repository"
 	sessionusecase "kvmm/internal/usecase/session"
 )
 
 var (
+	ErrTextTooLong                 = errors.New("post text exceeds the configured limit")
+	ErrFeatureDisabled             = errors.New("post likes are disabled for this user")
 	ErrUnauthorized                = sessionusecase.ErrUnauthorized
 	ErrInvalidCSRF                 = sessionusecase.ErrInvalidCSRF
 	ErrForbidden                   = errors.New("post belongs to another profile")
@@ -56,6 +60,7 @@ type postLikesRepository interface {
 
 // UseCase содержит бизнес-логику публикаций
 type UseCase struct {
+	runtime        *postsconfig.Cache
 	posts          postRepository
 	communityPosts communityPostRepository
 	communities    communityPostAuthorizer
@@ -78,6 +83,40 @@ func New(posts postRepository, sessions *sessionusecase.UseCase, communities ...
 	return useCase
 }
 
+func NewWithRuntime(posts postRepository, sessions *sessionusecase.UseCase, runtime *postsconfig.Cache, communities communityPostAuthorizer) *UseCase {
+	useCase := New(posts, sessions, communities)
+	useCase.runtime = runtime
+	return useCase
+}
+
+func (u *UseCase) Runtime(sessionToken string) (postsconfig.Values, error) {
+	if u.sessions == nil {
+		return postsconfig.Values{}, ErrUnauthorized
+	}
+	userID, _, err := u.sessions.Read(sessionToken)
+	if err != nil {
+		return postsconfig.Values{}, err
+	}
+	return u.runtimeValues(userID), nil
+}
+
+func (u *UseCase) runtimeValues(userID int64) postsconfig.Values {
+	if u.runtime == nil {
+		return postsconfig.Values{MaxTextLength: 2048, LikesEnabled: true}
+	}
+	return u.runtime.Values(userID)
+}
+
+func (u *UseCase) validatePersonalText(text string, userID int64) error {
+	if utf8.RuneCountInString(text) <= u.runtimeValues(userID).MaxTextLength {
+		return nil
+	}
+	if u.runtime == nil {
+		return ErrInvalidPost
+	}
+	return ErrTextTooLong
+}
+
 // Create создаёт публикацию от имени текущего пользователя
 func (u *UseCase) Create(
 	ctx context.Context,
@@ -90,8 +129,8 @@ func (u *UseCase) Create(
 		return domain.Post{}, err
 	}
 	text := strings.TrimSpace(req.PostText)
-	if len([]rune(text)) > 2048 {
-		return domain.Post{}, ErrInvalidPost
+	if err := u.validatePersonalText(text, userID); err != nil {
+		return domain.Post{}, err
 	}
 	var postText *string
 	if text != "" {
@@ -118,8 +157,12 @@ func (u *UseCase) Update(
 	if err != nil {
 		return domain.Post{}, err
 	}
-	if req.PostText == nil || len([]rune(strings.TrimSpace(*req.PostText))) > 2048 {
+	if req.PostText == nil {
 		return domain.Post{}, ErrInvalidPost
+	}
+	text := strings.TrimSpace(*req.PostText)
+	if err := u.validatePersonalText(text, userID); err != nil {
+		return domain.Post{}, err
 	}
 	post, err := u.posts.ReadByID(ctx, req.PostID)
 	if err != nil {
@@ -129,7 +172,6 @@ func (u *UseCase) Update(
 	if post.AuthorProfileID == nil || *post.AuthorProfileID != userID {
 		return domain.Post{}, ErrForbidden
 	}
-	text := strings.TrimSpace(*req.PostText)
 	updated, err := u.posts.Update(ctx, req.PostID, repository.UpdatePostParams{PostText: &text})
 	if err != nil {
 		logging.LogUseCaseErrorContext(ctx, "post", "update post", err)
@@ -143,10 +185,13 @@ func (u *UseCase) UpdateByUID(ctx context.Context, sessionToken, csrfToken strin
 	if err != nil {
 		return domain.Post{}, err
 	}
-	if req.PostText == nil || len([]rune(strings.TrimSpace(*req.PostText))) > 2048 {
+	if req.PostText == nil {
 		return domain.Post{}, ErrInvalidPost
 	}
 	text := strings.TrimSpace(*req.PostText)
+	if err := u.validatePersonalText(text, userID); err != nil {
+		return domain.Post{}, err
+	}
 	post, err := u.posts.UpdateByUUID(ctx, req.PostUID, userID, repository.UpdatePostParams{PostText: &text})
 	if err != nil {
 		logging.LogUseCaseErrorContext(ctx, "post", "update post", err)
@@ -338,6 +383,9 @@ func (u *UseCase) Like(ctx context.Context, sessionToken, csrfToken, postUID str
 	if err != nil {
 		return err
 	}
+	if !u.runtimeValues(profileID).LikesEnabled {
+		return ErrFeatureDisabled
+	}
 	if u.likes == nil {
 		return ErrPostLikeUnavailable
 	}
@@ -353,6 +401,9 @@ func (u *UseCase) Unlike(ctx context.Context, sessionToken, csrfToken, postUID s
 	profileID, err := u.authorize(sessionToken, csrfToken)
 	if err != nil {
 		return err
+	}
+	if !u.runtimeValues(profileID).LikesEnabled {
+		return ErrFeatureDisabled
 	}
 	if u.likes == nil {
 		return ErrPostLikeUnavailable
