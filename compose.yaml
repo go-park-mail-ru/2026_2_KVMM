@@ -54,12 +54,17 @@ services:
       - ./deploy/.env
     expose:
       - "8085"
+      - "9093"
     restart: unless-stopped
     networks:
       - kvmm
     depends_on:
       postgres:
         condition: service_healthy
+      auth:
+        condition: service_started
+      user:
+        condition: service_started
 
   user:
     build:

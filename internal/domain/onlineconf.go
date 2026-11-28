@@ -35,7 +35,8 @@ const (
 
 // OnlineConfEntry описывает конфигурационный ключ или feature flag
 type OnlineConfEntry struct {
-	ID                 int64               `json:"id" example:"1"`
+	ID                 int64               `json:"-"`
+	UID                string              `json:"uid" example:"550e8400-e29b-41d4-a716-446655440000"`
 	Scope              OnlineConfScope     `json:"scope" example:"posts"`
 	Name               string              `json:"name" example:"max_text_length"`
 	Kind               OnlineConfEntryKind `json:"kind" example:"config"`
@@ -47,6 +48,30 @@ type OnlineConfEntry struct {
 	UpdatedByProfileID int64               `json:"-"`
 	CreatedAt          time.Time           `json:"created_at"`
 	UpdatedAt          *time.Time          `json:"updated_at,omitempty"`
+}
+
+// OnlineConfEntriesResponse содержит список конфигураций и feature flags для административного API.
+type OnlineConfEntriesResponse struct {
+	Entries []OnlineConfEntry `json:"entries"`
+}
+
+// CreateOnlineConfEntryRequest содержит данные новой конфигурации или feature flag.
+type CreateOnlineConfEntryRequest struct {
+	Scope   OnlineConfScope     `json:"scope" example:"posts"`
+	Name    string              `json:"name" example:"max_text_length"`
+	Kind    OnlineConfEntryKind `json:"kind" example:"config"`
+	Value   json.RawMessage     `json:"value,omitempty" swaggertype:"object"`
+	Rollout *int                `json:"rollout,omitempty" example:"20"`
+	Include []string            `json:"include,omitempty"`
+	Exclude []string            `json:"exclude,omitempty"`
+}
+
+// UpdateOnlineConfEntryRequest содержит изменяемые поля существующей записи.
+type UpdateOnlineConfEntryRequest struct {
+	Value   *json.RawMessage `json:"value,omitempty" swaggertype:"object"`
+	Rollout *int             `json:"rollout,omitempty" example:"20"`
+	Include *[]string        `json:"include,omitempty"`
+	Exclude *[]string        `json:"exclude,omitempty"`
 }
 
 // OnlineConfFlagTarget содержит внутренние и публичные данные пользователя для раскатки флага
@@ -68,15 +93,4 @@ type OnlineConfSnapshot struct {
 	Scope   OnlineConfScope                   `json:"scope" example:"posts"`
 	Configs map[string]json.RawMessage        `json:"configs"`
 	Flags   map[string]OnlineConfFlagSnapshot `json:"flags"`
-}
-
-// OnlineConfAdmin описывает профиль Nexly с доступом к административному API OnlineConf
-type OnlineConfAdmin struct {
-	ID                 int64      `json:"id"`
-	ProfileID          int64      `json:"-"`
-	ProfileUID         string     `json:"profile_uid" example:"550e8400-e29b-41d4-a716-446655440000"`
-	GrantedByProfileID *int64     `json:"-"`
-	CreatedAt          time.Time  `json:"created_at"`
-	UpdatedAt          *time.Time `json:"updated_at,omitempty"`
-	RevokedAt          *time.Time `json:"revoked_at,omitempty"`
 }

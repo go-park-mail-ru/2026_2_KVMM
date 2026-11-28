@@ -113,8 +113,10 @@ type CommunityConfig struct {
 // OnlineConfConfig содержит настройки сервиса динамических конфигураций.
 type OnlineConfConfig struct {
 	HTTPAddr               string `mapstructure:"http_addr"`
+	GRPCAddr               string `mapstructure:"grpc_addr"`
 	BootstrapAdminLogin    string `mapstructure:"bootstrap_admin_login"`
 	BootstrapAdminPassword string `mapstructure:"bootstrap_admin_password"`
+	InternalToken          string `mapstructure:"internal_token"`
 }
 
 // TTLDuration возвращает срок жизни сессии в формате time.Duration.
@@ -214,7 +216,7 @@ func Default() Config {
 		User:          UserConfig{HTTPAddr: ":8082", GRPCAddr: ":9091"},
 		Posts:         PostsConfig{HTTPAddr: ":8083"},
 		Community:     CommunityConfig{HTTPAddr: ":8084", GRPCAddr: ":9092"},
-		OnlineConf:    OnlineConfConfig{HTTPAddr: ":8085"},
+		OnlineConf:    OnlineConfConfig{HTTPAddr: ":8085", GRPCAddr: ":9093"},
 		Elasticsearch: ElasticsearchConfig{URL: "http://elasticsearch:9200"},
 	}
 }
@@ -293,6 +295,7 @@ func bindEnvironment(settings *viper.Viper) error {
 		"redis.password":                      "REDIS_PASSWORD",
 		"onlineconf.bootstrap_admin_login":    "ONLINECONF_ADMIN_LOGIN",
 		"onlineconf.bootstrap_admin_password": "ONLINECONF_ADMIN_PASSWORD",
+		"onlineconf.internal_token":           "ONLINECONF_INTERNAL_TOKEN",
 	}
 	for key, environment := range bindings {
 		if err := settings.BindEnv(key, environment); err != nil {

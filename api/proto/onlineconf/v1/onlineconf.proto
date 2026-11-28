@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package onlineconf.v1;
+
+option go_package = "kvmm/api/gen/onlineconf/v1;onlineconfv1";
+
+// OnlineConfService предоставляет микросервисам снимок настроек одного scope.
+service OnlineConfService {
+  rpc GetSnapshot(GetSnapshotRequest) returns (GetSnapshotResponse);
+}
+
+// GetSnapshotRequest содержит scope, для которого нужен снимок настроек.
+message GetSnapshotRequest {
+  string scope = 1;
+}
+
+// GetSnapshotResponse содержит конфигурации и feature flags одного scope.
+message GetSnapshotResponse {
+  string scope = 1;
+  repeated Config configs = 2;
+  repeated FeatureFlag flags = 3;
+}
+
+// Config хранит JSON-значение конфигурационного ключа в исходном виде.
+message Config {
+  string name = 1;
+  bytes value_json = 2;
+}
+
+// FeatureFlag описывает процент раскатки и персональные исключения.
+message FeatureFlag {
+  string name = 1;
+  int32 rollout = 2;
+  repeated int64 include_ids = 3;
+  repeated int64 exclude_ids = 4;
+}

@@ -15,12 +15,11 @@ import (
 var (
 	ErrOnlineConfEntryNotFound = errors.New("onlineconf entry not found")
 	ErrOnlineConfEntryConflict = errors.New("onlineconf entry already exists")
-	ErrOnlineConfAdminNotFound = errors.New("onlineconf admin not found")
-	ErrOnlineConfAdminConflict = errors.New("onlineconf admin already exists")
 )
 
 const onlineConfEntryColumns = `
 	id,
+	uid,
 	scope,
 	name,
 	kind,
@@ -30,15 +29,6 @@ const onlineConfEntryColumns = `
 	updated_by_profile_id,
 	created_at,
 	updated_at`
-
-const onlineConfAdminColumns = `
-	id,
-	profile_id,
-	profile_uid,
-	granted_by_profile_id,
-	created_at,
-	updated_at,
-	revoked_at`
 
 const createOnlineConfEntryQuery = `
 	INSERT INTO onlineconf_entry (
@@ -59,13 +49,13 @@ const updateOnlineConfEntryQuery = `
 		rollout = COALESCE($3, rollout),
 		updated_by_profile_id = $4,
 		updated_at = CURRENT_TIMESTAMP
-	WHERE id = $1
+	WHERE uid = $1::uuid
 	RETURNING ` + onlineConfEntryColumns
 
 const readOnlineConfEntryQuery = `
 	SELECT ` + onlineConfEntryColumns + `
 	FROM onlineconf_entry
-	WHERE id = $1`
+	WHERE uid = $1::uuid`
 
 const listOnlineConfEntriesQuery = `
 	SELECT ` + onlineConfEntryColumns + `
@@ -96,17 +86,6 @@ const insertOnlineConfTargetsQuery = `
 	FROM UNNEST($2::BIGINT[], $3::UUID[], $4::TEXT[])
 		AS target(profile_id, profile_uid, mode)`
 
-const createOnlineConfAdminQuery = `
-	INSERT INTO onlineconf_admin (profile_id, profile_uid, granted_by_profile_id)
-	VALUES ($1, $2::uuid, $3)
-	RETURNING ` + onlineConfAdminColumns
-
-const readOnlineConfAdminByProfileIDQuery = `
-	SELECT ` + onlineConfAdminColumns + `
-	FROM onlineconf_admin
-	WHERE profile_id = $1
-		AND revoked_at IS NULL`
-
 // OnlineConfRepository выполняет SQL-операции сервиса OnlineConf
 type OnlineConfRepository struct {
 	pool dbPool
@@ -130,13 +109,6 @@ type UpdateOnlineConfEntryParams struct {
 	ReplaceTargets     bool
 	Targets            []domain.OnlineConfFlagTarget
 	UpdatedByProfileID int64
-}
-
-// CreateOnlineConfAdminParams содержит профиль Nexly, которому выдаётся доступ к админке
-type CreateOnlineConfAdminParams struct {
-	ProfileID          int64
-	ProfileUID         string
-	GrantedByProfileID *int64
 }
 
 type onlineConfQuerier interface {
@@ -191,7 +163,7 @@ func (r *OnlineConfRepository) CreateEntry(
 // UpdateEntry изменяет значение или раскатку записи и при необходимости полностью заменяет правила пользователей
 func (r *OnlineConfRepository) UpdateEntry(
 	ctx context.Context,
-	id int64,
+	uid string,
 	params UpdateOnlineConfEntryParams,
 ) (domain.OnlineConfEntry, error) {
 	tx, err := r.pool.Begin(ctx)
@@ -208,7 +180,7 @@ func (r *OnlineConfRepository) UpdateEntry(
 	entry, err := scanOnlineConfEntry(tx.QueryRow(
 		ctx,
 		updateOnlineConfEntryQuery,
-		id,
+		strings.TrimSpace(uid),
 		onlineConfJSONPointerArgument(params.Value),
 		onlineConfIntArgument(params.Rollout),
 		params.UpdatedByProfileID,
@@ -237,8 +209,8 @@ func (r *OnlineConfRepository) UpdateEntry(
 }
 
 // ReadEntry возвращает запись OnlineConf вместе с персональными правилами feature flag.
-func (r *OnlineConfRepository) ReadEntry(ctx context.Context, id int64) (domain.OnlineConfEntry, error) {
-	entry, err := scanOnlineConfEntry(r.pool.QueryRow(ctx, readOnlineConfEntryQuery, id))
+func (r *OnlineConfRepository) ReadEntry(ctx context.Context, uid string) (domain.OnlineConfEntry, error) {
+	entry, err := scanOnlineConfEntry(r.pool.QueryRow(ctx, readOnlineConfEntryQuery, strings.TrimSpace(uid)))
 	if err != nil {
 		return domain.OnlineConfEntry{}, normalizeOnlineConfEntryError(err)
 	}
@@ -326,33 +298,6 @@ func (r *OnlineConfRepository) Snapshot(
 	return snapshot, nil
 }
 
-// CreateAdmin добавляет профиль в список администраторов OnlineConf
-func (r *OnlineConfRepository) CreateAdmin(
-	ctx context.Context,
-	params CreateOnlineConfAdminParams,
-) (domain.OnlineConfAdmin, error) {
-	admin, err := scanOnlineConfAdmin(r.pool.QueryRow(
-		ctx,
-		createOnlineConfAdminQuery,
-		params.ProfileID,
-		strings.TrimSpace(params.ProfileUID),
-		nullableInt64(params.GrantedByProfileID),
-	))
-	if err != nil {
-		return domain.OnlineConfAdmin{}, normalizeOnlineConfAdminError(err)
-	}
-	return admin, nil
-}
-
-// ReadAdminByProfileID возвращает активное право администратора по ID
-func (r *OnlineConfRepository) ReadAdminByProfileID(ctx context.Context, profileID int64) (domain.OnlineConfAdmin, error) {
-	admin, err := scanOnlineConfAdmin(r.pool.QueryRow(ctx, readOnlineConfAdminByProfileIDQuery, profileID))
-	if err != nil {
-		return domain.OnlineConfAdmin{}, normalizeOnlineConfAdminError(err)
-	}
-	return admin, nil
-}
-
 func insertOnlineConfTargets(
 	ctx context.Context,
 	tx pgx.Tx,
@@ -410,6 +355,7 @@ func readOnlineConfTargets(
 func scanOnlineConfEntry(row rowScanner) (domain.OnlineConfEntry, error) {
 	var (
 		entry     domain.OnlineConfEntry
+		uid       pgtype.UUID
 		scope     pgtype.Text
 		kind      pgtype.Text
 		value     []byte
@@ -418,6 +364,7 @@ func scanOnlineConfEntry(row rowScanner) (domain.OnlineConfEntry, error) {
 	)
 	if err := row.Scan(
 		&entry.ID,
+		&uid,
 		&scope,
 		&entry.Name,
 		&kind,
@@ -431,6 +378,7 @@ func scanOnlineConfEntry(row rowScanner) (domain.OnlineConfEntry, error) {
 		return domain.OnlineConfEntry{}, err
 	}
 	entry.Scope = domain.OnlineConfScope(scope.String)
+	entry.UID = uuidString(uid)
 	entry.Kind = domain.OnlineConfEntryKind(kind.String)
 	if value != nil {
 		entry.Value = append(json.RawMessage(nil), value...)
@@ -456,32 +404,6 @@ func scanOnlineConfEntries(rows pgx.Rows) ([]domain.OnlineConfEntry, error) {
 		return nil, err
 	}
 	return entries, nil
-}
-
-func scanOnlineConfAdmin(row rowScanner) (domain.OnlineConfAdmin, error) {
-	var (
-		admin       domain.OnlineConfAdmin
-		profileUID  pgtype.UUID
-		grantedByID pgtype.Int8
-		updatedAt   pgtype.Timestamptz
-		revokedAt   pgtype.Timestamptz
-	)
-	if err := row.Scan(
-		&admin.ID,
-		&admin.ProfileID,
-		&profileUID,
-		&grantedByID,
-		&admin.CreatedAt,
-		&updatedAt,
-		&revokedAt,
-	); err != nil {
-		return domain.OnlineConfAdmin{}, err
-	}
-	admin.ProfileUID = uuidString(profileUID)
-	admin.GrantedByProfileID = int64Pointer(grantedByID)
-	admin.UpdatedAt = timestampPointer(updatedAt)
-	admin.RevokedAt = timestampPointer(revokedAt)
-	return admin, nil
 }
 
 func applyOnlineConfTargets(entry *domain.OnlineConfEntry, targets []domain.OnlineConfFlagTarget) {
@@ -531,16 +453,6 @@ func normalizeOnlineConfEntryError(err error) error {
 	}
 	if isUniqueViolation(err) {
 		return ErrOnlineConfEntryConflict
-	}
-	return err
-}
-
-func normalizeOnlineConfAdminError(err error) error {
-	if errors.Is(err, pgx.ErrNoRows) {
-		return ErrOnlineConfAdminNotFound
-	}
-	if isUniqueViolation(err) {
-		return ErrOnlineConfAdminConflict
 	}
 	return err
 }

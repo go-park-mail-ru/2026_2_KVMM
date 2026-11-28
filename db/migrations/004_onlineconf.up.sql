@@ -1,6 +1,7 @@
 -- Конфигурационные значения и feature flags сервиса OnlineConf.
 CREATE TABLE onlineconf_entry (
     id BIGINT GENERATED ALWAYS AS IDENTITY,
+    uid UUID NOT NULL DEFAULT gen_random_uuid(),
 
     scope TEXT NOT NULL
         CHECK (scope IN ('frontend', 'auth', 'user', 'posts', 'community', 'backend')),
@@ -19,6 +20,7 @@ CREATE TABLE onlineconf_entry (
     updated_at TIMESTAMPTZ NULL,
 
     PRIMARY KEY (id),
+    UNIQUE (uid),
 
     CHECK (
         (kind = 'config' AND value IS NOT NULL AND rollout IS NULL)
@@ -50,20 +52,4 @@ CREATE TABLE onlineconf_flag_target (
         ON DELETE CASCADE
 );
 
--- Профили Nexly, которым разрешён доступ к административному API OnlineConf.
-CREATE TABLE onlineconf_admin (
-    id BIGINT GENERATED ALWAYS AS IDENTITY,
-
-    profile_id BIGINT NOT NULL,
-    profile_uid UUID NOT NULL,
-    granted_by_profile_id BIGINT NULL,
-
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ NULL,
-    revoked_at TIMESTAMPTZ NULL,
-
-    PRIMARY KEY (id),
-    UNIQUE (profile_id),
-    UNIQUE (profile_uid)
-);
 
