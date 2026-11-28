@@ -25,6 +25,7 @@ type Config struct {
 	User          UserConfig          `mapstructure:"user"`
 	Posts         PostsConfig         `mapstructure:"posts"`
 	Community     CommunityConfig     `mapstructure:"community"`
+	OnlineConf    OnlineConfConfig    `mapstructure:"onlineconf"`
 }
 
 // HTTPConfig содержит настройки HTTP-сервера
@@ -107,6 +108,13 @@ type ElasticsearchConfig struct {
 type CommunityConfig struct {
 	HTTPAddr string `mapstructure:"http_addr"`
 	GRPCAddr string `mapstructure:"grpc_addr"`
+}
+
+// OnlineConfConfig содержит настройки сервиса динамических конфигураций.
+type OnlineConfConfig struct {
+	HTTPAddr               string `mapstructure:"http_addr"`
+	BootstrapAdminLogin    string `mapstructure:"bootstrap_admin_login"`
+	BootstrapAdminPassword string `mapstructure:"bootstrap_admin_password"`
 }
 
 // TTLDuration возвращает срок жизни сессии в формате time.Duration.
@@ -206,6 +214,7 @@ func Default() Config {
 		User:          UserConfig{HTTPAddr: ":8082", GRPCAddr: ":9091"},
 		Posts:         PostsConfig{HTTPAddr: ":8083"},
 		Community:     CommunityConfig{HTTPAddr: ":8084", GRPCAddr: ":9092"},
+		OnlineConf:    OnlineConfConfig{HTTPAddr: ":8085"},
 		Elasticsearch: ElasticsearchConfig{URL: "http://elasticsearch:9200"},
 	}
 }
@@ -270,18 +279,20 @@ func Load() (Config, error) {
 // bindEnvironment связывает приватные переменные окружения с настройками Viper
 func bindEnvironment(settings *viper.Viper) error {
 	bindings := map[string]string{
-		"postgres.db":       "POSTGRES_DB",
-		"postgres.user":     "POSTGRES_USER",
-		"postgres.password": "POSTGRES_PASSWORD",
-		"postgres.host":     "POSTGRES_HOST",
-		"postgres.port":     "POSTGRES_PORT",
-		"smtp.host":         "SMTP_HOST",
-		"smtp.port":         "SMTP_PORT",
-		"smtp.username":     "SMTP_USERNAME",
-		"smtp.password":     "SMTP_PASSWORD",
-		"smtp.from":         "SMTP_FROM",
-		"smtp.from_name":    "SMTP_FROM_NAME",
-		"redis.password":    "REDIS_PASSWORD",
+		"postgres.db":                         "POSTGRES_DB",
+		"postgres.user":                       "POSTGRES_USER",
+		"postgres.password":                   "POSTGRES_PASSWORD",
+		"postgres.host":                       "POSTGRES_HOST",
+		"postgres.port":                       "POSTGRES_PORT",
+		"smtp.host":                           "SMTP_HOST",
+		"smtp.port":                           "SMTP_PORT",
+		"smtp.username":                       "SMTP_USERNAME",
+		"smtp.password":                       "SMTP_PASSWORD",
+		"smtp.from":                           "SMTP_FROM",
+		"smtp.from_name":                      "SMTP_FROM_NAME",
+		"redis.password":                      "REDIS_PASSWORD",
+		"onlineconf.bootstrap_admin_login":    "ONLINECONF_ADMIN_LOGIN",
+		"onlineconf.bootstrap_admin_password": "ONLINECONF_ADMIN_PASSWORD",
 	}
 	for key, environment := range bindings {
 		if err := settings.BindEnv(key, environment); err != nil {

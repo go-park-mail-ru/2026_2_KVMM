@@ -15,7 +15,8 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
     go build -trimpath -ldflags="-s -w" -o /out/kvmm-auth ./cmd/auth && \
     go build -trimpath -ldflags="-s -w" -o /out/kvmm-user ./cmd/user && \
     go build -trimpath -ldflags="-s -w" -o /out/kvmm-posts ./cmd/posts && \
-    go build -trimpath -ldflags="-s -w" -o /out/kvmm-community ./cmd/community
+    go build -trimpath -ldflags="-s -w" -o /out/kvmm-community ./cmd/community && \
+    go build -trimpath -ldflags="-s -w" -o /out/kvmm-onlineconf ./cmd/onlineconf
 
 FROM alpine:3.20
 
@@ -27,6 +28,7 @@ COPY --from=build /out/kvmm-auth /kvmm-auth
 COPY --from=build /out/kvmm-user /kvmm-user
 COPY --from=build /out/kvmm-posts /kvmm-posts
 COPY --from=build /out/kvmm-community /kvmm-community
+COPY --from=build /out/kvmm-onlineconf /kvmm-onlineconf
 COPY deploy/config.yml /deploy/config.yml
 RUN chown -R appuser:appuser /data/media
 

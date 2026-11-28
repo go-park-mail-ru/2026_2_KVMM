@@ -41,6 +41,26 @@ services:
       auth:
         condition: service_started
 
+  onlineconf:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        GIT_BRANCH: ${GIT_BRANCH:-unknown}
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}
+    entrypoint: ["/kvmm-onlineconf"]
+    container_name: kvmm-onlineconf
+    env_file:
+      - ./deploy/.env
+    expose:
+      - "8085"
+    restart: unless-stopped
+    networks:
+      - kvmm
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   user:
     build:
       context: .
