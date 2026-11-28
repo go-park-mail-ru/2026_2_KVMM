@@ -37,7 +37,8 @@ const messageColumns = `
 	reply_from,
 	created_at,
 	updated_at,
-	deleted_at`
+	deleted_at,
+	(SELECT p.uid FROM profile p WHERE p.id = message.author_id) AS author_uid`
 
 const createMessageQuery = `
 	INSERT INTO message (
@@ -263,6 +264,7 @@ func scanMessage(row rowScanner) (domain.Message, error) {
 	var (
 		message   domain.Message
 		uid       pgtype.UUID
+		authorUID pgtype.UUID
 		text      pgtype.Text
 		repost    pgtype.Int8
 		reply     pgtype.Int8
@@ -282,6 +284,7 @@ func scanMessage(row rowScanner) (domain.Message, error) {
 		&createdAt,
 		&updatedAt,
 		&deletedAt,
+		&authorUID,
 	)
 	if err != nil {
 		return domain.Message{}, err
@@ -289,6 +292,7 @@ func scanMessage(row rowScanner) (domain.Message, error) {
 
 	message.MessageText = textPointer(text)
 	message.UID = uuidString(uid)
+	message.AuthorUID = uuidString(authorUID)
 	message.RepostFrom = int64Pointer(repost)
 	message.ReplyFrom = int64Pointer(reply)
 	message.CreatedAt = createdAt.Time

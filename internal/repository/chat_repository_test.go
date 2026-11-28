@@ -24,7 +24,8 @@ func chatRows(ids ...int64) *pgxmock.Rows {
 func chatParticipantRows(chatID, profileID int64, nickname string) *pgxmock.Rows {
 	return pgxmock.NewRows([]string{
 		"chat_id", "id", "nickname", "email", "phone_number", "profile_name", "surname",
-		"patronymic", "gender", "birthday", "bio", "created_at", "updated_at", "deleted_at",
+		"patronymic", "gender", "birthday", "bio", "city", "education", "workplace",
+		"created_at", "updated_at", "deleted_at",
 		"uid", "avatar_url",
 	}).AddRow(
 		chatID,
@@ -38,6 +39,9 @@ func chatParticipantRows(chatID, profileID int64, nickname string) *pgxmock.Rows
 		"male",
 		nil,
 		"bio",
+		"Moscow",
+		nil,
+		nil,
 		time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC),
 		nil,
 		nil,
@@ -49,7 +53,7 @@ func chatParticipantRows(chatID, profileID int64, nickname string) *pgxmock.Rows
 func chatMessageRows(chatID, messageID int64) *pgxmock.Rows {
 	return pgxmock.NewRows([]string{
 		"id", "uid", "chat_id", "author_id", "message_text", "repost_from", "reply_from",
-		"created_at", "updated_at", "deleted_at",
+		"created_at", "updated_at", "deleted_at", "author_uid",
 	}).AddRow(
 		messageID,
 		pgtype.UUID{Bytes: [16]byte{1}, Valid: true},
@@ -61,6 +65,7 @@ func chatMessageRows(chatID, messageID int64) *pgxmock.Rows {
 		time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC),
 		nil,
 		nil,
+		pgtype.UUID{Bytes: [16]byte{2}, Valid: true},
 	)
 }
 
@@ -122,6 +127,12 @@ func TestChatRepositoryListAndParticipant(t *testing.T) {
 	}
 	if got := response.Chats[0].Participants[0].AvatarURLs; len(got) != 1 || got[0] != "/api/media/avatars/bob.png" {
 		t.Fatalf("ListChats() avatar_urls = %v", got)
+	}
+	if city := response.Chats[0].Participants[0].City; city == nil || *city != "Moscow" {
+		t.Fatalf("ListChats() city = %v", city)
+	}
+	if got := response.Chats[0].LastMessage.AuthorUID; got != "02000000-0000-0000-0000-000000000000" {
+		t.Fatalf("ListChats() last message author_uid = %q", got)
 	}
 
 	mock.ExpectQuery(queryPattern(requireParticipantQuery)).

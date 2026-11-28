@@ -159,6 +159,9 @@ const readParticipantsBatchQuery = `
 		p.gender,
 		p.birthday,
 		p.bio,
+		p.city,
+		p.education,
+		p.workplace,
 		p.created_at,
 		p.updated_at,
 		p.deleted_at,
@@ -182,11 +185,11 @@ const readParticipantsBatchQuery = `
 	ORDER BY cp.chat_id, p.id`
 
 const readLastMessagesBatchQuery = `
-	SELECT DISTINCT ON (m.chat_id) ` + messageColumns + `
-	FROM message m
-	WHERE m.chat_id = ANY($1::BIGINT[])
-		AND m.deleted_at IS NULL
-	ORDER BY m.chat_id, m.id DESC`
+	SELECT DISTINCT ON (chat_id) ` + messageColumns + `
+	FROM message
+	WHERE chat_id = ANY($1::BIGINT[])
+		AND deleted_at IS NULL
+	ORDER BY chat_id, id DESC`
 
 // Create создаёт личный чат или возвращает существующий
 // чат пользователя с самим собой тоже поддерживается

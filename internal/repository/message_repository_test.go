@@ -16,7 +16,7 @@ import (
 func messageRows(ids ...int64) *pgxmock.Rows {
 	rows := pgxmock.NewRows([]string{
 		"id", "uid", "chat_id", "author_id", "message_text", "repost_from", "reply_from",
-		"created_at", "updated_at", "deleted_at",
+		"created_at", "updated_at", "deleted_at", "author_uid",
 	})
 	for _, id := range ids {
 		var repost any
@@ -36,6 +36,7 @@ func messageRows(ids ...int64) *pgxmock.Rows {
 			time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC),
 			nil,
 			nil,
+			pgtype.UUID{Bytes: [16]byte{2}, Valid: true},
 		)
 	}
 	return rows
@@ -69,6 +70,9 @@ func TestMessageRepositoryCreateAndList(t *testing.T) {
 	if err != nil || message.ID != 12 || message.RepostFrom == nil || *message.RepostFrom != 10 {
 		t.Fatalf("Create() = %+v, %v", message, err)
 	}
+	if message.AuthorUID != "02000000-0000-0000-0000-000000000000" {
+		t.Fatalf("Create() author_uid = %q", message.AuthorUID)
+	}
 	if _, err := repository.ListMessages(ctx, 0, 0, 10); !errors.Is(err, ErrChatNotFound) {
 		t.Fatalf("ListMessages(invalid) error = %v", err)
 	}
@@ -81,6 +85,9 @@ func TestMessageRepositoryCreateAndList(t *testing.T) {
 	response, err := repository.ListMessages(ctx, 1, -1, 2)
 	if err != nil || len(response.Messages) != 2 || !response.HasMore || response.NextCursor != 11 || len(response.Parents) != 2 {
 		t.Fatalf("ListMessages() = %+v, %v", response, err)
+	}
+	if got := response.Messages[0].AuthorUID; got != message.AuthorUID {
+		t.Fatalf("ListMessages() author_uid = %q", got)
 	}
 
 	mock.ExpectBegin()

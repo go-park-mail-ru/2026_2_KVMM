@@ -37,16 +37,18 @@ func profileRows(id int64, nickname string, passwordHash ...string) *pgxmock.Row
 	createdAt := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 	row := pgxmock.NewRows([]string{
 		"id", "nickname", "email", "phone_number", "profile_name", "surname",
-		"patronymic", "gender", "birthday", "bio", "created_at", "updated_at", "deleted_at", "uid",
+		"patronymic", "gender", "birthday", "bio", "city", "education", "workplace",
+		"created_at", "updated_at", "deleted_at", "uid",
 	})
 	values := []any{
 		id, nickname, "user@example.com", nil, "User", "Example", nil, "male", nil,
-		"bio", createdAt, nil, nil, pgtype.UUID{Bytes: [16]byte{1}, Valid: true},
+		"bio", nil, nil, nil, createdAt, nil, nil, pgtype.UUID{Bytes: [16]byte{1}, Valid: true},
 	}
 	if len(passwordHash) > 0 {
 		return pgxmock.NewRows([]string{
 			"id", "nickname", "email", "phone_number", "profile_name", "surname",
-			"patronymic", "gender", "birthday", "bio", "created_at", "updated_at", "deleted_at", "uid", "password_hash",
+			"patronymic", "gender", "birthday", "bio", "city", "education", "workplace",
+			"created_at", "updated_at", "deleted_at", "uid", "password_hash",
 		}).AddRow(append(values, passwordHash[0])...)
 	}
 	return row.AddRow(values...)
