@@ -60,7 +60,7 @@ type Author struct {
 
 // CreatePostRequest содержит данные для создания публикации
 type CreatePostRequest struct {
-	PostText  string   `json:"post_text,omitempty" example:"Привет, мир!" validate:"omitempty,max=2048"`
+	PostText  string   `json:"post_text,omitempty" example:"Привет, мир!"`
 	MediaURLs []string `json:"media_urls,omitempty"`
 }
 
@@ -68,7 +68,7 @@ type CreatePostRequest struct {
 type UpdatePostRequest struct {
 	PostID   int64   `json:"-"`
 	PostUID  string  `json:"post_uid" example:"550e8400-e29b-41d4-a716-446655440000" validate:"required"`
-	PostText *string `json:"post_text" example:"Обновлённый текст" validate:"required,max=2048"`
+	PostText *string `json:"post_text" example:"Обновлённый текст" validate:"required"`
 }
 
 // UserPostsResponse страница публикаций конкретного пользователя

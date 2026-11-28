@@ -47,6 +47,7 @@ func NewRouter(deps Dependencies) http.Handler {
 		router.HandleFunc("/api/feed", deps.Feed.List).Methods(http.MethodGet)
 	}
 	if deps.Posts != nil {
+		router.HandleFunc("/api/posts/runtime", deps.Posts.Runtime).Methods(http.MethodGet)
 		router.HandleFunc("/api/posts/create", deps.Posts.Create).Methods(http.MethodPost)
 		router.HandleFunc("/api/posts/delete", deps.Posts.Delete).Methods(http.MethodDelete)
 		router.HandleFunc("/api/posts/update", deps.Posts.Update).Methods(http.MethodPatch)
